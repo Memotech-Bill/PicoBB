@@ -12,7 +12,7 @@
 #define VERSION "v0.36c"         // Version string
 #ifdef PICO
 #define ACCSLEN 1024            // Must be the same in BBC.h
-#define DEFAULT_RAM PAGE_OFFSET+0xC000   // Initial amount of RAM to allocate
+#define DEFAULT_RAM PAGE_OFFSET+0x20000  // Initial amount of RAM to allocate
 #else
 #define	ACCSLEN 65536		// Must be the same in BBC.h
 #define DEFAULT_RAM PAGE_OFFSET+0x200000 // Initial amount of RAM to allocate

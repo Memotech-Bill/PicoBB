@@ -103,9 +103,9 @@ const int bLowercase = 0 ;    // Dummy
 const char szVersion[] = "Altered Basic "PLATFORM" Console "VERSION;
 const char szNotice[] = 
 	"Created by Eric Olson with help\r\n"
-        "Modified by Memotech-Bill\r\n"
 	"using altered source from BBC BASIC\r\n"
-	"(C) Copyright R. T. Russell, "YEAR ;
+	"(C) Copyright R. T. Russell, "YEAR"\r\n"
+	"Modified by Memotech-Bill" ;
 char *szLoadDir ;
 char *szLibrary ;
 char *szUserDir ;
@@ -183,11 +183,14 @@ static int putinp (unsigned char inp)
 
 #ifdef PICO
 inline static void myPoll(){
-	for(;;){
-		int c=getchar_timeout_us(0);
-		if(c==PICO_ERROR_TIMEOUT) break;
-		putinp(c);
-	}
+    static int c = PICO_ERROR_TIMEOUT;
+    for(;;){
+        if ((c != PICO_ERROR_TIMEOUT) && (putinp(c) == 0))
+            break;
+        c=getchar_timeout_us(0);
+        if (c == PICO_ERROR_TIMEOUT)
+            break;
+    }
 }
 #endif
 
@@ -668,7 +671,6 @@ void faterr (const char *msg)
 {
 #ifdef PICO
 	fprintf (stdout, "%s\r\n", msg) ;
-	sleep(5);
 #else
 	fprintf (stderr, "%s\r\n", msg) ;
 #endif
@@ -993,6 +995,8 @@ void osline (char *buffer)
 			case 141:
 				break ;
 
+			case 9:
+				key = ' ';
 			default:
 				if (p < (buffer + 255))
 				    {
@@ -1134,8 +1138,8 @@ void mouseto (int x, int y)
 void *sysadr (char *name)
 {
 #ifdef PICO
-	printf("Sorry, sysadr broken in the PICO version...\n");
-	return 0;
+	extern void *sympico (char *name) ;
+	return sympico (name) ;
 #else
 	void *addr = NULL ;
 	if (addr != NULL)
@@ -1631,7 +1635,7 @@ void SystemIO (int flag)
 #ifdef PICO
 static bool UserTimerProc (struct repeating_timer *prt)
     {
-    myPoll ();
+//    myPoll ();
     if (timtrp)
 	putevt (timtrp, WM_TIMER, 0, 0) ;
     flags |= ALERT ; // Always, for periodic ESCape detection

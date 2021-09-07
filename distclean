@@ -1,0 +1,21 @@
+#!/bin/bash
+if test ! -x distclean
+then
+	echo Please run this script from the project root directory.
+	exit 1
+fi
+echo Cleaning PICO build directory...
+rm -rf build && mkdir build && echo ...done
+(
+	echo Cleaning the PICO filesystem.uf2 directory...
+	cd filesystem && make clean && echo ...done
+)
+(
+	echo Cleaning Linux build directory...
+	rm -f bbcbasic
+	cd console/linux && make clean && echo ...done
+)
+(
+	echo Cleaning LittleFS libraries...
+	cd littlefs && make clean && echo ...done
+)
