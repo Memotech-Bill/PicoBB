@@ -10,9 +10,7 @@ cmake_minimum_required(VERSION 3.12)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
-set(PICO_SDK_PATH "/usr/local/pico-sdk")
-set(LFS Y)
-include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 project(bbcbasic C CXX ASM)
 pico_sdk_init()
@@ -20,8 +18,8 @@ pico_sdk_init()
 if (TARGET tinyusb_device)
   add_executable(bbcbasic 
     src/bbmain.c src/bbexec.c src/bbeval.c src/bbasmb_arm_32.c 
-    src/bbccos.c src/bbccon.c src/lfswrap.c
-	src/sympico.c
+    src/bbccos.c src/bbccon.c src/lfswrap.c 
+    src/sympico.c
     m0FaultDispatch/m0FaultDispatch.c src/fault.c
     src/bbdata_arm_32.s)
   target_compile_options(bbcbasic PRIVATE -O1 -g)
