@@ -987,6 +987,7 @@ static int structure (void **pedi)
 	int ecx = 0;
 	unsigned char type;
 	void *edi = *pedi;
+    // printf ("structure: edi = %p\r\n", edi);
 
 	while (1)
 	    {
@@ -1002,12 +1003,16 @@ static int structure (void **pedi)
 			esi++; // bump past }
 			equals ();
 			nxt ();
+            // printf ("Prototype\r\n");
+            // dumpmem (esi, 16);
 			ptr = getvar (&type);
+            // printf ("ptr = %p\r\n", ptr);
 			if (ptr == NULL)
 				error (10, NULL); // 'Bad DIM statement'
 			if (type != STYPE)
 				error (6, NULL); // 'Type mismatch'
 			edi = VLOAD(ptr); // descriptor pointer
+            // printf ("edi = %p\r\n", edi);
 			if (((edi > (void *)esp) && ((edi - zero) < himem)) || (edi < (void *)2)) 
 				error (10, NULL); // 'Bad DIM statement'
 			*pedi = edi;
@@ -1015,17 +1020,24 @@ static int structure (void **pedi)
 		    }
 		if (!range1 (al))
 			error (16, NULL); // 'Syntax error'
+        // dumpmem (esi, 16);
 		ebx = create ((unsigned char **)&ebx, &type);
+        // printf ("ebx = %p, type = %X\r\n", ebx, type);
+#ifdef PICO_ALIGN
+        while ( (int)ebx & 0x03 ) *(char *)(ebx++) = '\0';
+#endif
 		if (type == STYPE) // nested struct ?
 		    {
 			int eax;
 			void *ebp;
 			void *edi = ebx + 2 * sizeof(void *); // GCC extension: sizeof(void) = 1
+            // printf ("Nested structure: ebx = %p, edi = %p, ecx = %d\r\n", ebx, edi, ecx);
 			VSTORE(ebx, edi); // format pointer
 			VSTORE(ebx + sizeof(void*), (void *)(size_t)ecx); // GCC extension
 			ebp = edi;
 			edi += 4;
 			eax = structure (&edi);
+            // printf ("sub-structure: ebp = %p, edi = %p, eax = %d\r\n", ebp, edi, eax);
 			ISTORE(ebp, eax);
 			ecx += eax;
 			if (edi < ebx)
@@ -1037,6 +1049,10 @@ static int structure (void **pedi)
 		    }
 		else
 		    {
+#ifdef PICO_ALIGN
+            if ( ! (type & 0x03) ) ecx = ( ecx + 3 ) & 0xFFFFFFFC;
+#endif
+            // printf ("offset ISTORE (%p, %d)\r\n", ebx, ecx);
 			ISTORE(ebx, ecx);	// store member offset
 			ebx += 4;	// GCC extension: sizeof(void) = 1
 			if (*esi == '(') // array member ?
@@ -1054,12 +1070,14 @@ static int structure (void **pedi)
 					int n = expri () + 1;
 					if (n < 1)
 						error (10, NULL); // 'Bad DIM statement'
+                    // printf ("dimension ISTORE (%p, %d)\r\n", desc, n);
 					ISTORE(desc, n); desc += 4;
 					size *= n;
 					dims++;
 				    }
 				while (*esi == ',');
 				braket ();
+                // printf ("ebx = %p, dims = %d\r\n", ebx, dims);
 				*(unsigned char*)ebx = dims;
                 // ISTORE(ebx, dims);
 				ebx = desc;
@@ -1075,6 +1093,7 @@ static int structure (void **pedi)
 			break;
 		if (al != ',')
 			error (16, NULL); // 'Syntax error'
+        // printf ("link ISTORE (%p, %p)\r\n", ebx, edi - ebx);
 		ISTORE(ebx, edi - ebx); // relative link (signed)
 	    }
 	*pedi = edi; // format pointer

@@ -1,4 +1,6 @@
 BOARD=pico
+MIN_STACK=Y
+PICO_ALIGN=Y
 SOURCES= \
     ../../src/bbdata_arm_32a.s \
 	../../BBCSDL/include/version.h \
@@ -40,7 +42,7 @@ build/Makefile: ../../src/pico/CMakeLists.txt Makefile
 	mkdir -p build
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=USB+UART -DLFS=Y -DFAT=N -DSTACK_CHECK=4 \
-			-DMIN_STACK=Y -S ../../../src/pico -B .
+			-DMIN_STACK=$(MIN_STACK) -DPICO_ALIGN=$(PICO_ALIGN) -S ../../../src/pico -B .
 
 bbcbasic.uf2: build/Makefile $(SOURCES)
 	cd build && make
