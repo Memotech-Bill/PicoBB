@@ -663,7 +663,7 @@ void clear (void)
 	if (fastvars)
 		lomem = (lomem + 7) & -8 ; // align
     else
-        ALIGN (lomem);
+        IALIGN (lomem);
 	memset (lomem + zero, 0, 4 * fastvars) ;
 	pfree = lomem + 4 * fastvars ;
 	memset (dynvar, 0, 4 * (54 + 2)) ;
@@ -808,7 +808,7 @@ char * allocs (unsigned int *ps, int len)
 		if (size > ((char *)esp - addr - STACK_NEEDED))
 			error (0, NULL) ; // 'No room'
 		pfree = addr + size - (char *) zero ;
-        ALIGN (pfree);
+        IALIGN (pfree);
 		return addr ;
 	    }
 
@@ -825,7 +825,7 @@ char * allocs (unsigned int *ps, int len)
 		    {
 			addr = ((pfree + 3) & -4) + (char *) zero ;
 			pfree = addr + sizeof (node) - (char *) zero ;
-            ALIGN (pfree);
+            IALIGN (pfree);
 			head = (node *) addr ;
 		    }
 		head->data = ULOAD(ps) + (char *) zero ;
@@ -839,7 +839,7 @@ char * allocs (unsigned int *ps, int len)
 	if (size > ((char *)esp - addr - STACK_NEEDED))
 		error (0, NULL) ; // 'No room'
 	pfree = addr + size - (char *) zero ;
-    ALIGN (pfree);
+    IALIGN (pfree);
 	USTORE(ps, addr - (char *) zero) ;
 	return addr ;
 }

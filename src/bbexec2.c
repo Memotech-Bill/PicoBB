@@ -1050,7 +1050,7 @@ static int structure (void **pedi)
 		else
 		    {
 #ifdef PICO_ALIGN
-            if ( ! (type & 0x03) ) ecx = ( ecx + 3 ) & 0xFFFFFFFC;
+            if ( ! (type & 0x03) ) IALIGN(ecx);
 #endif
             // printf ("offset ISTORE (%p, %d)\r\n", ebx, ecx);
 			ISTORE(ebx, ecx);	// store member offset
@@ -1950,7 +1950,7 @@ static void xeq_TLOMEML (void)
     clear ();
     lomem = n - zero;
     pfree = n - zero;
-    ALIGN (pfree);
+    IALIGN (pfree);
     }
 
 /************************************ HIMEM ************************************/
@@ -3742,7 +3742,7 @@ static void xeq_TDIM (void)
             if ((edx + ebx + STACK_NEEDED) > (char *) esp)
                 error (11, NULL); // 'DIM space'
             pfree = edx + ebx - (char *) zero;
-            ALIGN (pfree);
+            IALIGN (pfree);
 
             if (type == (STYPE + 0x40)) // structure array ?
                 {

@@ -25,7 +25,9 @@ typedef __attribute__((aligned(1))) char* unaligned_char_ptr;
 
 // Helper macros to fix alignment problem:
 #ifdef PICO_ALIGN
+#define IALIGN(x)    x = ((x + 3) & 0xFFFFFFFCu)
 #define ALIGN(x)    x = (void *)(((uint32_t)x + 3) & 0xFFFFFFFCu)
+
 #define ILOAD(p)    *((int*)(p))
 #define ISTORE(p,i) *((int*)(p)) = i
 #define TLOAD(p)    *((intptr_t*)(p))
@@ -45,6 +47,7 @@ static inline void XSTORE(void* p, int i){ if ((intptr_t)p&3) *((unaligned_int*)
 
 #else
 
+#define iALIGN(x)
 #define ALIGN(x)
 
 #ifdef PICO
