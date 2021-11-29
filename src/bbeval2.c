@@ -355,7 +355,7 @@ VAR cons (void)
     }
 
 // Load a numeric variable:
-// type is 1, 4, 5, 8, 10, 36 or 40
+// type is 1, 4, 5, 8, 10, 12, 36 or 40
 VAR loadn (void *ptr, unsigned char type)
     {
     VAR v;
@@ -374,7 +374,7 @@ VAR loadn (void *ptr, unsigned char type)
         case 5:
         {
         int ecx = *((unsigned char*)ptr + 4);
-        int edx = ILOAD(ptr);
+        int edx = XLOAD(ptr);
         int sign = (edx < 0);
         if (ecx == 0)
             {
@@ -402,26 +402,32 @@ VAR loadn (void *ptr, unsigned char type)
                 break;
                 }
                 {
-                // v.s.p = *(heapptr*)ptr;
-                // v.s.l = *(int *)((char *)ptr + 4);
+#ifdef PICO_ALIGN
+                v.s.p = *(heapptr*)ptr;
+                v.s.l = *(int *)((char *)ptr + 4);
+#else
                 memcpy (&v.s.p, ptr, 8); // may be unaligned
+#endif
                 v.i.t = 1; // ARM
                 v.f = v.d.d;
                 }
         break;
 
-        case 10:
-            // v.s.p = *(heapptr*)ptr;
-            // v.s.l = *(int *)((char *)ptr + 4);
-            // v.i.t = *(short *)((char *)ptr + 8);
+        case VTYPE:
+#ifdef PICO_ALIGN
+            v.s.p = *(heapptr*)ptr;
+            v.s.l = *(int *)((char *)ptr + 4);
+            v.i.t = *(short *)((char *)ptr + 8);
+#else
             memcpy (&v.s.p, ptr, 10); // may be unaligned
+#endif
             break;
 
         case 40:
             v.i.t = 0;
-            // v.s.p = *(heapptr*)ptr;
-            // v.s.l = *(int *)((char *)ptr + 4);
-            memcpy (&v.s.p, ptr, 8); // may be unaligned
+            v.s.p = *(heapptr*)ptr;
+            v.s.l = *(int *)((char *)ptr + 4);
+            // memcpy (&v.s.p, ptr, 8); // may be unaligned
             break;
 
         case 36:
@@ -1092,7 +1098,11 @@ static int dimfunc (void)
     n = expri () - 1;
     if ((n < 0) || (n >= d))
         error (15, NULL); // 'Bad subscript'
+#ifdef PICO_ALIGN
+    return ILOAD(ptr + 4 + n * 4) - 1;
+#else
     return ILOAD(ptr + 1 + n * 4) - 1;
+#endif
     }
 
 /************************* Parenthesised expression ****************************/
@@ -2984,6 +2994,7 @@ int expra (void *ebp, int ecx, unsigned char type)
     signed char op;
     unsigned char type2;
     void *ptr;
+    // printf ("expra: ebp = %p, ecx = %d, type = %X\r\n", ebp, ecx, type);
 
     if (nxt () == TEVAL)
         {
@@ -3017,6 +3028,7 @@ int expra (void *ebp, int ecx, unsigned char type)
                 }
 
             ptr = getvar (&type2);
+            // printf ("ptr = %p, type2 = %X\r\n", ptr, type2);
             if ((ptr != NULL) && (type2 & BIT6)) // RHS is an array
                 {
                 if (ptr < (void *)2)
@@ -3077,7 +3089,9 @@ int expra (void *ebp, int ecx, unsigned char type)
 
                     for (i = 0; i < ecx; i++)
                         {
+                        // printf ("modify: ebp = %p\r\n", ebp);
                         modify (v, ebp, type & ~BIT6, op);
+                        // printf ("Test = %X\r\n", *(int *)0x20027310);
                         ebp += type & TMASK; // GCC extension
                         if (nxt () == ',') break;
                         }
@@ -3146,28 +3160,50 @@ int expra (void *ebp, int ecx, unsigned char type)
 
         if (dimsl == 2)
             {
+#ifdef PICO_ALIGN
+            rowsl = ILOAD(ptr + 4); // GCC extension: sizeof(void) = 1
+            colsl = ILOAD(ptr + 8); // GCC extension: sizeof(void) = 1
+            ptr += 12;
+#else
             rowsl = ILOAD(ptr + 1); // GCC extension: sizeof(void) = 1
             colsl = ILOAD(ptr + 5); // GCC extension: sizeof(void) = 1
             ptr += 9;
+#endif
             }
         else
             {
             rowsl = 1;
+#ifdef PICO_ALIGN
+            colsl = ILOAD(ptr + 4);
+            ptr += 8;
+#else
             colsl = ILOAD(ptr + 1);
             ptr += 5;
+#endif
             }
 
         if (dimsr == 2)
             {
+#ifdef PICO_ALIGN
+            rowsr = ILOAD(rhs + 4); // GCC extension: sizeof(void) = 1
+            colsr = ILOAD(rhs + 8); // GCC extension: sizeof(void) = 1
+            rhs += 12;
+#else
             rowsr = ILOAD(rhs + 1); // GCC extension: sizeof(void) = 1
             colsr = ILOAD(rhs + 5); // GCC extension: sizeof(void) = 1
             rhs += 9;
+#endif
             }
         else
             {
             colsr = 1;
+#ifdef PICO_ALIGN
+            rowsr = ILOAD(rhs + 4);
+            rhs += 8;
+#else
             rowsr = ILOAD(rhs + 1);
             rhs += 5;
+#endif
             }
 
         if ((colsl != rowsr) || (ecx != (colsr * rowsl)))

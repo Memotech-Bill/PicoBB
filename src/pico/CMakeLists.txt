@@ -23,8 +23,8 @@ endif()
 
 if (TARGET tinyusb_device)
   add_executable(bbcbasic 
-    ../../BBCSDL/src/bbdata_arm_32.s
-    ../../BBCSDL/src/bbmain.c
+    ../../src/bbdata_arm_32a.s
+    ../../src/bbmain.c
     ../../src/bbccos.c
     ../../src/bbpico.c
     ../../src/bbasmb_arm_v6m.c 
@@ -33,20 +33,17 @@ if (TARGET tinyusb_device)
     ../../src/pico/sympico.c
     )
   if (${MIN_STACK})
-    message(STATUS "Expression evaluation revised to reduce stack usage")
     target_sources(bbcbasic PRIVATE
       ../../src/bbexec2.c
       ../../src/bbeval2.c
       )
   else()
-    message(STATUS "Using upstream expression evaluation code")
     target_sources(bbcbasic PRIVATE
       ../../src/bbexec.c
       ../../src/bbeval.c
       )
   endif()
   if (${STACK_CHECK} GREATER_EQUAL 4)
-    message(STATUS "Using memory protection to detect stack overrun")
     target_sources(bbcbasic PRIVATE ../../src/pico/stack_trap.c)
   else()
     target_sources(bbcbasic PRIVATE ../../m0FaultDispatch/m0FaultDispatch.c)
@@ -62,6 +59,7 @@ if (TARGET tinyusb_device)
     pico_printf_headers
     )
   target_compile_definitions(bbcbasic PUBLIC PICO)
+  target_compile_definitions(bbcbasic PUBLIC PICO_ALIGN)
   target_compile_definitions(bbcbasic PUBLIC PICO_STACK_CHECK=${STACK_CHECK})
   target_include_directories(bbcbasic PRIVATE
     ../../include

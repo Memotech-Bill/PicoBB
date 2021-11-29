@@ -1,11 +1,11 @@
 BOARD=pico
-MIN_STACK=N
 SOURCES= \
-    ../../BBCSDL/src/bbmain.c \
-    ../../BBCSDL/src/bbdata_arm_32.s \
-	../../BBCSDL/include/BBC.h \
+    ../../src/bbdata_arm_32a.s \
 	../../BBCSDL/include/version.h \
 	../../BBCSDL/include/bbccon.h \
+	../../include/BBC.h \
+	../../include/bbccfg.h \
+    ../../src/bbmain.c \
     ../../src/bbexec.c \
     ../../src/bbexec2.c \
     ../../src/bbeval.c \
@@ -40,7 +40,7 @@ build/Makefile: ../../src/pico/CMakeLists.txt Makefile
 	mkdir -p build
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=USB+UART -DLFS=Y -DFAT=N -DSTACK_CHECK=4 \
-			-DMIN_STACK=$(MIN_STACK) -S ../../../src/pico -B .
+			-DMIN_STACK=Y -S ../../../src/pico -B .
 
 bbcbasic.uf2: build/Makefile $(SOURCES)
 	cd build && make

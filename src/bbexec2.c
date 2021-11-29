@@ -199,12 +199,12 @@ void storen (VAR v, void *ptr, unsigned char type)
 				error (20, NULL); // 'Number too big'
 			if (e <= 0)
 			    {
-				ISTORE(ptr, 0);
+				XSTORE(ptr, 0);
 				* ((char *)ptr+4) = 0;
 			    }
 			else
 			    {
-				ISTORE(ptr, l);
+				XSTORE(ptr, l);
 				* ((char *)ptr+4) = e;
 			    }
 			}
@@ -215,17 +215,23 @@ void storen (VAR v, void *ptr, unsigned char type)
 			if (v.i.t == 0)
 				v.f = v.i.n;
 			v.d.d = v.f;
-			// *(int *)ptr = (int) v.s.p;
-			// *(int *)((char *)ptr + 4) = v.s.l;
+#ifdef PICO_ALIGN
+			*(int *)ptr = (int) v.s.p;
+			*(int *)((char *)ptr + 4) = v.s.l;
+#else
 			memcpy (ptr, &v.s.p, 8); // may be unaligned
+#endif
 			}
 			break;
 
-		case 10:
-			// *(int *)ptr = (int) v.s.p;
-			// *(int *)((char *)ptr + 4) = v.s.l;
-			// *(short *)((char *)ptr + 8) = v.s.t;
+		case VTYPE:
+#ifdef PICO_ALIGN
+			*(int *)ptr = (int) v.s.p;
+			*(int *)((char *)ptr + 4) = v.s.l;
+			*(short *)((char *)ptr + 8) = v.s.t;
+#else
 			memcpy (ptr, &v.s.p, 10); // may be unaligned
+#endif
 			break;
 
 		case 40:
@@ -236,9 +242,9 @@ void storen (VAR v, void *ptr, unsigned char type)
 					error (20, NULL); // 'Number too big'
 				v.i.n = t;
 			    }
-			// *(int *)ptr = (int) v.s.p;
-			// *(int *)((char *)ptr + 4) = v.s.l;
-			memcpy (ptr, &v.s.p, 8); // may be unaligned
+			*(int *)ptr = (int) v.s.p;
+			*(int *)((char *)ptr + 4) = v.s.l;
+			// memcpy (ptr, &v.s.p, 8); // may be unaligned
 			break;
 
 		case 36:
@@ -646,6 +652,7 @@ static void savloc (void *ptr, unsigned char type)
 	*(void **)esp = ptr;
 	*--esp = (int)type;
 	*--esp = LOCCHK;
+    // printf ("LOCCHK: esp = %p\r\n", esp);
 	check ();
 }
 
@@ -960,6 +967,7 @@ static void fixup (void *edi, int ebx)
 		if (*((char *)edi - 1) == '{')
 		    {
 			edi++; // GCC extension: sizeof(void) = 1
+            ALIGN(edi);
 			void *tmp = VLOAD(edi);
 			if (tmp > edi)
 			    {
@@ -1035,7 +1043,11 @@ static int structure (void **pedi)
 			    {
 				unsigned char dims = 0;
 				int size = type & TMASK;
+#ifdef PICO_ALIGN
+				void *desc = ebx + 4;
+#else
 				void *desc = ebx + 1;
+#endif
 				do
 				    {
 					esi++;
@@ -1049,6 +1061,7 @@ static int structure (void **pedi)
 				while (*esi == ',');
 				braket ();
 				*(unsigned char*)ebx = dims;
+                // ISTORE(ebx, dims);
 				ebx = desc;
 				ecx += size;
 			    }
@@ -1496,18 +1509,35 @@ static void xeq_TENDPROC (void)
     while (*(int *)esp != PROCHK)
         {
         int ebx = *(int *)esp;
+        // printf ("esp = %p, ebx = %X\r\n", esp, ebx);
         if (ebx == LOCCHK)
+            {
+            // printf ("LOCCHK\r\n");
             resloc ();
+            }
         else if (ebx == DIMCHK)
+            {
+            // printf ("DIMCHK\r\n");
             undim ();
+            }
         else if (ebx == RETCHK)
+            {
+            // printf ("RETCHK\r\n");
             unret ();
+            }
         else if (ebx == FORCHK)
+            {
+            // printf ("FORCHK\r\n");
             esp += 9 + 2 * STRIDE;
+            }
         else if ((ebx == REPCHK) || (ebx == WHICHK))
+            {
+            // printf ((ebx == REPCHK) ? "REPCHK\r\n" : "WHICHK\r\n");
             esp += 1 + STRIDE;
+            }
         else if (ebx == ONCHK)
             {
+            // printf ("ONCHK\r\n");
             esp++;
             onersp = *(heapptr **)esp;
             esp += STRIDE;
@@ -1515,6 +1545,7 @@ static void xeq_TENDPROC (void)
             }
         else if (ebx == LDCHK)
             {
+            // printf ("LDCHK\r\n");
             esp++;
             datptr = *esp++;
             }
@@ -1693,9 +1724,12 @@ static void xeq_TINSTALL (void)
         error (214, "File or path not found");
     size = getext (chan);
     osshut (chan);
-    oshwm (edi + v.s.l + 5 + size, 0);
-    ISTORE(edi, v.s.l + 5);
-    memcpy (edi + 4, accs, v.s.l + 1);
+    if ( ! oshwm (edi + v.s.l + 5 + size, 0) ) error (8, NULL);
+    // ISTORE(edi, v.s.l + 5);
+    *edi = v.s.l + 5;                   // 'Line' length
+    SSTORE (edi + 1, 0);                // Zero 'Line' number
+    *(edi + 3) = 0;                     // Zero token
+    memcpy (edi + 4, accs, v.s.l + 1);  // Installed file name (plus terminator)
     osload (accs, edi + v.s.l + 5, size);
     newtop = gettop (edi, NULL);
     if (newtop == NULL) 
@@ -1710,8 +1744,11 @@ static void xeq_TINSTALL (void)
         }
     else
         {
-        ISTORE(newtop, 0xF8000005);
-        *(newtop + 4) = 0x0D;
+        // ISTORE(newtop, 0xF8000005);
+        *newtop = 0x05;             // Line length
+        SSTORE (newtop + 1, 0);     // No line number
+        *(newtop + 3) = 0xF8;       // RETURN token
+        *(newtop + 4) = 0x0D;       // <CR> - End of line
         check ();
         esp -= STRIDE;
         *(void **)esp = esi;
@@ -1894,6 +1931,7 @@ static void xeq_TLOMEML (void)
     clear ();
     lomem = n - zero;
     pfree = n - zero;
+    ALIGN (pfree);
     }
 
 /************************************ HIMEM ************************************/
@@ -3512,6 +3550,8 @@ static void xeq_TDIM (void)
         char *edx; // heap pointer
         unsigned char type = 0;
         signed char *oldesi;
+        // printf ("xeq_TDIM: ");
+        // dumpmem (esi, 16);
 
         nxt ();
         oldesi = esi;
@@ -3557,10 +3597,17 @@ static void xeq_TDIM (void)
 
             type |= BIT6; // Flag array
             ebx += (type & TMASK);
+#ifdef PICO_ALIGN
+            ISTORE(edi, ecx);
+            edi += 4;
+#else
             *edi++ = (unsigned char) ecx;
+#endif
+            // printf ("Dimensions:");
             for (i = ecx-1; i >= 0; i--)
                 {
                 int eax = *(int *)(esp + i);
+                // printf (" %d", eax);
                 ISTORE(edi, eax);
                 edi += 4;
                 ebx *= eax;
@@ -3568,7 +3615,12 @@ static void xeq_TDIM (void)
                     error (11, NULL); // 'DIM space'
                 }
             esp += ecx;
+            // printf (" Size = %d\r\n", ebx);
+#ifdef PICO_ALIGN
+            ecx = ecx * 4 + 4; // size of array descriptor
+#else
             ecx = ecx * 4 + 1; // size of array descriptor
+#endif
             }
 
         // Support DIM a%(100) 100
@@ -3592,6 +3644,8 @@ static void xeq_TDIM (void)
         // if (edx < pfree) edx is base (not top) of descriptor!
         // ebp = varptr (*ebp == 1 for PRIVATE)
         // type = type (BIT4 set if structure, BIT6 set if array)
+        // printf ("ebx = %d, ecx = %d, edx = %p, pfree = %p, ebp = %p, type = %X\r\n",
+        //    ebx, ecx, edx, pfree, ebp, type);
 
         // ------ Just allocate memory from heap or stack ------
 
@@ -3669,6 +3723,7 @@ static void xeq_TDIM (void)
             if ((edx + ebx + STACK_NEEDED) > (char *) esp)
                 error (11, NULL); // 'DIM space'
             pfree = edx + ebx - (char *) zero;
+            ALIGN (pfree);
 
             if (type == (STYPE + 0x40)) // structure array ?
                 {
@@ -3699,6 +3754,7 @@ static void xeq_TDIM (void)
 
         else if (VLOAD(ebp) == (void *)1)
             {
+            // printf ("LOCAL DIM: esp = %p\r\n", esp);
             int n;
             char *edi = pfree + (char *) zero;
             int eax = 0;
@@ -3713,6 +3769,7 @@ static void xeq_TDIM (void)
             edi = (char *) esp - n; // data pointer
             n += (eax + ecx + 7) & -8; // add descriptors
             esp -= n >> 2;	// make space on stack
+            // printf ("n = %d = %X, edi = %p, esp = %p\r\n", n, n, edi, esp);
 
             if (ecx == 0)
                 CSTORE(ebp, edi - eax); // no array
@@ -3725,6 +3782,8 @@ static void xeq_TDIM (void)
                 CSTORE(ebp, edx); // tagged structure
 
             memcpy (edi - eax - ecx, pfree + zero, eax + ecx); // copy descriptors
+            // printf ("Descriptors: ");
+            // dumpmem (edi - eax - ecx, eax + ecx);
 
             if ((edx > (pfree + (char *) zero)) && (edx < (char*) esp))
                 edx = edi - eax - ecx;
@@ -3920,7 +3979,10 @@ static void xeq_TLET (void)
     void *ptr, *ebp;
     unsigned char type;
 
+    // printf ("xeq_TLET: ");
+    // dumpmem (esi, 16);
     ptr = getput (&type);
+    // printf ("ptr = %p\r\n", ptr);
     if ((type & (BIT4 | BIT6)) == 0) // scalar
         {
         if (type < 128)
@@ -3958,6 +4020,8 @@ static void xeq_TLET (void)
         }
 
     ptr = VLOAD(ptr);
+    // printf ("pfree = %p, VLOAD(ptr) = ", pfree);
+    // dumpmem (ptr, 16);
     if (ptr < (void *)2)
         error (14, NULL); // 'Bad use of array'
 
@@ -3966,9 +4030,11 @@ static void xeq_TLET (void)
     unsigned int eax = ecx * (type & TMASK); // array size in bytes
     if (eax > ((char *)esp - (char *)zero - pfree - STACK_NEEDED))
         error (0, NULL); // 'No room'
+    // printf ("esp = %p", esp);
     esp -= (eax + 3) >> 2;
     ebp = esp;
     memset ((char *)ebp, 0, eax); // Zero 'array descriptors'
+    // printf (", ecx = %d, eax = %d = %X, ebp = %p\r\n", ecx, eax, eax, ebp);
 
     esi++;
     if (op != '=')

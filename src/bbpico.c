@@ -5,8 +5,8 @@
         Modified 2021 by Eric Olson and Memotech-Bill for
         Raspberry Pico
 
-        *       bbccon.c Main program, Initialisation, Keyboard handling   *
-        *       Version 0.36a, 22-Aug-2021                                 *
+ *       bbccon.c Main program, Initialisation, Keyboard handling   *
+ *       Version 0.36a, 22-Aug-2021                                 *
 \******************************************************************/
 
 #ifndef KBD_STDIN
@@ -27,13 +27,7 @@
 #include <time.h>
 #include <math.h>
 #include "bbccon.h"
-
-// NOTE: the following alignment macros must match those in BBC.h exactly!
-
-typedef __attribute__((aligned(1))) int unaligned_int;
-
-#define ILOAD(p)    *((unaligned_int*)(p))
-#define ISTORE(p,i) *((unaligned_int*)(p)) = i
+#include "bbccfg.h"
 
 #define ESCTIME 200  // Milliseconds to wait for escape sequence
 #define QRYTIME 1000 // Milliseconds to wait for cursor query response
@@ -1305,7 +1299,7 @@ static void install_stack_guard (void *stack_bottom)
 heapptr oshwm (void *addr, int settop)
     {
 #if PICO_STACK_CHECK & 0x04
-    // printf ("oshwm (%p, %d)\n", addr, settop);
+    printf ("oshwm (%p, %d)\n", addr, settop);
     install_stack_guard (addr);
 #endif
 #ifdef _WIN32

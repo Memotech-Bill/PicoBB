@@ -1,6 +1,18 @@
-# BBCSDL
+# BBCSDL - Unstable Branch
 
 For the original BBCSDL please go to https://github.com/rtrussell/BBCSDL
+
+For the reasonably stable Pico version see the Master branch of this repository
+
+## Work in Progress
+
+This branch contains work in progress and at any time the code may fail to compile
+or be otherwise broken.
+
+Work is currently in progress to develop a version in which all BBC BASIC data structures
+meet ARM alignment requirements.
+
+## Introduction
 
 This project is part of an attempt to implement BBC Basic on a Raspberry Pi Pico.
 It was originally a fork of R. Russell's repository, but now that is included as
