@@ -112,7 +112,38 @@ void *userRAM = NULL;
 void *progRAM = NULL;
 void *userTOP = NULL;
 const int bLowercase = 0;    // Dummy
-const char szVersion[] = "BBC BASIC for "PLATFORM" Console "VERSION;
+const char szVersion[] = "BBC BASIC for "PLATFORM
+#ifdef PICO_GUI
+    " GUI "VERSION
+#else
+    " Console "VERSION
+#endif
+    ", Build "__DATE__
+#ifdef STDIO_USB
+    ", USB Console"
+#endif
+#ifdef STDIO_UART
+    ", UART Console"
+#endif
+#ifdef HAVE_LFS
+    ", Flash Filesystem"
+#endif
+#ifdef HAVE_FAT
+    ", SD Filesystem"
+#endif
+#ifdef HAVE_DEV
+    ", Serial devices"
+#endif
+#ifdef PICO_SOUND
+    ", I2S Sound"
+#endif
+#ifdef STACK_CHECK
+    ", Stack Check "STACK_CHECK
+#endif
+#ifdef PICO_ALIGN
+    ", Aligned Data"
+#endif
+    ;
 const char szNotice[] = "(C) Copyright R. T. Russell, "YEAR;
 char *szLoadDir;
 char *szLibrary;
