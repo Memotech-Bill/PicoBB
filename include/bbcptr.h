@@ -9,6 +9,8 @@
 #ifndef H_BBCCFG
 #define H_BBCCFG
 
+#include <stdint.h>
+
 // Alignment helper types:
 typedef __attribute__((aligned(1))) int unaligned_int;
 typedef __attribute__((aligned(1))) intptr_t unaligned_intptr_t;
@@ -26,8 +28,8 @@ typedef __attribute__((aligned(1))) char* unaligned_char_ptr;
 #define ISTORE(p,i) *((int*)(p)) = i
 #define TLOAD(p)    *((intptr_t*)(p))
 #define TSTORE(p,i) *((intptr_t*)(p)) = i 
-#define ULOAD(p)    *((uint*)(p))
-#define USTORE(p,i) *((uint*)(p)) = i 
+#define ULOAD(p)    *((uint32_t*)(p))
+#define USTORE(p,i) *((uint32_t*)(p)) = i 
 #define VLOAD(p)    *((void**)(p))
 #define VSTORE(p,i) *((void**)(p)) = i 
 #define CLOAD(p)    *((char**)(p))
@@ -46,7 +48,7 @@ static inline void XSTORE(void* p, int i){ if ((intptr_t)p&3) *((unaligned_int*)
 
 #else
 
-#define iALIGN(x)
+#define IALIGN(x)
 #define ALIGN(x)
 
 #ifdef PICO
