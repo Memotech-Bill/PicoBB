@@ -9,12 +9,6 @@
 #ifndef H_BBCCFG
 #define H_BBCCFG
 
-#ifdef PICO
-#define ACCSLEN 1024  // Must be the same in bbcsdl.h and bbccon.h
-#else
-#define ACCSLEN 65536 // Must be the same in bbcsdl.h and bbccon.h
-#endif
-
 // Alignment helper types:
 typedef __attribute__((aligned(1))) int unaligned_int;
 typedef __attribute__((aligned(1))) intptr_t unaligned_intptr_t;
@@ -24,7 +18,7 @@ typedef __attribute__((aligned(1))) void* unaligned_void_ptr;
 typedef __attribute__((aligned(1))) char* unaligned_char_ptr;
 
 // Helper macros to fix alignment problem:
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
 #define IALIGN(x)    x = ((x + 3) & 0xFFFFFFFCu)
 #define ALIGN(x)    x = (void *)(((uint32_t)x + 3) & 0xFFFFFFFCu)
 
@@ -41,9 +35,14 @@ typedef __attribute__((aligned(1))) char* unaligned_char_ptr;
 
 static inline int XLOAD(void* p){ return (intptr_t)p&3 ? *((unaligned_int*)p) : *((int*)p); }
 static inline void XSTORE(void* p, int i){ if ((intptr_t)p&3) *((unaligned_int*)p) = i; else *((int *)p) = i; }
-    
+
+#if PICO_ALIGN == 2
 #define VTYPE   0x0C    // Variant type (stored in 12 bytes)
 #define VATYPE  0x4C    // Variant array type
+#else
+#define VTYPE   0x0A    // Variant type (stored in 10 bytes)
+#define VATYPE  0x4A    // Variant array type
+#endif
 
 #else
 
@@ -72,6 +71,7 @@ static inline void ISTORE(void* p, int i){ if ((intptr_t)p&3) *((unaligned_int*)
 
 #define VTYPE   0x0A    // Variant type (stored in 10 bytes)
 #define VATYPE  0x4A    // Variant array type
+
 #endif
 
 // Used for line numbers in program source - not aligned

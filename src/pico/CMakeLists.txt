@@ -64,7 +64,7 @@ if (TARGET tinyusb_device)
   target_compile_definitions(bbcbasic PUBLIC PICO)
   if ( ${PICO_ALIGN} )
     message(STATUS "Align data structures")
-    target_compile_definitions(bbcbasic PUBLIC PICO_ALIGN)
+    target_compile_definitions(bbcbasic PUBLIC PICO_ALIGN=${PICO_ALIGN})
   endif ()
   target_compile_definitions(bbcbasic PUBLIC PICO_STACK_CHECK=${STACK_CHECK})
   target_include_directories(bbcbasic PRIVATE

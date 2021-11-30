@@ -1,12 +1,13 @@
 BOARD=vgaboard
 MIN_STACK=Y
-PICO_ALIGN=Y
+PICO_ALIGN=2
 SOURCES= \
-    ../../BBCSDL/src/bbmain.c \
-    ../../BBCSDL/src/bbdata_arm_32.s \
-	../../BBCSDL/include/BBC.h \
+    ../../src/bbdata_arm_32a.s \
 	../../BBCSDL/include/version.h \
 	../../BBCSDL/include/bbccon.h \
+	../../include/BBC.h \
+	../../include/bbcptr.h \
+    ../../src/bbmain.c \
     ../../src/bbexec.c \
     ../../src/bbexec2.c \
     ../../src/bbeval.c \

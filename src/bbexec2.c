@@ -215,7 +215,7 @@ void storen (VAR v, void *ptr, unsigned char type)
 			if (v.i.t == 0)
 				v.f = v.i.n;
 			v.d.d = v.f;
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
 			*(int *)ptr = (int) v.s.p;
 			*(int *)((char *)ptr + 4) = v.s.l;
 #else
@@ -225,7 +225,7 @@ void storen (VAR v, void *ptr, unsigned char type)
 			break;
 
 		case VTYPE:
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 1
 			*(int *)ptr = (int) v.s.p;
 			*(int *)((char *)ptr + 4) = v.s.l;
 			*(short *)((char *)ptr + 8) = v.s.t;
@@ -1023,7 +1023,7 @@ static int structure (void **pedi)
         // dumpmem (esi, 16);
 		ebx = create ((unsigned char **)&ebx, &type);
         // printf ("ebx = %p, type = %X\r\n", ebx, type);
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
         while ( (int)ebx & 0x03 ) *(char *)(ebx++) = '\0';
 #endif
 		if (type == STYPE) // nested struct ?
@@ -1049,7 +1049,7 @@ static int structure (void **pedi)
 		    }
 		else
 		    {
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
             if ( ! (type & 0x03) ) IALIGN(ecx);
 #endif
             // printf ("offset ISTORE (%p, %d)\r\n", ebx, ecx);
@@ -1059,7 +1059,7 @@ static int structure (void **pedi)
 			    {
 				unsigned char dims = 0;
 				int size = type & TMASK;
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
 				void *desc = ebx + 4;
 #else
 				void *desc = ebx + 1;
@@ -3616,7 +3616,7 @@ static void xeq_TDIM (void)
 
             type |= BIT6; // Flag array
             ebx += (type & TMASK);
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
             ISTORE(edi, ecx);
             edi += 4;
 #else
@@ -3635,7 +3635,7 @@ static void xeq_TDIM (void)
                 }
             esp += ecx;
             // printf (" Size = %d\r\n", ebx);
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
             ecx = ecx * 4 + 4; // size of array descriptor
 #else
             ecx = ecx * 4 + 1; // size of array descriptor

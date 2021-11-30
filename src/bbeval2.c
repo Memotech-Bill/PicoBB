@@ -402,7 +402,7 @@ VAR loadn (void *ptr, unsigned char type)
                 break;
                 }
                 {
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
                 v.s.p = *(heapptr*)ptr;
                 v.s.l = *(int *)((char *)ptr + 4);
 #else
@@ -414,7 +414,7 @@ VAR loadn (void *ptr, unsigned char type)
         break;
 
         case VTYPE:
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 1
             v.s.p = *(heapptr*)ptr;
             v.s.l = *(int *)((char *)ptr + 4);
             v.i.t = *(short *)((char *)ptr + 8);
@@ -1098,7 +1098,7 @@ static int dimfunc (void)
     n = expri () - 1;
     if ((n < 0) || (n >= d))
         error (15, NULL); // 'Bad subscript'
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
     return ILOAD(ptr + 4 + n * 4) - 1;
 #else
     return ILOAD(ptr + 1 + n * 4) - 1;
@@ -3160,7 +3160,7 @@ int expra (void *ebp, int ecx, unsigned char type)
 
         if (dimsl == 2)
             {
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
             rowsl = ILOAD(ptr + 4); // GCC extension: sizeof(void) = 1
             colsl = ILOAD(ptr + 8); // GCC extension: sizeof(void) = 1
             ptr += 12;
@@ -3173,7 +3173,7 @@ int expra (void *ebp, int ecx, unsigned char type)
         else
             {
             rowsl = 1;
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
             colsl = ILOAD(ptr + 4);
             ptr += 8;
 #else
@@ -3184,7 +3184,7 @@ int expra (void *ebp, int ecx, unsigned char type)
 
         if (dimsr == 2)
             {
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
             rowsr = ILOAD(rhs + 4); // GCC extension: sizeof(void) = 1
             colsr = ILOAD(rhs + 8); // GCC extension: sizeof(void) = 1
             rhs += 12;
@@ -3197,7 +3197,7 @@ int expra (void *ebp, int ecx, unsigned char type)
         else
             {
             colsr = 1;
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
             rowsr = ILOAD(rhs + 4);
             rhs += 8;
 #else

@@ -911,7 +911,7 @@ int arrlen (void **pebx)
 	int edx = 1 ;
 	if ((ebx < (unsigned char*)2) || (*ebx == 0))
 		error(14, NULL) ; // 'Bad use of array'
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
     dims = *ebx;
     ebx += 4;
 #else
@@ -935,7 +935,7 @@ static int getsub (void **pebx, unsigned char *ptype)
 	int edx = 0 ;
 	if ((ebx < (unsigned char*)2) || (*ebx == 0))
 		error(14, NULL) ; // 'Bad use of array'
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
     dims = *ebx;
     ebx += 4;
 #else
@@ -1031,7 +1031,7 @@ void *create (unsigned char **pedi, unsigned char *ptype)
 	    }
     *edi++ = 0 ; // terminate
     // printf ("type = %02X, size = %d, edi = %p\r\n", *ptype, size, edi);
-#ifdef PICO_ALIGN
+#if PICO_ALIGN > 0
     if ( ! (size & 3) )
         {
         while ( (int)edi & 0x03 )
