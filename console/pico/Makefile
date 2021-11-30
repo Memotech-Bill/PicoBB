@@ -6,7 +6,7 @@ SOURCES= \
 	../../BBCSDL/include/version.h \
 	../../BBCSDL/include/bbccon.h \
 	../../include/BBC.h \
-	../../include/bbccfg.h \
+	../../include/bbcptr.h \
     ../../src/bbmain.c \
     ../../src/bbexec.c \
     ../../src/bbexec2.c \

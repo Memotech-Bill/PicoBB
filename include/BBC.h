@@ -8,6 +8,12 @@
 
 // Constants:
 #define STACK_NEEDED 512
+#ifdef PICO
+extern void *libtop;
+#define ACCSLEN 1024  // Must be the same in bbcsdl.h and bbccon.h
+#else
+#define ACCSLEN 65536 // Must be the same in bbcsdl.h and bbccon.h
+#endif
 
 // Sentinels:
 #define CALCHK	0xC3414C43
@@ -208,8 +214,6 @@
 #define SSTEP	BIT1	// Single-step requested
 #define KILL	BIT0	// Program wants to terminate
 
-#include "bbccfg.h"
-
 // Special 32-bit 'pointer' type for BASIC's heap:
 typedef unsigned int heapptr ;
 #define STRIDE sizeof(void *) / sizeof(heapptr)
@@ -365,6 +369,4 @@ extern char *szTempDir ;	// @tmp$
 extern const char szNotice [] ;
 extern void *userRAM ;
 
-#ifdef PICO
-extern void *libtop;
-#endif
+#include "bbcptr.h"

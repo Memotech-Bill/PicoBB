@@ -27,7 +27,7 @@
 #include <time.h>
 #include <math.h>
 #include "bbccon.h"
-#include "bbccfg.h"
+#include "bbcptr.h"
 
 #define ESCTIME 200  // Milliseconds to wait for escape sequence
 #define QRYTIME 1000 // Milliseconds to wait for cursor query response
