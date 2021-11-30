@@ -38,6 +38,7 @@ if (TARGET tinyusb_device)
       ../../src/bbexec2.c
       ../../src/bbeval2.c
       )
+    target_compile_definitions(bbcbasic PUBLIC MIN_STACK)
   else()
     message(STATUS "Using upstream expression evaluation code")
     target_sources(bbcbasic PRIVATE

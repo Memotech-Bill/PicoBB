@@ -137,11 +137,16 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef PICO_SOUND
     ", I2S Sound"
 #endif
-#ifdef STACK_CHECK
-    ", Stack Check "STACK_CHECK
+#ifdef MIN_STACK
+    ", Min Stack"
+#endif
+#define SFY(x) #x
+#define MVL(x) SFY(x)
+#if PICO_STACK_CHECK > 0
+    ", Stack Check " MVL(PICO_STACK_CHECK)
 #endif
 #ifdef PICO_ALIGN
-    ", Aligned Data"
+    ", Aligned Data " MVL(PICO_ALIGN)
 #endif
     ;
 const char szNotice[] = "(C) Copyright R. T. Russell, "YEAR;
