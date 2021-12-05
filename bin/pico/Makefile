@@ -1,6 +1,6 @@
 BOARD=vgaboard
 MIN_STACK=Y
-PICO_ALIGN=2
+PICO_ALIGN=3
 SOURCES= \
     ../../src/bbdata_arm_32a.s \
 	../../BBCSDL/include/version.h \

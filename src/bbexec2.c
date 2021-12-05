@@ -216,8 +216,8 @@ void storen (VAR v, void *ptr, unsigned char type)
 				v.f = v.i.n;
 			v.d.d = v.f;
 #if PICO_ALIGN > 0
-			*(int *)ptr = (int) v.s.p;
-			*(int *)((char *)ptr + 4) = v.s.l;
+            USTORE (ptr, v.s.p);
+            USTORE (ptr + 4, v.s.l);
 #else
 			memcpy (ptr, &v.s.p, 8); // may be unaligned
 #endif
@@ -225,10 +225,10 @@ void storen (VAR v, void *ptr, unsigned char type)
 			break;
 
 		case VTYPE:
-#if PICO_ALIGN > 1
-			*(int *)ptr = (int) v.s.p;
-			*(int *)((char *)ptr + 4) = v.s.l;
-			*(short *)((char *)ptr + 8) = v.s.t;
+#if PICO_ALIGN > 0
+            U2STORE (ptr, v.s.p);
+            U2STORE (ptr + 4, v.s.l);
+            SSTORE (ptr + 8, v.s.t);
 #else
 			memcpy (ptr, &v.s.p, 10); // may be unaligned
 #endif
@@ -242,9 +242,12 @@ void storen (VAR v, void *ptr, unsigned char type)
 					error (20, NULL); // 'Number too big'
 				v.i.n = t;
 			    }
-			*(int *)ptr = (int) v.s.p;
-			*(int *)((char *)ptr + 4) = v.s.l;
-			// memcpy (ptr, &v.s.p, 8); // may be unaligned
+#if PICO_ALIGN > 0
+            USTORE (ptr, v.s.p);
+            USTORE (ptr + 4, v.s.l);
+#else
+			memcpy (ptr, &v.s.p, 8); // may be unaligned
+#endif
 			break;
 
 		case 36:
@@ -1023,7 +1026,7 @@ static int structure (void **pedi)
         // dumpmem (esi, 16);
 		ebx = create ((unsigned char **)&ebx, &type);
         // printf ("ebx = %p, type = %X\r\n", ebx, type);
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
         while ( (int)ebx & 0x03 ) *(char *)(ebx++) = '\0';
 #endif
 		if (type == STYPE) // nested struct ?
@@ -1049,7 +1052,7 @@ static int structure (void **pedi)
 		    }
 		else
 		    {
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
             if ( ! (type & 0x03) ) IALIGN(ecx);
 #endif
             // printf ("offset ISTORE (%p, %d)\r\n", ebx, ecx);
@@ -1059,7 +1062,7 @@ static int structure (void **pedi)
 			    {
 				unsigned char dims = 0;
 				int size = type & TMASK;
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
 				void *desc = ebx + 4;
 #else
 				void *desc = ebx + 1;
@@ -3616,7 +3619,7 @@ static void xeq_TDIM (void)
 
             type |= BIT6; // Flag array
             ebx += (type & TMASK);
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
             ISTORE(edi, ecx);
             edi += 4;
 #else
@@ -3635,7 +3638,7 @@ static void xeq_TDIM (void)
                 }
             esp += ecx;
             // printf (" Size = %d\r\n", ebx);
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
             ecx = ecx * 4 + 4; // size of array descriptor
 #else
             ecx = ecx * 4 + 1; // size of array descriptor

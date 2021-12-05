@@ -664,7 +664,7 @@ void clear (void)
 		lomem = (lomem + 7) & -8 ; // align
     else
         IALIGN (lomem);
-	memset (lomem + zero, 0, 4 * fastvars) ;
+    memset (lomem + zero, 0, 4 * fastvars) ;
 	pfree = lomem + 4 * fastvars ;
 	memset (dynvar, 0, 4 * (54 + 2)) ;
 	memset (flist, 0, sizeof(void *) * 33 + 8) ;
@@ -911,7 +911,7 @@ int arrlen (void **pebx)
 	int edx = 1 ;
 	if ((ebx < (unsigned char*)2) || (*ebx == 0))
 		error(14, NULL) ; // 'Bad use of array'
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
     dims = *ebx;
     ebx += 4;
 #else
@@ -935,7 +935,7 @@ static int getsub (void **pebx, unsigned char *ptype)
 	int edx = 0 ;
 	if ((ebx < (unsigned char*)2) || (*ebx == 0))
 		error(14, NULL) ; // 'Bad use of array'
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
     dims = *ebx;
     ebx += 4;
 #else
@@ -1031,8 +1031,9 @@ void *create (unsigned char **pedi, unsigned char *ptype)
 	    }
     *edi++ = 0 ; // terminate
     // printf ("type = %02X, size = %d, edi = %p\r\n", *ptype, size, edi);
-#if PICO_ALIGN > 0
-    if ( ! (size & 3) )
+#if PICO_ALIGN > 1
+    // if ( ! (size & 3) )
+    if ( size > 1 )
         {
         while ( (int)edi & 0x03 )
             *edi++ = 0;
@@ -1112,7 +1113,7 @@ static void *scanll (heapptr *base, signed char *edi)
 
 	do
 	    {
-        // printf ("edi = ", edi);
+        // printf ("edi = ");
         // dumpmem (edi, 16);
 		this = edi ;
 		edi += 4 ;  // skip link
@@ -1140,7 +1141,7 @@ static void *scanll (heapptr *base, signed char *edi)
             ++edi;
             // printf ("edi = %p\r\n", edi);
             ALIGN (edi);
-            // printf ("edi = %p\r\n", edi);
+            //  printf ("edi = %p\r\n", edi);
             return edi;
 		    }
 		esi = save ;
@@ -1152,6 +1153,7 @@ static void *scanll (heapptr *base, signed char *edi)
 			edi = this + next ;
 	    }
 	while (next) ;
+    // printf ("Not found\r\n");
 	return NULL ; // not found
 }
 

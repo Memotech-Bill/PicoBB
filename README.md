@@ -9,8 +9,8 @@ For the reasonably stable Pico version see the Master branch of this repository
 This branch contains work in progress and at any time the code may fail to compile
 or be otherwise broken.
 
-Work is currently in progress to develop a version in which all BBC BASIC data structures
-meet ARM alignment requirements.
+Implemented versions with different alignment options (see PICO_ALIGN below).
+Testing currently in progress.
 
 ## Introduction
 
@@ -361,4 +361,11 @@ The following options may be specified with the cmake command:
 * -DMIN_STACK=Y to use restructured code to minimise stack utilisation. This appears to work
   but has not been as extensively validated as the original BBC Basic code. Use -DMIN_STACK=N
   to use the original coding.
+* -DPICO_ALIGN=n to select different alignment options:
+  * 0 - Data not aligned. Routines loadn() and storen() use memcpy as per upstream code.
+  * 1 - Data not aligned. Routines loadn() and storen() use unaligned pointers.
+  * 2 - Data aligned. Variants occupy 10 bytes which means that array data is half-word aligned.
+        Routines loadn() and storen() use aligned pointers, half-word aligned for variants.
+  * 3 - Data aligned. Variants occupy 12 bytes so that variant array data is aligned.
+        Routined loadn() and storen() use aligned pointers.
 * Other cmake options if required.

@@ -403,8 +403,8 @@ VAR loadn (void *ptr, unsigned char type)
                 }
                 {
 #if PICO_ALIGN > 0
-                v.s.p = *(heapptr*)ptr;
-                v.s.l = *(int *)((char *)ptr + 4);
+                v.s.p = ULOAD (ptr);
+                v.s.l = ULOAD (ptr + 4);
 #else
                 memcpy (&v.s.p, ptr, 8); // may be unaligned
 #endif
@@ -414,10 +414,10 @@ VAR loadn (void *ptr, unsigned char type)
         break;
 
         case VTYPE:
-#if PICO_ALIGN > 1
-            v.s.p = *(heapptr*)ptr;
-            v.s.l = *(int *)((char *)ptr + 4);
-            v.i.t = *(short *)((char *)ptr + 8);
+#if PICO_ALIGN > 0
+                v.s.p = U2LOAD (ptr);
+                v.s.l = U2LOAD (ptr + 4);
+                v.i.t = SLOAD (ptr + 8);
 #else
             memcpy (&v.s.p, ptr, 10); // may be unaligned
 #endif
@@ -425,9 +425,12 @@ VAR loadn (void *ptr, unsigned char type)
 
         case 40:
             v.i.t = 0;
-            v.s.p = *(heapptr*)ptr;
-            v.s.l = *(int *)((char *)ptr + 4);
-            // memcpy (&v.s.p, ptr, 8); // may be unaligned
+#if PICO_ALIGN > 0
+            v.s.p = ULOAD (ptr);
+            v.s.l = ULOAD (ptr + 4);
+#else
+            memcpy (&v.s.p, ptr, 8); // may be unaligned
+#endif
             break;
 
         case 36:
@@ -1098,7 +1101,7 @@ static int dimfunc (void)
     n = expri () - 1;
     if ((n < 0) || (n >= d))
         error (15, NULL); // 'Bad subscript'
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
     return ILOAD(ptr + 4 + n * 4) - 1;
 #else
     return ILOAD(ptr + 1 + n * 4) - 1;
@@ -3160,7 +3163,7 @@ int expra (void *ebp, int ecx, unsigned char type)
 
         if (dimsl == 2)
             {
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
             rowsl = ILOAD(ptr + 4); // GCC extension: sizeof(void) = 1
             colsl = ILOAD(ptr + 8); // GCC extension: sizeof(void) = 1
             ptr += 12;
@@ -3173,7 +3176,7 @@ int expra (void *ebp, int ecx, unsigned char type)
         else
             {
             rowsl = 1;
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
             colsl = ILOAD(ptr + 4);
             ptr += 8;
 #else
@@ -3184,7 +3187,7 @@ int expra (void *ebp, int ecx, unsigned char type)
 
         if (dimsr == 2)
             {
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
             rowsr = ILOAD(rhs + 4); // GCC extension: sizeof(void) = 1
             colsr = ILOAD(rhs + 8); // GCC extension: sizeof(void) = 1
             rhs += 12;
@@ -3197,7 +3200,7 @@ int expra (void *ebp, int ecx, unsigned char type)
         else
             {
             colsr = 1;
-#if PICO_ALIGN > 0
+#if PICO_ALIGN > 1
             rowsr = ILOAD(rhs + 4);
             rhs += 8;
 #else
