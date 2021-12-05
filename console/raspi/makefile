@@ -1,4 +1,4 @@
-ALIGN=2
+ALIGN=3
 VPATH = ../../src ../../include ../../BBCSDL/src ../../BBCSDL/include
 CXX = gcc -g -Wall -I ../../include -I ../../BBCSDL/include
 CXXFLAGS = -DPICO_ALIGN=$(ALIGN) -march=armv7-a -mthumb -munaligned-access -mfloat-abi=hard -c
