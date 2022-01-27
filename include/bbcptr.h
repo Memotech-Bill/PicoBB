@@ -50,6 +50,8 @@ static inline void XSTORE(void* p, int i){ if ((intptr_t)p&3) *((unaligned_int*)
 #define U2LOAD(p)    *((twoaligned_uint*)(p))
 #define U2STORE(p,i) *((twoaligned_uint*)(p)) = i 
 #endif
+#define S2LOAD(p)    *((unsigned short*)(p))
+#define S2STORE(p,i) *((unsigned short*)(p)) = i 
 
 #else
 
@@ -77,6 +79,8 @@ static inline void ISTORE(void* p, int i){ if ((intptr_t)p&3) *((unaligned_int*)
 
 #define XLOAD(p)    *((unaligned_int*)(p))
 #define XSTORE(p,i) *((unaligned_int*)(p)) = i
+#define S2LOAD(p)    *((unaligned_ushort*)(p))
+#define S2STORE(p,i) *((unaligned_ushort*)(p)) = i 
 
 #define VTYPE   0x0A    // Variant type (stored in 10 bytes)
 #define VATYPE  0x4A    // Variant array type

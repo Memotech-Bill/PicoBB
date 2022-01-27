@@ -228,7 +228,7 @@ void storen (VAR v, void *ptr, unsigned char type)
 #if PICO_ALIGN > 0
             U2STORE (ptr, v.s.p);
             U2STORE (ptr + 4, v.s.l);
-            SSTORE (ptr + 8, v.s.t);
+            S2STORE (ptr + 8, v.s.t);
 #else
 			memcpy (ptr, &v.s.p, 10); // may be unaligned
 #endif

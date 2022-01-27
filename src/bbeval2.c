@@ -417,7 +417,7 @@ VAR loadn (void *ptr, unsigned char type)
 #if PICO_ALIGN > 0
                 v.s.p = U2LOAD (ptr);
                 v.s.l = U2LOAD (ptr + 4);
-                v.i.t = SLOAD (ptr + 8);
+                v.i.t = S2LOAD (ptr + 8);
 #else
             memcpy (&v.s.p, ptr, 10); // may be unaligned
 #endif
