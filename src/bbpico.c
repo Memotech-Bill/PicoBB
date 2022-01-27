@@ -1348,7 +1348,7 @@ heapptr oshwm (void *addr, int settop)
 	if ((addr < userRAM) ||
 	    (addr > (userRAM + MaximumRAM)))
         {
-        printf ("Above MaximumRAM = %p\n", userRAM + MaximumRAM);
+        // printf ("Above MaximumRAM = %p\n", userRAM + MaximumRAM);
 		return 0;
         }
 #endif
@@ -1701,8 +1701,8 @@ int entry (void *immediate)
 	vflags = UTF8;				// Not |= (fails on Linux build)
 #endif
 
-	prand = (unsigned int) GetTicks ();	/// Seed PRNG
-	*(unsigned char*)(&prand + 1) = (prand == 0);
+	prand.l = (unsigned int) GetTicks () ;	/// Seed PRNG
+	prand.h = (prand.l == 0) ;
 	rnd ();				// Randomise !
 
 	memset (keystr, 0, 256);

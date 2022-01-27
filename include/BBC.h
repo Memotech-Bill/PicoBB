@@ -271,6 +271,12 @@ typedef struct __attribute__ ((packed)) __attribute__ ((aligned (4))) tagSTR
 	int l ;
 } STR, *LPSTR ;
 
+typedef struct tagRND
+{
+	unsigned int l ;
+	unsigned char h ;
+} RND, *LPRND ;
+
 // Structure for linked list of string free space
 struct node
 {
@@ -353,7 +359,7 @@ extern unsigned char evtqr ;	// Event queue read pointer
 extern void *sysvar ;		// Start of @ variables linked list
 extern unsigned short tracen ;	// TRACE maximum line number
 extern unsigned char flags ;	// BASIC's Boolean flags byte
-extern unsigned int prand ;	// Pseudo-random number
+extern RND prand ;		// Pseudo-random number
 extern unsigned char fvtab[] ;	// Table of 'fast' variable types
 extern char modeno ;		// MODE number
 extern size_t memhdc ;		// SDL Renderer

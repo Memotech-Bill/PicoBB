@@ -8,9 +8,9 @@ SOURCES= \
 	../../include/BBC.h \
 	../../include/bbcptr.h \
     ../../src/bbmain.c \
-    ../../src/bbexec.c \
+    ../../BBCSDL/src/bbexec.c \
+    ../../BBCSDL/src/bbeval.c \
     ../../src/bbexec2.c \
-    ../../src/bbeval.c \
     ../../src/bbeval2.c \
     ../../src/bbccos.c \
     ../../src/bbpico.c \
@@ -57,6 +57,12 @@ build/Makefile: ../../src/pico/CMakeLists.txt Makefile
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=PICO -DLFS=Y -DFAT=Y -DSOUND=Y -DSTACK_CHECK=4 \
 			-DMIN_STACK=$(MIN_STACK) -DPICO_ALIGN=$(PICO_ALIGN) -S ../../../src/pico -B .
+
+../../BBCSDL/include/version.h:
+	git submodule update --remote
+
+../../littlefs/lfs.c:
+	git submodule update --remote
 
 ../../BBCSDL/include/version.h:
 	git submodule update --remote
