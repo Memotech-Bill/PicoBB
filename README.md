@@ -1,4 +1,4 @@
-# BBCSDL - Unstable Branch
+# PicoBB - Pico BBC BASIC - Unstable Branch
 
 For the original BBCSDL please go to https://github.com/rtrussell/BBCSDL
 
