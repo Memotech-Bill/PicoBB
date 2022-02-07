@@ -1,17 +1,21 @@
 /*  sd_spi.c - Routines for accessing SD card using SPI routines */
 
+#include "pico.h"
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/dma.h"
 #include "sd_spi.pio.h"
 #include "sd_spi.h"
-#include "boards/vgaboard.h"
 
 // #define DEBUG
 #ifdef DEBUG
 #include <stdio.h>
 #endif
+
+#if ( !defined(PICO_SD_CLK_PIN)) ||  ( !defined(PICO_SD_CMD_PIN)) || ( !defined(PICO_SD_DAT0_PIN))
+#error SD Card connections not defined. Specify a board including SD card.
+#else
 
 #define SD_CS_PIN       ( PICO_SD_DAT0_PIN + 3 )
 #define SD_CLK_PIN      PICO_SD_CLK_PIN
@@ -480,3 +484,5 @@ bool sd_spi_write (uint lba, const uint8_t *buff)
 #endif
     return bResp;
     }
+
+#endif // End of check that SD Card connections are specified.
