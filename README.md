@@ -63,19 +63,29 @@ tinyusb module installed.
 Ensure that the environment variable PICO_SDK_PATH points to the path where the SDK is installed.
 Then type:
 
-     $ git clone --recurse-submodules https://github.com/Memotech-Bill/BBCSDL.git
+     $ git clone --recurse-submodules https://github.com/Memotech-Bill/PicoBB.git
      $ cd console/pico
-     $ make
+     $ make [options]
 
-To build for hardware other than a Pico (assuming the hardware is supported by the SDK) use:
+The following options may be specified on the make command line
 
-     $ git clone --recurse-submodules https://github.com/Memotech-Bill/BBCSDL.git
-     $ cd console/pico
-     $ make BOARD=...
+* BOARD=... to specify a board other than the default "pico".
+* STDIO=... to select the user interface:
+  * STDIO=USB+UART for the console on both USB and UART (default).
+  * STDIO=USB for the basic console on USB.
+  * STDIO=UART for the basic console on UART.
+* LFS=Y to include storage on Pico flash (default) or LFS=N to exclude it.
+* FAT=Y to include storage on SD card or FAT=N to exclude it (default). To include the SD card
+  requires specifying a board which defines pins to use for the SD card.
+* SOUND=... to specify sound output. Enabling sound requires specifying a board which
+  defines pins to use for sound output.
+  * SOUND=N (default) No sound.
+  * SOUND=I2S to enable emulation of an SN76489 chip with sound via I2S.
+  * SOUND=PWM to enable emulation of an SN76489 chip with sound via PWM.
+  * SOUND=SDL to enable enhanced sound similar to other versions of BBCSDL, running on
+    the second core of the Pico.
 
-Other options may be specified with the make command if required.
-
-At this point the files bbcbasic.uf2 and filesystem.uf2 should be in the build directory.
+Having completed the make, the files bbcbasic.uf2 and filesystem.uf2 should be in the build directory.
 
 Plug a Pico into the USB port while holding the boot button and then assuming developing
 on a Raspberry Pi with Raspberry Pi OS:
@@ -105,9 +115,8 @@ or resize the terminal window for the different MODE settings in BBC Basic.
 Files are loaded from and saved to the Pico Flash memory. The standard BBC Basic commands may
 be used to navigate the folder structure.
 
-If SD card support has been included (which requires a custom build using cmake) then the
-contents of the SD card appear under the /sdcard folder. A SD or SDHC card may be used and
-it should be FAT formatted.
+If SD card support has been included then the contents of the SD card appear under the /sdcard
+folder. A SD or SDHC card may be used and it should be FAT formatted.
 
 #### Thumb Assembler
 
@@ -128,14 +137,12 @@ The extensions may be disabled again by specifying:
 
 #### Sound
 
-Currently, if sound support is required for the console mode version the option SOUND=PWM
-must be specified as part of the make.
+The pins used for sound output are specified by the selected board definition file.
+For PWM or SDL sound PICO_AUDIO_PWM_L_PIN and PICO_AUDIO_PWM_R_PIN are used. For I2S
+sound the pins used are specified by PICO_AUDIO_I2S_DATA_PIN and PICO_AUDIO_I2S_CLOCK_PIN_BASE.
 
-If the board definitioun used for the make specifies PICO_AUDIO_PWM_L_PIN and PICO_AUDIO_PWM_R_PIN
-then nominally identical (mono) signals will be output on these two pins. If these are not
-specified (which they are not for a default Pico build) then the PWM output will be on pin 2.
-
-To disable sound (and thereby free one or two GPIO pins) specify SOUND=N with the make command.
+All sound implementations use the BBC BASIC SOUND and ENVELOPE commands. *STEREO and *VOICE
+are also implemented for SDL sound.
 
 #### Serial Input and Output
 
@@ -169,14 +176,18 @@ and PICO_EXTRAS_PATH points to where these are installed. Then type:
 
      $ git clone --recurse-submodules https://github.com/Memotech-Bill/BBCSDL.git
      $ cd bin/pico
-     $ make
+     $ make [options]
 
-To build for hardware other than a Pico on a VGA Demo Board (assuming the hardware is supported by
-the SDK) use:
+The following options may be specified on the make command line
 
-     $ git clone --recurse-submodules https://github.com/Memotech-Bill/BBCSDL.git
-     $ cd bin/pico
-     $ make BOARD=...
+* BOARD=... to specify a board other than the default "vgaboard".
+* LFS=Y to include storage on Pico flash (default) or LFS=N to exclude it.
+* FAT=Y to include storage on SD card (default) or FAT=N to exclude it.
+* SOUND=... to specify sound output. The higher quality SDL sound is not available for
+  the GUI build as the second core is used for video generation.
+  * SOUND=N No sound.
+  * SOUND=I2S (default) to enable emulation of an SN76489 chip with sound via I2S.
+  * SOUND=PWM to enable emulation of an SN76489 chip with sound via PWM.
 
 Plug a Pico into the USB port while holding the boot button and then assuming developing
 on a Raspberry Pi with Raspberry Pi OS:
@@ -184,8 +195,6 @@ on a Raspberry Pi with Raspberry Pi OS:
      $ cp -v bbcbasic.uf2 /media/pi/RPI-RP2
 
 Repeat the process for filesystem.uf2
-
-
 
 ### Usage Notes
 
@@ -341,7 +350,7 @@ page or scroll mode.
 * Implement GET(X,Y) - DONE
 * Plotting: fill, circle, ellipse - DONE
 * Plotting: arc - DONE
-* Sound - DONE
+* Sound - I2S for SDL sound. Further enhancements.
 * User defined characters - DONE
 * Plotting: segment & sector - Probaby will not do, too many cases. Can sometimes be achieved with arc & fill.
 * 800x600 VGA output (currently only 640x480)?
@@ -377,6 +386,8 @@ The following options may be specified with the cmake command:
   If PICO_AUDIO_PWM_R_PIN is not specified, then the output is on a single pin given by
   PICO_AUDIO_PWM_L_PIN. If PICO_AUDIO_PWM_L_PIN is not specified, then the output is on
   pin 2. Filtering and probably amplification of the output will be required.
+* -DSOUND=SDL to enable SDL style sound using the second core. This option is incompatible
+  with -DSTDIO=PICO which uses the second core for video.
 * -DSTACK_CHECK=n Selects different stack checking options:
   * Bit 0 - Check in interpretor loop.
   * Bit 1 - Check in expression evaluator.
