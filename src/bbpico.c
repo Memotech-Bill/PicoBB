@@ -144,6 +144,8 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
     ", I2S Sound"
 #elif PICO_SOUND == 2
     ", PWM Sound"
+#elif PICO_SOUND == 3
+    ", SDL Sound"
 #endif
 #ifdef MIN_STACK
     ", Min Stack"
