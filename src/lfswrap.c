@@ -20,6 +20,7 @@ void message (const char *psFmt, ...);
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pico/stdlib.h>
 #include "lfswrap.h"
 
 #ifdef HAVE_LFS
