@@ -3,7 +3,7 @@ BOARD=vgaboard
 LFS=Y
 FAT=Y
 SOUND=I2S
-MIN_STACK=N
+MIN_STACK=Y
 
 # Required for GUI build
 STDIO=PICO
