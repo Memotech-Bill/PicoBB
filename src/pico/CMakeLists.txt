@@ -87,7 +87,10 @@ if (TARGET tinyusb_device)
     target_link_libraries(bbcbasic hardware_pwm)
   elseif ( ${SOUND} STREQUAL "SDL")
     message(STATUS "Generate high quality sound using PWM on core 1")
-    target_compile_definitions(bbcbasic PUBLIC -DPICO_SOUND=3)
+    target_compile_definitions(bbcbasic PUBLIC
+      -DPICO_SOUND=3
+      -DPICO_MCLOCK
+      )
     target_sources(bbcbasic PRIVATE
       ../../BBCSDL/src/sound_sdl.c
       )

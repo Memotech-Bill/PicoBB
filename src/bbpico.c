@@ -1701,6 +1701,10 @@ int entry (void *immediate)
 	keybdq = (char*) keystr + 0x100;	// Keyboard queue
 	eventq = (void*) keybdq + 0x100;	// Event queue
 	filbuf[0] = (eventq + 0x200 / 4);	// File buffers n.b. pointer arithmetic!!
+#if PICO_SOUND == 3
+	envels = (signed char*) (filbuf[0] + 0x800);	// Envelopes
+	waves = (short*) (envels + 0x100);	// Sound wave buffer
+#endif
 #endif
 
 	farray = 1;				// @hfile%() number of dimensions

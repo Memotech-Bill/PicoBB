@@ -64,7 +64,7 @@ Ensure that the environment variable PICO_SDK_PATH points to the path where the 
 Then type:
 
      $ git clone --recurse-submodules https://github.com/Memotech-Bill/PicoBB.git
-     $ cd console/pico
+     $ cd PicoBB/console/pico
      $ make [options]
 
 The following options may be specified on the make command line
@@ -174,8 +174,8 @@ If the user interface is connected via a serial connection, then do not open tha
 Ensure that the environment variable PICO_SDK_PATH points to the path where the SDK is installed
 and PICO_EXTRAS_PATH points to where these are installed. Then type:
 
-     $ git clone --recurse-submodules https://github.com/Memotech-Bill/BBCSDL.git
-     $ cd bin/pico
+     $ git clone --recurse-submodules https://github.com/Memotech-Bill/PicoBB.git
+     $ cd PicoBB/bin/pico
      $ make [options]
 
 The following options may be specified on the make command line

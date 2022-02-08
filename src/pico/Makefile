@@ -98,7 +98,7 @@ endif
 bbcbasic: bbcbasic.uf2
 filesystem:	filesystem.uf2
 
-build/Makefile: ../../src/pico/CMakeLists.txt Makefile
+build/Makefile: ../../src/pico/CMakeLists.txt Makefile ../../src/pico/Makefile
 	rm -rf build
 	mkdir -p build
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
