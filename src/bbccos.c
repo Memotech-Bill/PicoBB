@@ -961,9 +961,6 @@ void oscli (char *cmd)
 			return ;
 
 		case REFRESH:
-			return ;
-
-		case REFRESH:
 #ifdef PICO_GUI
             refresh (p);
 #endif

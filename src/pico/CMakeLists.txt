@@ -179,8 +179,8 @@ if (TARGET tinyusb_device)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB)
   endif()
   
-  if (( ${STDIO} STREQUAL "PICO" ) OR ( ${SOUND} STREQUAL "SDL"))
-    if (( ${STDIO} STREQUAL "PICO" ) AND ( ${SOUND} STREQUAL "SDL"))
+  if ( ${STDIO} STREQUAL "PICO" )
+    if ( ${SOUND} STREQUAL "SDL")
       message(FATAL_ERROR "Can not use core 1 for both sound and video")
     endif()
     target_compile_definitions(bbcbasic PUBLIC
@@ -189,6 +189,13 @@ if (TARGET tinyusb_device)
       )
     target_link_libraries(bbcbasic pico_multicore)
     pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico.ld)
+  elseif( ${SOUND} STREQUAL "SDL")
+    target_compile_definitions(bbcbasic PUBLIC
+      PICO_STACK_SIZE=0x3B800
+      PICO_CORE1_STACK_SIZE=0x800
+      )
+    target_link_libraries(bbcbasic pico_multicore)
+    pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld)
   else()
     target_compile_definitions(bbcbasic PUBLIC PICO_STACK_SIZE=0x3C000)
     pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico.ld)
