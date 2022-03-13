@@ -201,6 +201,10 @@ void *progRAM = NULL;
 void *userTOP = NULL;
 const int bLowercase = 0;    // Dummy
 bi_decl (bi_program_description (szVersion));
+#ifdef PICO_GUI
+bi_decl (bi_program_feature ("VGA display"));
+bi_decl (bi_program_feature ("USB host for keyboard"));
+#endif
 const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef PICO_GUI
     " GUI "VERSION
