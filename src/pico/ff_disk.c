@@ -46,6 +46,11 @@ void hexdump (BYTE *ptr, int n)
 #ifdef USE_SPI
 #include "sd_spi.h"
 
+#if PICO_SD_DAT_PIN_COUNT > 1
+#define PICO_SD_DAT1_PIN    ( PICO_SD_DAT0_PIN + PICO_SD_DAT_PIN_INCREMENT )
+#define PICO_SD_DAT2_PIN    ( PICO_SD_DAT0_PIN + 2 * PICO_SD_DAT_PIN_INCREMENT )
+#endif
+
 static int iStat = STA_NOINIT;
 
 DSTATUS disk_status (BYTE pdrv)
@@ -142,6 +147,11 @@ DSTATUS disk_initialize (BYTE pdrv)
 #ifdef DEBUG
     printf ("disk_initialize (%d)\n", pdrv);
 #endif
+#if ( PICO_SD_DAT_PIN_COUNT > 1 )
+    // Set the DAT1 and DAT2 pins to input so they don't affect SD card operation
+    gpio_init (PICO_SD_DAT1_PIN);
+    gpio_init (PICO_SD_DAT2_PIN);
+#endif
     if ( sd_spi_init () )
         {
         iStat = 0;
@@ -152,17 +162,34 @@ DSTATUS disk_initialize (BYTE pdrv)
         lba_base = 0;
         if ( disk_read (0, mbr, 0u, 1) == RES_OK )
             {
-            if (( mbr[510] == 0x55 ) && ( mbr[511] == 0xAA ))
+            if (( mbr[0x1FE] == 0x55 ) && ( mbr[0x1FF] == 0xAA ))
                 {
-                lba_base = ( mbr[457] << 24 ) | ( mbr[456] << 16 ) | ( mbr[455] << 8 ) | mbr[454];
 #ifdef DEBUG
-                printf ("Found partition table: First partition at %d\n", lba_base);
+                printf ("Found partition table\n");
+#endif
+                for (int iPar = 0; iPar < 4; ++iPar)
+                    {
+                    int iPTA = 0x1BE + ( iPar << 4 );
+                    int iType = mbr[iPTA + 0x04];
+#ifdef DEBUG
+                    printf ("Partition %d type = 0x%02X\n", iPar, iType);
+#endif
+                    if (( iType == 0x0C ) && ( lba_base == 0 ))
+                        {
+                        lba_base = ( mbr[iPTA + 0x0B] << 24 ) | ( mbr[iPTA + 0x0A] << 16 )
+                            | ( mbr[iPTA + 0x09] << 8 ) | mbr[iPTA + 0x08];
+#ifdef DEBUG
+                        printf ("   Mounting this partition: LBA = 0x%X", lba_base);
+#endif
+                        }
+                    }
                 }
+#ifdef DEBUG
             else
                 {
                 printf ("No partition table - Assuming super-floppy\n");
-#endif
                 }
+#endif
             }
         else
             {

@@ -5,5 +5,6 @@ LFS=Y
 FAT=N
 SOUND=N
 MIN_STACK=N
+SERIAL_DEV=1
 
 include ../../src/pico/Makefile

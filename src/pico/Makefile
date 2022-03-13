@@ -62,6 +62,14 @@ else
 GUI_SOURCES =
 endif
 
+ifneq ($(SERIAL_DEV), 0)
+DEV_SOURCES = \
+	../../src/pico/picoser.c \
+	../../include/bbuart.h
+else
+DEV_SOURCES =
+endif
+
 SOURCES= \
     ../../BBCSDL/src/bbmain.c \
     ../../BBCSDL/src/bbdata_arm_32.s \
@@ -87,7 +95,8 @@ SOURCES= \
     $(LFS_SOURCES) \
     $(FAT_SOURCES) \
     $(SND_SOURCES) \
-    $(GUI_SOURCES)
+    $(GUI_SOURCES) \
+	$(DEV_SOURCES)
 
 ifeq ($(LFS), Y)
 all: bbcbasic filesystem
@@ -103,7 +112,8 @@ build/Makefile: ../../src/pico/CMakeLists.txt Makefile ../../src/pico/Makefile
 	mkdir -p build
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
-			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -S ../../../src/pico -B .
+			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) \
+			-DSERIAL_DEV=$(SERIAL_DEV) --no-warn-unused-cli -S ../../../src/pico -B .
 
 ../../BBCSDL/include/version.h:
 	git submodule update --remote

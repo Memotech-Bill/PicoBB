@@ -21,6 +21,7 @@ void message (const char *psFmt, ...);
 #include <stdlib.h>
 #include <string.h>
 #include <pico/stdlib.h>
+#include <pico.h>
 #include "lfswrap.h"
 
 #ifdef HAVE_LFS
@@ -33,20 +34,27 @@ lfs_bbc_t lfs_root_context;
 #define	SDMOUNT	"sdcard"	// SD Card mount point
 #define SDMLEN	( strlen (SDMOUNT) + 1 )
 #endif
-#if defined(HAVE_DEV)
+#if SERIAL_DEV != 0
 #include "sconfig.h"
-#ifndef PICO_GUI
-#include "bbuart.h"
-#endif
 #define DEVMOUNT "dev"      // Device mount point
 #define DEVMLEN ( strlen (DEVMOUNT) + 1 )
+#if SERIAL_DEV > 0
+#include "bbuart.h"
+#elif ( ! defined(PICO_DEFAULT_UART_RX_PIN) ) && ( ! defined(PICO_DEFAULT_UART_TX_PIN) )
+#error No default UART defined
+#endif
+#if SERIAL_DEV == 1
+#define UART    ( 1 - PICO_DEFAULT_UART )
+#endif
 
 static bool parse_sconfig (const char *ps, SERIAL_CONFIG *sc);
 
 typedef enum {
-#if defined(PICO_GUI)
+#if SERIAL_DEV == -1
     didStdio,
-#elif defined(PICO)
+#elif SERIAL_DEV == 1
+    didUart,
+#elif SERIAL_DEV == 2
     didUart0,
     didUart1,
 #endif
@@ -54,9 +62,11 @@ typedef enum {
     } DEVID;
 
 static const char *psDevName[] = {
-#if defined(PICO_GUI)
+#if SERIAL_DEV == -1
     "serial",       // didStdio
-#elif defined(PICO)
+#elif SERIAL_DEV == 1
+    "uart",         // didUart
+#elif SERIAL_DEV == 2
     "uart0",        // didUart0
     "uart1",        // didUart1
 #endif
@@ -70,13 +80,13 @@ typedef enum {
 #ifdef HAVE_FAT
     fstFAT,
 #endif
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
     fstDEV,
 #endif
     } FSTYPE;
 
 #define flgRoot     0x01
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
 #define flgDev      0x02
 #endif
 #if defined (HAVE_LFS) && defined (HAVE_FAT)
@@ -94,7 +104,7 @@ typedef struct
 #ifdef HAVE_FAT
         FIL	   fat_ft;
 #endif
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
         DEVID   did;
 #endif
         };
@@ -126,7 +136,7 @@ typedef struct
 #ifdef HAVE_FAT
         DIR	    fat_dt;
 #endif
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
         DEVID   did;
 #endif
         };
@@ -180,7 +190,7 @@ static inline DIR * fatdir (DIR *dirp)
     }
 #endif
 
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
 static inline const char *dev_path (const char *path)
     {
     return path + DEVMLEN;
@@ -199,7 +209,7 @@ static inline DEVID get_devid (const FILE *fp)
 
 static FSTYPE pathtype (const char *path)
     {
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
     if (( ! strncmp (path, "/"DEVMOUNT, DEVMLEN) ) &&
         ( ( path[DEVMLEN] == '/' ) || ( path[DEVMLEN] == '\0' ) ) ) return fstDEV;
 #endif
@@ -322,7 +332,7 @@ int mychdir (const char *p)
     int err = 0;
     myrealpath (p, fswpath);
     FSTYPE fst = pathtype (fswpath);
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
     if ( fst == fstDEV )
         {
         if ( strcmp (fswpath, "/"DEVMOUNT) ) err = -1;
@@ -506,7 +516,7 @@ FILE *myfopen (char *p, char *mode)
 #endif
     FSTYPE fst = pathtype (fswpath);
     set_filetype (fp, fst);
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
     if ( fst == fstDEV )
         {
         const char *psDev = dev_path (fswpath) + 1;
@@ -520,12 +530,16 @@ FILE *myfopen (char *p, char *mode)
                     {
                     switch (did)
                         {
-#if defined(PICO_GUI)
+#if SERIAL_DEV == -1
                         case didStdio:
                             if ( sc.baud > 0 ) uart_set_baudrate (uart_default, sc.baud);
                             uart_set_format (uart_default, sc.data, sc.stop, sc.parity);
                             return fp;
-#elif defined(PICO)
+#elif SERIAL_DEV == 1
+                        case didUart:
+                            if ( uopen (UART, &sc) ) return fp;
+                            break;
+#elif SERIAL_DEV == 2
                         case didUart0:
                             if ( uopen (0, &sc) ) return fp;
                             break;
@@ -602,15 +616,19 @@ int myfclose (FILE *fp)
 #endif
     int err = 0;
     FSTYPE fst = get_filetype (fp);
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
     if ( fst == fstDEV )
         {
         switch (get_devid (fp))
             {
-#if defined(PICO_GUI)
+#if SERIAL_DEV == -1
             case didStdio:
                 break;
-#elif defined(PICO)
+#elif SERIAL_DEV == 1
+            case didUart:
+                uclose (UART);
+                break;
+#elif SERIAL_DEV == 2
             case didUart0:
                 uclose (0);
                 break;
@@ -651,15 +669,18 @@ size_t myfread (void *ptr, size_t size, size_t nmemb, FILE *fp)
     dbgmsg ("fread (%p, %d, %d, %p)\r\n", ptr, size, nmemb, fp);
 #endif
     FSTYPE fst = get_filetype (fp);
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
     if ( fst == fstDEV )
         {
         switch (get_devid (fp))
             {
-#if defined(PICO_GUI)
+#if SERIAL_DEV == -1
             case didStdio:
                 return fread (ptr, size, nmemb, stdin);
-#elif defined(PICO)
+#elif SERIAL_DEV == 1
+            case didUart:
+                return uread (ptr, size, nmemb, UART);
+#elif SERIAL_DEV == 2
             case didUart0:
                 return uread (ptr, size, nmemb, 0);
             case didUart1:
@@ -754,15 +775,18 @@ size_t myfwrite (void *ptr, size_t size, size_t nmemb, FILE *fp)
     dbgmsg ("fwrite (%p, %d, %d, %p)\r\n", ptr, size, nmemb, fp);
 #endif
     FSTYPE fst = get_filetype (fp);
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
     if ( fst == fstDEV )
         {
         switch (get_devid (fp))
             {
-#if defined(PICO_GUI)
+#if SERIAL_DEV == -1
             case didStdio:
                 return fwrite (ptr, size, nmemb, stdout);
-#elif defined(PICO)
+#elif SERIAL_DEV == 1
+            case didUart:
+                return uwrite (ptr, size, nmemb, UART);
+#elif SERIAL_DEV == 2
             case didUart0:
                 return uwrite (ptr, size, nmemb, 0);
             case didUart1:
@@ -842,7 +866,7 @@ DIR *myopendir (const char *name)
     set_dirtype (dirp, fst);
     if ( fswpath[0] == '\0' ) ((dir_info *)dirp)->flags = flgRoot;
     else ((dir_info *)dirp)->flags = 0;
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
     if ( fst == fstDEV )
         {
         const char *psDir = dev_path (fswpath);
@@ -875,7 +899,7 @@ static bool fn_special (DIR *dirp, const char *psName)
     {
     if ( (((dir_info *)dirp)->flags & flgRoot ) == 0) return false;
     if (( ! strcmp (psName, ".") ) || ( ! strcmp (psName, "..") )) return true;
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
     if ( ! strcmp (psName, DEVMOUNT) ) return true;
 #endif
 #if defined(HAVE_LFS) && defined(HAVE_FAT)
@@ -891,7 +915,7 @@ struct dirent *myreaddir (DIR *dirp)
     FSTYPE fst = get_dirtype (dirp);
     if ( ((dir_info *)dirp)->flags & flgRoot )
         {
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
         if ( (((dir_info *)dirp)->flags & flgDev) == 0 )
             {
             ((dir_info *)dirp)->flags |= flgDev;
@@ -908,7 +932,7 @@ struct dirent *myreaddir (DIR *dirp)
             }
 #endif
         }
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
     if ( fst == fstDEV )
         {
         DEVID did = ((dir_info *)dirp)->did;
@@ -1057,7 +1081,7 @@ int mount (void)
     return istat;
     }
 
-#ifdef HAVE_DEV
+#if SERIAL_DEV != 0
 static bool parse_sconfig (const char *ps, SERIAL_CONFIG *sc)
     {
     static const char *psPar[] = { "baud", "parity", "data", "stop", "tx", "rx", "cts", "rts"};

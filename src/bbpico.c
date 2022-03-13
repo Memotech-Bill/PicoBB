@@ -28,6 +28,87 @@
 #include <math.h>
 #include "bbccon.h"
 
+// Attempt to check consistancy of build
+
+#ifdef PICO
+#include <pico.h>
+
+#ifdef PICO_GUI
+#if ( ! defined(PICO_SCANVIDEO_COLOR_PIN_BASE) ) || ( ! defined(PICO_SCANVIDEO_SYNC_PIN_BASE) )
+#error SCANVIDEO pins not defined for VGA display
+#endif
+#else
+#if ( ! defined(STDIO_USB) ) && ( ! defined(STDIO_UART) )
+#error No Console connection defined
+#endif
+#endif
+
+#ifdef STDIO_UART
+#if ( ! defined(PICO_DEFAULT_UART_RX_PIN) ) || ( ! defined(PICO_DEFAULT_UART_TX_PIN) )
+#error No default UART defined
+#endif
+#endif
+
+#ifdef HAVE_FAT
+#if defined(STDIO_UART) || defined (HAVE_PRINTER) || ( SERIAL_DEV == -1 ) || ( SERIAL_DEV == 2 )
+#if PICO_SD_DAT_PIN_INCREMENT > 0
+#define SD_DAT_MIN  PICO_SD_DAT0_PIN
+#define SD_DAT_MAX  ( PICO_SD_DAT0_PIN + (PICO_SD_DAT_PIN_COUNT - 1) * PICO_SD_DAT_PIN_INCREMENT )
+#else
+#define SD_DAT_MIN  ( PICO_SD_DAT0_PIN + (PICO_SD_DAT_PIN_COUNT - 1) * PICO_SD_DAT_PIN_INCREMENT )
+#define SD_DAT_MAX  PICO_SD_DAT0_PIN
+#endif
+#if (( PICO_DEFAULT_UART_TX_PIN >= SD_DAT_MIN ) && ( PICO_DEFAULT_UART_TX_PIN <= SD_DAT_MAX )) \
+    || (( PICO_DEFAULT_UART_RX_PIN >= SD_DAT_MIN ) && ( PICO_DEFAULT_UART_RX_PIN <= SD_DAT_MAX )) \
+    || ( PICO_DEFAULT_UART_TX_PIN == PICO_SD_CLK_PIN ) || ( PICO_DEFAULT_UART_TX_PIN == PICO_SD_CMD_PIN ) \
+    || ( PICO_DEFAULT_UART_RX_PIN == PICO_SD_CLK_PIN ) || ( PICO_DEFAULT_UART_RX_PIN == PICO_SD_CMD_PIN )
+#error Default UART clashes with SD card
+#endif
+#endif
+#endif
+
+#if PICO_SOUND == 1
+#if ( ! defined(PICO_AUDIO_I2S_DATA_PIN) ) || ( ! defined(PICO_AUDIO_I2S_CLOCK_PIN_BASE) )
+#error I2S audio pins not defined for sound
+#endif
+#elif PICO_SOUND == 1
+#if ( ! defined(PICO_AUDIO_PWM_L_PIN)
+#error PWM audio pins not defined for sound
+#endif
+#elif PICO_SOUND == 2
+#if ( ! defined(PICO_AUDIO_PWM_L_PIN) ) || ( ! defined(PICO_AUDIO_PWM_R_PIN )
+#error PWM audio pins not defined for SDL sound
+#endif
+#endif
+
+#if defined(PICO_GUI) && defined(HAVE_PRINTER)
+#if ! defined(PICO_DEFAULT_UART_TX_PIN)
+#error No default UART defined for Printer
+#endif
+#endif
+
+#if SERIAL_DEV == -1
+#if ! defined(PICO_GUI)
+#error STDIO used for both console and /dev/serial
+#endif
+#if ( ! defined(PICO_DEFAULT_UART_TX_PIN) ) || ( ! defined(PICO_DEFAULT_UART_RX_PIN) )
+#error No default UART defined for /dev/serial
+#endif
+#elif SERIAL_DEV == 1
+#if ! defined(PICO_DEFAULT_UART)
+#error No default UART defined for SERIAL_DEV=1
+#endif
+#elif SERIAL_DEV == 2
+#if defined(STDIO_UART)
+#error UART PICO_DEFAULT_UART used for both console and serial device
+#endif
+#if defined(HAVE_PRINTER)
+#error UART PICO_DEFAULT_UART used for both VDU printer and serial device
+#endif
+#endif
+
+#endif
+
 // NOTE: the following alignment macros must match those in BBC.h exactly!
 
 typedef __attribute__((aligned(1))) int unaligned_int;
@@ -137,15 +218,22 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef HAVE_FAT
     ", SD Filesystem"
 #endif
-#ifdef HAVE_DEV
-    ", Serial devices"
-#endif
 #if PICO_SOUND == 1
     ", I2S Sound"
 #elif PICO_SOUND == 2
     ", PWM Sound"
 #elif PICO_SOUND == 3
     ", SDL Sound"
+#endif
+#if defined(PICO_GUI) && defined(HAVE_PRINTER)
+    ", Printer"
+#endif
+#if SERIAL_DEV == -1
+    ", /dev/serial"
+#elif SERIAL_DEV == 1
+    ", /dev/uart"
+#elif SERIAL_DEV == 2
+    ", /dev/uart0, /dev/uart1"
 #endif
 #ifdef MIN_STACK
     ", Min Stack"

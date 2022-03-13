@@ -14,6 +14,8 @@ if ( ${STDIO} STREQUAL "PICO" )
   include($ENV{PICO_EXTRAS_PATH}/external/pico_extras_import.cmake)
 endif()
 
+set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/../../boards)
+
 project(bbcbasic C CXX ASM)
 pico_sdk_init()
 
@@ -127,9 +129,9 @@ if (TARGET tinyusb_device)
     target_link_libraries(bbcbasic hardware_dma hardware_pio)
   endif()
 
-  if ( ${LFS} OR ${FAT} )
-    target_compile_definitions(bbcbasic PRIVATE -DHAVE_DEV)
-    if ( NOT ( ${STDIO} STREQUAL "PICO" ))
+  if ( ${SERIAL_DEV} )
+    target_compile_definitions(bbcbasic PRIVATE -DSERIAL_DEV=${SERIAL_DEV})
+    if ( ${SERIAL_DEV} GREATER 0 )
       target_sources(bbcbasic PRIVATE ../../src/pico/picoser.c)
     endif()
   endif()
@@ -137,15 +139,22 @@ if (TARGET tinyusb_device)
   if ( ${STDIO} STREQUAL "PICO" )
     message(STATUS "BBC Basic console I/O will be on USB keyboard and VGA screen")
     pico_enable_stdio_usb(bbcbasic 0)
-    pico_enable_stdio_uart(bbcbasic 1)
+    if (${PRINTER})
+      pico_enable_stdio_uart(bbcbasic 1)
+      target_compile_definitions(bbcbasic PRIVATE -DHAVE_PRINTER)
+    elseif (${SERIAL_DEV} EQUAL -1)
+      pico_enable_stdio_uart(bbcbasic 1)
+    else()
+      pico_enable_stdio_uart(bbcbasic 0)
+    endif()
     target_sources(bbcbasic PRIVATE
       ../../src/fbufvdu.c
       ../../src/pico_gui/picokbd.c
       ../../src/pico_gui/picofbuf.c
       ../../src/pico_gui/framebuffer.S
       )
-    target_compile_definitions(bbcbasic PRIVATE -DSTDIO_PICO)
     target_compile_definitions(bbcbasic PRIVATE -DPICO_GUI)
+    target_compile_definitions(bbcbasic PRIVATE -DGUI_SERIAL=${GUI_SERIAL})
     
     target_compile_definitions(bbcbasic PUBLIC -DPICO_PANIC_FUNCTION=message)
     target_compile_definitions(bbcbasic PUBLIC

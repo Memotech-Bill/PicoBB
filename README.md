@@ -24,11 +24,7 @@ There are two somewhat divergent lines of development:
     This is in a fairly advanced state of development.
 
 2.  GUI Version: To be able to use the Pico as a computer programmable in BBC Basic with input
-    by an attached USB keyboard and display on an attached VGA monitor. This development is
-    aimed at a Pico attached to a VGA demonstration board as per chapter 3 of
-    [Hardware design with RP2040](https://datasheets.raspberrypi.org/rp2040/hardware-design-with-rp2040.pdf)
-    or the commercial version
-    [Pimoroni Pico VGA Demo Base](https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base).
+    by an attached USB keyboard and display on an attached VGA monitor.
     This is now also fairly advanced, although there are some issues to be resolved and
     more testing required.
 
@@ -55,7 +51,9 @@ The following limitations are noted:
 This project includes source from various locations with difference licenses. See the
 various LICENSE.txt files.
 
-## Build Instructions - Console Version
+## Console Version
+
+### Build Instructions
 
 To build this for the Pico, make sure you have the SDK installed and the
 tinyusb module installed.
@@ -69,7 +67,8 @@ Then type:
 
 The following options may be specified on the make command line
 
-* BOARD=... to specify a board other than the default "pico".
+* BOARD=... to specify a board other than the default "pico". If using the Pimoroni VGA
+  Demo board see the discussion on board definition files under the GUI build.
 * STDIO=... to select the user interface:
   * STDIO=USB+UART for the console on both USB and UART (default).
   * STDIO=USB for the basic console on USB.
@@ -84,6 +83,24 @@ The following options may be specified on the make command line
   * SOUND=PWM to enable emulation of an SN76489 chip with sound via PWM.
   * SOUND=SDL to enable enhanced sound similar to other versions of BBCSDL, running on
     the second core of the Pico.
+* SERIAL_DEV=... To specify serial device support:
+  * SERIAL_DEV=0 for no serial devices.
+  * SERIAL_DEV=1 (default) for one serial device, the one not used for the console.
+  * SERIAL_DEV=2 for two serial devices. This should only be used if the console is USB only.
+
+Running make without any options pruduces a build for a bare Pico with:
+
+* Console on both USB and default UART (pins 0 & 1)
+* Storage on Pico flash
+* No sound
+* One serial device using UART 1
+
+If you have a VGA Demo board, and want a console build with SD card storage, then the following
+make command is recommended:
+
+    make BOARD=vgaboard_sd STDIO=USB SERIAL_DEV=0 FAT=Y
+
+(see the section on board definitions below, for the GUI build).
 
 Having completed the make, the files bbcbasic.uf2 and filesystem.uf2 should be in the build directory.
 
@@ -146,14 +163,15 @@ are also implemented for SDL sound.
 
 #### Serial Input and Output
 
-The two Pico inbuilt serial devices appear in the filesystem as /dev/uart0 and /dev/uart1.
-A serial port may be opened using a command of the form:
+Depending upon the compile options selected serial devices may appear as as single /dev/uart
+or the pair /dev/uart0 and /dev/uart1. A serial port may be opened using a command of the form:
 
-   port% = OPENUP("/dev/uart0.baud=9600 parity=N data=8 stop=1 tx=0 rx=1 cts=2 rts=3")
+   port% = OPENUP("/dev/uart.baud=9600 parity=N data=8 stop=1 tx=0 rx=1 cts=2 rts=3")
 
 Any of the pin numbers (tx, rx, cts, rts) may be omitted in which case that pin will not
 be connected. This enables transmit only, or receive only connections, and connections
-without flow control.
+without flow control. The pin numbers selected must be valid Pico pin numbers for the
+relevent UART and function.
 
 If not specified, the following defaults are assumed: parity=N data=8 stop=1.
 
@@ -169,7 +187,53 @@ If the BBC Basic user interface is connected via USB, then either serial interfa
 If the user interface is connected via a serial connection, then do not open that interface
 (/dev/uart0 for a bare Pico, /dev/uart1 for a Pico on VGA Demo board).
 
-## Build Instructions - GUI Version
+## GUI Version
+
+### Board definition
+
+The GUI version has been designed to run on a Pico attached to a VGA demonstration board as per
+chapter 3 of
+[Hardware design with RP2040](https://datasheets.raspberrypi.org/rp2040/hardware-design-with-rp2040.pdf)
+or the commercial version
+[Pimoroni Pico VGA Demo Base](https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base).
+
+The Pico SDK provides a single board definition file (vgaboard.h) for this configuration.
+However this does not completely describe all the hardware configurations. Therefore this
+repository includes three custom board definition files (in the boards/ folder):
+
+#### vgaboard_sd
+
+As supplied from Pimoroni, with no soldering, the Pico on the VGA board may be used with:
+
+* VGA display
+* USB port
+* Sound via either I2S or PWM
+* SD card in 14-bit, 1-bit or SPI modes.
+
+However there is no UART serial connection. This configuration is described by the
+vgaboard_sd configuration file.
+
+#### vgaboard_serial
+
+If a 3x2 header is soldered to the VGA board at the location labelled "SD Jumpers", then three
+of the pins may be used to connect to one of the Pico UARTs. However with a serial device is
+connected here the SD card can no longer be used. This configuration is described by the
+vgaboard_serial configuration file.
+
+If the header is solderd in, but no serial device is attached then the configuration is
+still described by the vgaboard_sd configuration file.
+
+#### vgaboard_cut
+
+If, in adddition to attaching the 3x2 header, the tracks on the under-side of the board,
+joining the pads GP20 to SD01 and GP21 to SD02 are cut, then it is possible to use both
+the UART and the SD card, but the SD card can only be used in 1-bit or SPI modes. This
+configuration is described by the vgaboard_cut configuration file.
+
+If jumpers are used to reconnect GP20 to SD01 and GP21 to SD02, then 4-bit SD mode may
+be used and this configuration is described by the original vgaboard_sd configuration file.
+    
+### Build Instructions
 
 Ensure that the environment variable PICO_SDK_PATH points to the path where the SDK is installed
 and PICO_EXTRAS_PATH points to where these are installed. Then type:
@@ -178,9 +242,11 @@ and PICO_EXTRAS_PATH points to where these are installed. Then type:
      $ cd PicoBB/bin/pico
      $ make [options]
 
-The following options may be specified on the make command line
+The following options may be specified on the make command line:
 
-* BOARD=... to specify a board other than the default "vgaboard".
+* BOARD=... to specify a board other than the default "vgaboard_sd". This may be any of the
+  vgaboard_* configurations described above, or any other board configuration file with
+  appropriate devices attached.
 * LFS=Y to include storage on Pico flash (default) or LFS=N to exclude it.
 * FAT=Y to include storage on SD card (default) or FAT=N to exclude it.
 * SOUND=... to specify sound output. The higher quality SDL sound is not available for
@@ -188,9 +254,28 @@ The following options may be specified on the make command line
   * SOUND=N No sound.
   * SOUND=I2S (default) to enable emulation of an SN76489 chip with sound via I2S.
   * SOUND=PWM to enable emulation of an SN76489 chip with sound via PWM.
+* PRINTER=N to specify no printer (default) or PRINTER=Y to specify a printer attached to
+  the default serial port.
+* SERIAL_DEV=... To specify serial device support:
+  * SERIAL_DEV=0 (default) for no serial devices.
+  * SERIAL_DEV=-1 for serial device using the default UART. If PRINTER=Y is also selected then
+    output to the printer and to the serial device will be interlaced. This serial connection
+    appears as /dev/serial in the file system, and uses the Pico stdio interface. For the
+    Pimoroni VGA board this option also requires SD_CUT=Y
+  * SERIAL_DEV=1 for one serial device using the non-default UART. Do not use with the Pimoroni
+    VGA board.
+  * SERIAL_DEV=2 for two serial devices using both UARTs. Do not use with the Pimoroni VGA board.
 
-Plug a Pico into the USB port while holding the boot button and then assuming developing
-on a Raspberry Pi with Raspberry Pi OS:
+For the Pimoroni VGA board as delivered, specifying make without any options is probably
+the best option.
+
+To obtain the maximum functionality, the "SD Jumpers" header should be installed, and the
+tracks between GP20 and SD01 and GP21 and SD02 should be cut. Then build using:
+
+    make BOARD=vgaboard_cut PRINTER=Y SERIAL_DEV=-1
+
+Having completed a make, plug a Pico into the USB port while holding the boot button and
+then (assuming developing on a Raspberry Pi with Raspberry Pi OS):
 
      $ cp -v bbcbasic.uf2 /media/pi/RPI-RP2
 
@@ -198,22 +283,16 @@ Repeat the process for filesystem.uf2
 
 ### Usage Notes
 
-The code has been designed for use with the VGA demonstration board.
-To use (once the Pico has been programmed):
+To use (once the Pico has been programmed), assuming a Pico on a VGA Demo board:
 
 * Power should be applied to the micro-USB socket on the demo board.
 * The keyboard should be connected to the USB socket on the Pico itself.
 A USB to micro-USB adaptor will be required. The Pico is somewhat selective
 as to which keyboards work, cheap keyboards may be better.
-* The SD card is used in SPI mode, and Pico GPIOs 20 & 21 are used for
-serial input and output. On the Pimoroni board, cut the links between
-these GPIOs and SD_DAT1 & SD_DAT2. Optionally solder a 2x3 header in place
-for a serial connection. From BBC Basic printer output is sent to serial.
-It is currently also used for diagnostic output.
 * An SD or SDHC card may be used, It should be formatted as FAT.
-* Sound output (if implemented) uses the I2S DAC on the VGA demo card.
-If required an amplified speaker or amplified headphones should be connected
-to the DAC socket on the VGA demo board, not to the PWM socket.
+* If required an amplified speaker or amplified headphones should be connected
+  to the socket on the VGA demo board. If using I2S sound (the default) then use
+  the socket labelled DAC. If using PWM sound then use the PWM socket.
 
 #### Video Modes
 
