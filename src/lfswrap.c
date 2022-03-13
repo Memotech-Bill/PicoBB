@@ -1041,6 +1041,17 @@ static struct lfs_config lfs_root_cfg = {
     .lookahead_size = 32,
     .block_cycles = 256
     };
+
+#ifdef PICO
+#include <pico/binary_info.h>
+bi_decl(bi_block_device(
+                           BINARY_INFO_MAKE_TAG('F', 'S'),
+                           "Flash file system (LFS)",
+                           XIP_BASE+ROOT_OFFSET,
+                           ROOT_SIZE,
+                           NULL,
+                           BINARY_INFO_BLOCK_DEV_FLAG_READ | BINARY_INFO_BLOCK_DEV_FLAG_WRITE));
+#endif
 #endif
 
 extern void syserror (const char *psMsg);

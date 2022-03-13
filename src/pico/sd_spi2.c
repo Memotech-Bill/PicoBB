@@ -7,6 +7,7 @@
 #include "hardware/dma.h"
 #include "sd_spi.pio.h"
 #include "sd_spi.h"
+#include "pico/binary_info.h"
 
 // #define DEBUG
 #ifdef DEBUG
@@ -22,6 +23,11 @@
 #define SD_MOSI_PIN     PICO_SD_CMD_PIN
 // #define SD_MOSI_PIN     PICO_SD_DAT0_PIN
 #define SD_MISO_PIN     PICO_SD_DAT0_PIN
+
+bi_decl (bi_1pin_with_name (SD_CS_PIN, "SD card chip select"));
+bi_decl (bi_1pin_with_name (SD_CLK_PIN, "SD card clock"));
+bi_decl (bi_1pin_with_name (SD_MOSI_PIN, "SD card command (data in)"));
+bi_decl (bi_1pin_with_name (SD_MISO_PIN, "SD card data 0 (data out)"));
 
 static PIO pio_sd = pio1;
 static int sd_sm = -1;

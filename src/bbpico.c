@@ -143,6 +143,7 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #include <pico/bootrom.h>
 #include <pico/stdlib.h>
 #include <pico/time.h>
+#include <pico/binary_info.h>
 #if PICO_STACK_CHECK & 0x04
 #include <hardware/structs/mpu.h>
 #endif
@@ -199,6 +200,7 @@ void *userRAM = NULL;
 void *progRAM = NULL;
 void *userTOP = NULL;
 const int bLowercase = 0;    // Dummy
+bi_decl (bi_program_description (szVersion));
 const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef PICO_GUI
     " GUI "VERSION
