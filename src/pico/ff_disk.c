@@ -46,11 +46,6 @@ void hexdump (BYTE *ptr, int n)
 #ifdef USE_SPI
 #include "sd_spi.h"
 
-#if PICO_SD_DAT_PIN_COUNT > 1
-#define PICO_SD_DAT1_PIN    ( PICO_SD_DAT0_PIN + PICO_SD_DAT_PIN_INCREMENT )
-#define PICO_SD_DAT2_PIN    ( PICO_SD_DAT0_PIN + 2 * PICO_SD_DAT_PIN_INCREMENT )
-#endif
-
 static int iStat = STA_NOINIT;
 
 DSTATUS disk_status (BYTE pdrv)
@@ -146,11 +141,6 @@ DSTATUS disk_initialize (BYTE pdrv)
     {
 #ifdef DEBUG
     printf ("disk_initialize (%d)\n", pdrv);
-#endif
-#if ( PICO_SD_DAT_PIN_COUNT > 1 )
-    // Set the DAT1 and DAT2 pins to input so they don't affect SD card operation
-    gpio_init (PICO_SD_DAT1_PIN);
-    gpio_init (PICO_SD_DAT2_PIN);
 #endif
     if ( sd_spi_init () )
         {

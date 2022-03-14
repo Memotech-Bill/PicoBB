@@ -24,10 +24,17 @@
 // #define SD_MOSI_PIN     PICO_SD_DAT0_PIN
 #define SD_MISO_PIN     PICO_SD_DAT0_PIN
 
-bi_decl (bi_1pin_with_name (SD_CS_PIN, "SD card chip select"));
+bi_decl (bi_1pin_with_name (SD_CS_PIN, "SD card data 3 (chip select)"));
 bi_decl (bi_1pin_with_name (SD_CLK_PIN, "SD card clock"));
 bi_decl (bi_1pin_with_name (SD_MOSI_PIN, "SD card command (data in)"));
 bi_decl (bi_1pin_with_name (SD_MISO_PIN, "SD card data 0 (data out)"));
+
+#if PICO_SD_DAT_PIN_COUNT > 1
+#define PICO_SD_DAT1_PIN    ( PICO_SD_DAT0_PIN + PICO_SD_DAT_PIN_INCREMENT )
+#define PICO_SD_DAT2_PIN    ( PICO_SD_DAT0_PIN + 2 * PICO_SD_DAT_PIN_INCREMENT )
+bi_decl (bi_1pin_with_name (PICO_SD_DAT1_PIN, "SD card data 1 (unused)"));
+bi_decl (bi_1pin_with_name (PICO_SD_DAT2_PIN, "SD card data 2 (unused)"));
+#endif
 
 static PIO pio_sd = pio1;
 static int sd_sm = -1;
@@ -44,6 +51,13 @@ bool sd_spi_load (void)
     gpio_set_dir (SD_CS_PIN, GPIO_OUT);
     gpio_pull_up (SD_MISO_PIN);
     gpio_put (SD_CS_PIN, 1);
+#if ( PICO_SD_DAT_PIN_COUNT > 1 )
+    // Set the DAT1 and DAT2 pins to input so they don't affect SD card operation
+    gpio_init (PICO_SD_DAT1_PIN);
+    gpio_init (PICO_SD_DAT2_PIN);
+    gpio_pull_up (PICO_SD_DAT1_PIN);
+    gpio_pull_up (PICO_SD_DAT2_PIN);
+#endif
     uint offset = pio_add_program (pio_sd, &sd_spi_program);
     sd_sm = pio_claim_unused_sm (pio_sd, true);
     pio_sm_config c = sd_spi_program_get_default_config (offset);
