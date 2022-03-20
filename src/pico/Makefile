@@ -114,8 +114,8 @@ build/Makefile: ../../src/pico/CMakeLists.txt Makefile ../../src/pico/Makefile
 	mkdir -p build
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
-			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) \
-			-DSERIAL_DEV=$(SERIAL_DEV) --no-warn-unused-cli -S ../../../src/pico -B .
+			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
+			-DBBC_SRC=$(BBC_SRC) --no-warn-unused-cli -S ../../../src/pico -B .
 
 ifeq ($(BBC_SRC), ../../BBCSDL)
 $(BBC_SRC)/include/version.h:
