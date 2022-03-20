@@ -1,5 +1,5 @@
 CFLAGS=-O2 -Wall -I.. -I../../littlefs -I../../include
-TARGETS=filesystem.uf2 filesystem.elf filesystem.lfs mklfsimage uf2conv
+TARGETS=filesystem.uf2 filesystem.elf filesystem.lfs mklfsimage uf2conv uf2merge
 SOURCES=mklfsimage.c ../lfsmcu.c ../../littlefs/lfs.a
 
 all: $(TARGETS)
@@ -10,6 +10,11 @@ filesystem.uf2: filesystem.lfs uf2conv
 filesystem.elf: filesystem.lfs
 	arm-none-eabi-objcopy --change-addresses 0x10100000 --input-target=binary --output-target=elf32-little filesystem.lfs filesystem.elf
 
+ifdef FILESYS
+filesystem.lfs: $(FILESYS) mklfsimage
+	rm -f filesystem.lfs
+	./mklfsimage $(FILESYS)
+else
 tree:
 	rm -rf tree
 	mkdir tree
@@ -26,6 +31,7 @@ filesystem.lfs: ../../BBCSDL/lib/* mklfsimage tree
 ifdef EXTRA
 	./mklfsimage $(EXTRA)
 endif
+endif
 
 mklfsimage: $(SOURCES)
 	gcc $(CFLAGS) -o mklfsimage $(SOURCES)
@@ -35,6 +41,9 @@ mklfsimage: $(SOURCES)
 
 uf2conv: uf2conv.c uf2format.h
 	gcc $(CFLAGS) -o uf2conv uf2conv.c uf2format.h
+
+uf2merge: uf2merge.c uf2format.h
+	gcc $(CFLAGS) -o uf2merge uf2merge.c
 
 clean:
 	rm -f $(TARGETS)

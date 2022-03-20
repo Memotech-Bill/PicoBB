@@ -1,11 +1,13 @@
+BBC_SRC=../../BBCSDL
+
 ifeq ($(MIN_STACK), Y)
 EXEC_SOURCES = \
     ../../src/bbexec2.c \
     ../../src/bbeval2.c
 else
 EXEC_SOURCES = \
-    ../../BBCSDL/src/bbexec.c \
-    ../../BBCSDL/src/bbeval.c
+    $(BBC_SRC)/src/bbexec.c \
+    $(BBC_SRC)/src/bbeval.c
 endif
 
 ifeq ($(LFS), Y)
@@ -47,7 +49,7 @@ SND_SOURCES = \
     ../../src/pico/pico_snd.c
 else ifeq ($(SOUND), SDL)
 SND_SOURCES = \
-    ../../BBCSDL/src/sound_sdl.c
+    $(BBC_SRC)/src/sound_sdl.c
 endif
 
 ifeq ($(STDIO), PICO)
@@ -71,11 +73,11 @@ DEV_SOURCES =
 endif
 
 SOURCES= \
-    ../../BBCSDL/src/bbmain.c \
-    ../../BBCSDL/src/bbdata_arm_32.s \
-	../../BBCSDL/include/BBC.h \
-	../../BBCSDL/include/version.h \
-	../../BBCSDL/include/bbccon.h \
+    $(BBC_SRC)/src/bbmain.c \
+    $(BBC_SRC)/src/bbdata_arm_32.s \
+	$(BBC_SRC)/include/BBC.h \
+	$(BBC_SRC)/include/version.h \
+	$(BBC_SRC)/include/bbccon.h \
     ../../src/bbccos.c \
     ../../src/bbpico.c \
     ../../src/bbasmb_arm_v6m.c \
@@ -105,7 +107,7 @@ all: bbcbasic
 endif
 
 bbcbasic: bbcbasic.uf2
-filesystem:	filesystem.uf2
+filesystem:	bbcbasic+filesystem.uf2 filesystem.uf2
 
 build/Makefile: ../../src/pico/CMakeLists.txt Makefile ../../src/pico/Makefile
 	rm -rf build
@@ -115,8 +117,10 @@ build/Makefile: ../../src/pico/CMakeLists.txt Makefile ../../src/pico/Makefile
 			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) \
 			-DSERIAL_DEV=$(SERIAL_DEV) --no-warn-unused-cli -S ../../../src/pico -B .
 
-../../BBCSDL/include/version.h:
+ifeq ($(BBC_SRC), ../../BBCSDL)
+$(BBC_SRC)/include/version.h:
 	git submodule update --remote
+endif
 
 ../../littlefs/lfs.c:
 	git submodule update --remote
@@ -130,9 +134,12 @@ bbcbasic.uf2: build/Makefile $(SOURCES)
 	cd ../../src/pico && ./sympico.sh
 
 ifeq ($(LFS), Y)
+bbcbasic+filesystem.uf2: bbcbasic.uf2 filesystem.uf2
+	../../src/lfsutil/uf2merge bbcbasic+filesystem.uf2 bbcbasic.uf2 filesystem.uf2
+
 filesystem.uf2:
 	cd ../../src/lfsutil && make clean
-	cd ../../src/lfsutil && make EXTRA=$(LFS_EXTRA)
+	cd ../../src/lfsutil && make EXTRA=$(LFS_EXTRA) FILESYS=$(FILESYS)
 	cp ../../src/lfsutil/filesystem.uf2 ../../console/pico
 	cp ../../src/lfsutil/filesystem.elf ../../console/pico
 endif

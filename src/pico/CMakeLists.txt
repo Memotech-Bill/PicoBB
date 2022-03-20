@@ -23,10 +23,15 @@ if ( NOT STDIO )
   set(STDIO "USB+UART")
 endif()
 
+if ( NOT BBC_SRC )
+  set(BBC_SRC "../../BBCSDL")
+endif()
+message(STATUS "BBC BASIC Upstream source from ${BBC_SRC}")
+
 if (TARGET tinyusb_device)
   add_executable(bbcbasic 
-    ../../BBCSDL/src/bbdata_arm_32.s
-    ../../BBCSDL/src/bbmain.c
+    ${BBC_SRC}/src/bbdata_arm_32.s
+    ${BBC_SRC}/src/bbmain.c
     ../../src/bbccos.c
     ../../src/bbpico.c
     ../../src/bbasmb_arm_v6m.c 
@@ -43,8 +48,8 @@ if (TARGET tinyusb_device)
   else()
     message(STATUS "Using upstream expression evaluation code")
     target_sources(bbcbasic PRIVATE
-      ../../BBCSDL/src/bbexec.c
-      ../../BBCSDL/src/bbeval.c
+      ${BBC_SRC}/src/bbexec.c
+      ${BBC_SRC}/src/bbeval.c
       )
   endif()
   if (${STACK_CHECK} GREATER_EQUAL 4)
@@ -67,7 +72,7 @@ if (TARGET tinyusb_device)
   target_compile_definitions(bbcbasic PUBLIC PICO_STACK_CHECK=${STACK_CHECK})
   target_include_directories(bbcbasic PRIVATE
     ../../include
-    ../../BBCSDL/include
+    ${BBC_SRC}/include
     ../../m0FaultDispatch
     )
 
@@ -94,7 +99,7 @@ if (TARGET tinyusb_device)
       -DPICO_MCLOCK
       )
     target_sources(bbcbasic PRIVATE
-      ../../BBCSDL/src/sound_sdl.c
+      ${BBC_SRC}/src/sound_sdl.c
       )
     target_link_libraries(bbcbasic hardware_pwm)
   endif()
