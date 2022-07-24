@@ -22,14 +22,11 @@ const symbols sdkfuncs[]={
 
 void* sympico(char* name) {
     int first = 0, last = sizeof(sdkfuncs) / sizeof(symbols) - 1;
-    if ( strcmp (name, sdkfuncs[first].s) < 0 ) return NULL;
-    if ( strcmp (name, sdkfuncs[last].s) > 0 ) return NULL;
-    while (last - first  > 1)
-        {
+    while (first <= last) {
         int middle = (first + last) / 2, r = strcmp(name, sdkfuncs[middle].s);
-        if (r < 0) last = middle;
-        else if (r > 0) first = middle;
+        if (r < 0) last = middle - 1;
+        else if (r > 0) first = middle + 1;
         else return sdkfuncs[middle].p;
-        }
+    }
     return NULL;
 }
