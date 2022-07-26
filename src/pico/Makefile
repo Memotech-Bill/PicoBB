@@ -72,6 +72,15 @@ else
 DEV_SOURCES =
 endif
 
+ifeq ($(CYW43), Y)
+SYMBOLS = \
+	../../src/pico/sym_gpio.txt \
+	../../src/pico/sym_cyw43.txt
+else
+SYMBOLS = \
+	../../src/pico/sym_gpio.txt
+endif
+
 SOURCES= \
     $(BBC_SRC)/src/bbmain.c \
     $(BBC_SRC)/src/bbdata_arm_32.s \
@@ -115,7 +124,7 @@ build/Makefile: ../../src/pico/CMakeLists.txt Makefile ../../src/pico/Makefile
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
 			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
-			-DBBC_SRC=$(BBC_SRC) --no-warn-unused-cli -S ../../../src/pico -B .
+			-DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) --no-warn-unused-cli -S ../../../src/pico -B .
 
 ifeq ($(BBC_SRC), ../../BBCSDL)
 $(BBC_SRC)/include/version.h:
@@ -130,8 +139,8 @@ bbcbasic.uf2: build/Makefile $(SOURCES)
 	cp build/bbcbasic.uf2 bbcbasic.uf2
 	cp build/bbcbasic.elf bbcbasic.elf
 
-../../src/pico/sympico.i: ../../src/pico/sympico.sh
-	cd ../../src/pico && ./sympico.sh
+../../src/pico/sympico.i: ../../src/pico/sympico.sh $(SYMBOLS)
+	cd ../../src/pico && ./sympico.sh $(SYMBOLS)
 
 ifeq ($(LFS), Y)
 bbcbasic+filesystem.uf2: bbcbasic.uf2 filesystem.uf2

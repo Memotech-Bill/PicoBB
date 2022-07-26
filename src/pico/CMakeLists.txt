@@ -76,6 +76,13 @@ if (TARGET tinyusb_device)
     ../../m0FaultDispatch
     )
 
+  if( ${CYW43} )
+    target_link_libraries(bbcbasic
+      pico_cyw43_arch_lwip_threadsafe_background
+      )
+    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43)
+  endif()
+
   if ( ${SOUND} STREQUAL "I2S")
     message(STATUS "Generate sound using I2S output")
     target_compile_definitions(bbcbasic PUBLIC -DPICO_SOUND=1)
@@ -211,10 +218,18 @@ if (TARGET tinyusb_device)
       PICO_CORE1_STACK_SIZE=0x800
       )
     target_link_libraries(bbcbasic pico_multicore)
-    pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld)
+    if ( ${CYW43} )
+      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_net_mc.ld)
+    else()
+      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld)
+    endif()
   else()
     target_compile_definitions(bbcbasic PUBLIC PICO_STACK_SIZE=0x3C000)
-    pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico.ld)
+    if ( ${CYW43} )
+      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_net.ld)
+    else()
+      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico.ld)
+    endif()
   endif()
   
   pico_add_extra_outputs(bbcbasic)

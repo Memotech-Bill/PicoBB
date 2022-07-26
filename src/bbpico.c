@@ -32,7 +32,9 @@
 
 #ifdef PICO
 #include <pico.h>
-
+#ifdef RASPBERRYPI_PICO_W
+#include "pico/cyw43_arch.h"
+#endif
 #ifdef PICO_GUI
 #if ( ! defined(PICO_SCANVIDEO_COLOR_PIN_BASE) ) || ( ! defined(PICO_SCANVIDEO_SYNC_PIN_BASE) )
 #error SCANVIDEO pins not defined for VGA display
@@ -223,6 +225,9 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #endif
 #ifdef HAVE_FAT
     ", SD Filesystem"
+#endif
+#ifdef HAVE_CYW43
+    ", cyw43"
 #endif
 #if PICO_SOUND == 1
     ", I2S Sound"
@@ -2022,14 +2027,22 @@ void waitconsole(void){
 	if(waitdone) return;
 #ifndef PICO_GUI
 	printf("Waiting for connection\r\n");
+#ifdef RASPBERRYPI_PICO_W
+	const uint LED_PIN = CYW43_WL_GPIO_LED_PIN;
+#else
 	const uint LED_PIN = PICO_DEFAULT_LED_PIN;
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
+#endif
     int iLED = 0;
 	while (true)
         {
         iLED ^= 1;
+#ifdef RASPBERRYPI_PICO_W
+        cyw43_arch_gpio_put (LED_PIN, iLED);
+#else
 	    gpio_put(LED_PIN, iLED);
+#endif
 #ifdef STDIO_USB
         if ( tud_cdc_connected() ) break;
 #endif
@@ -2043,7 +2056,11 @@ void waitconsole(void){
 		sleep_ms(1000);
         }
     printf ("\r\n");
+#ifdef RASPBERRYPI_PICO_W
+    cyw43_arch_gpio_put (LED_PIN, 0);
+#else
     gpio_put(LED_PIN, 0);
+#endif
 #if defined (STDIO_USB) && defined (STDIO_UART)
     if ( tud_cdc_connected() ) stdio_filter_driver (&stdio_usb);
     else stdio_filter_driver (&stdio_uart);
@@ -2114,15 +2131,25 @@ void *main_init (int argc, char *argv[])
 #ifdef PICO
     stdio_init_all();
 	// Wait for UART connection
+#ifdef RASPBERRYPI_PICO_W
+	const uint LED_PIN = CYW43_WL_GPIO_LED_PIN;
+#else
 	const uint LED_PIN = PICO_DEFAULT_LED_PIN;
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
+#endif
 	for (int i = 3; i > 0; --i )
 	    {
 	    // printf ("%d seconds to start\n", i);
+#ifdef RASPBERRYPI_PICO_W
+        cyw43_arch_gpio_put (LED_PIN, 1);
+	    sleep_ms(500);
+        cyw43_arch_gpio_put (LED_PIN, 0);
+#else
 	    gpio_put(LED_PIN, 1);
 	    sleep_ms(500);
 	    gpio_put(LED_PIN, 0);
+#endif
 	    sleep_ms(500);
 	    }
     // waitconsole();
