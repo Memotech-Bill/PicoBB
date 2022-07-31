@@ -60,8 +60,12 @@ GUI_SOURCES = \
     ../../src/pico_gui/picokbd.c \
     ../../src/pico_gui/picofbuf.c \
     ../../src/pico_gui/framebuffer.S
+MAP_FILE = ../../bin/pico/build/bbcbasic.elf.map
+SYMBOLS_FILE = ../../src/pico/symbols/sym_gui.txt
 else
 GUI_SOURCES =
+MAP_FILE = ../../console/pico/build/bbcbasic.elf.map
+SYMBOLS_FILE = ../../src/pico/symbols/sym_console.txt
 endif
 
 ifneq ($(SERIAL_DEV), 0)
@@ -84,7 +88,8 @@ SOURCES= \
     ../../src/lfswrap.c \
     ../../src/fault.c \
     ../../src/pico/sympico.c \
-	../../src/pico/sympico.i \
+	../../src/pico/sympico.h \
+	../../src/pico/sym_stubs.c \
     ../../src/pico/picoser.c \
 	../../src/pico/stack_trap.c \
 	../../src/pico/bbc_pico.ld \
@@ -106,7 +111,10 @@ else
 all: bbcbasic
 endif
 
-bbcbasic: bbcbasic.uf2
+.PHONY: bbcbasic
+bbcbasic: symbols bbcbasic.uf2
+
+.PHONY: filesystem
 filesystem:	bbcbasic+filesystem.uf2 filesystem.uf2
 
 build/Makefile: ../../src/pico/CMakeLists.txt Makefile ../../src/pico/Makefile
@@ -130,11 +138,25 @@ bbcbasic.uf2: build/Makefile $(SOURCES)
 	cp build/bbcbasic.uf2 bbcbasic.uf2
 	cp build/bbcbasic.elf bbcbasic.elf
 
-../../src/pico/sympico.i: ../../src/pico/sympico.sh
-	cd ../../src/pico && ./sympico.sh
+.PHONY: symbols
+symbols:
+	rm -f ../../src/pico/sympico.h
+	cd ../../src/pico && symbols/map_funcs.py $(MAP_FILE) $(SYMBOLS_FILE)
+
+../../src/pico/symbols/sym_sdk.txt: ../../src/pico/symbols/header_funcs.py \
+		../../src/pico/symbols/sdk_headers.txt
+	cd ../../src/pico/symbols && ./header_funcs.py sdk_headers.txt sym_sdk.txt ../sym_stubs.c
+
+../../src/pico/sympico.h: ../../src/pico/symbols/merge_funcs.py \
+		../../src/pico/symbols/sym_sdk.txt \
+		$(SYMBOLS_FILE)
+	cd ../../src/pico && symbols/merge_funcs.py sympico.h symbols/sym_sdk.txt $(SYMBOLS_FILE)
 
 ifeq ($(LFS), Y)
-bbcbasic+filesystem.uf2: bbcbasic.uf2 filesystem.uf2
+../../src/lfsutil/uf2merge:
+	cd ../../src/lfsutil && make uf2merge
+
+bbcbasic+filesystem.uf2: bbcbasic.uf2 filesystem.uf2 ../../src/lfsutil/uf2merge
 	../../src/lfsutil/uf2merge bbcbasic+filesystem.uf2 bbcbasic.uf2 filesystem.uf2
 
 filesystem.uf2:

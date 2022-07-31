@@ -38,6 +38,7 @@ if (TARGET tinyusb_device)
     ../../src/lfswrap.c 
     ../../src/fault.c
     ../../src/pico/sympico.c
+    ../../src/pico/sym_stubs.c
     )
   if (${MIN_STACK})
     message(STATUS "Expression evaluation revised to reduce stack usage")
@@ -63,10 +64,46 @@ if (TARGET tinyusb_device)
   target_compile_options(bbcbasic PRIVATE -O1 -g)
   target_link_options(bbcbasic PRIVATE -g)
   target_link_libraries(bbcbasic
-    pico_stdlib
-    hardware_flash
+    hardware_adc
+    hardware_claim
+    hardware_clocks
+    hardware_divider
+    hardware_dma
     hardware_exception
+    hardware_exception
+    hardware_flash
+    hardware_flash
+    hardware_gpio
+    hardware_i2c
+    hardware_interp
+    hardware_irq
+    hardware_pio
+    hardware_pll
+    hardware_pwm
+    hardware_rtc
+    hardware_spi
+    hardware_sync
+    hardware_timer
+    hardware_uart
+    hardware_vreg
+    hardware_watchdog
+    hardware_xosc
+    pico_bit_ops
+    pico_divider
+    pico_double
+    pico_float
+    pico_multicore
+    pico_printf
     pico_printf_headers
+    pico_stdio
+    pico_stdio_uart
+    pico_stdio_usb
+    pico_stdlib
+    pico_stdlib
+    pico_sync
+    pico_time
+    pico_unique_id
+    pico_util
     )
   target_compile_definitions(bbcbasic PUBLIC PICO)
   target_compile_definitions(bbcbasic PUBLIC PICO_STACK_CHECK=${STACK_CHECK})
@@ -213,8 +250,13 @@ if (TARGET tinyusb_device)
     target_link_libraries(bbcbasic pico_multicore)
     pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld)
   else()
-    target_compile_definitions(bbcbasic PUBLIC PICO_STACK_SIZE=0x3C000)
-    pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico.ld)
+    # target_compile_definitions(bbcbasic PUBLIC PICO_STACK_SIZE=0x3C000)
+    # pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico.ld)
+    target_compile_definitions(bbcbasic PUBLIC
+      PICO_STACK_SIZE=0x3B800
+      PICO_CORE1_STACK_SIZE=0x800
+      )
+    pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld)
   endif()
   
   pico_add_extra_outputs(bbcbasic)
