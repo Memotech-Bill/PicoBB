@@ -140,8 +140,8 @@ bbcbasic+filesystem.uf2: bbcbasic.uf2 filesystem.uf2
 filesystem.uf2:
 	cd ../../src/lfsutil && make clean
 	cd ../../src/lfsutil && make EXTRA=$(LFS_EXTRA) FILESYS=$(FILESYS)
-	cp ../../src/lfsutil/filesystem.uf2 ../../console/pico
-	cp ../../src/lfsutil/filesystem.elf ../../console/pico
+	cp ../../src/lfsutil/filesystem.uf2 .
+	cp ../../src/lfsutil/filesystem.elf .
 endif
 
 clean:
