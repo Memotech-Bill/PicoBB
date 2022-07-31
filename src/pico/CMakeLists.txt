@@ -38,7 +38,6 @@ if (TARGET tinyusb_device)
     ../../src/lfswrap.c 
     ../../src/fault.c
     ../../src/pico/sympico.c
-    ../../src/pico/sym_stubs.c
     )
   if (${MIN_STACK})
     message(STATUS "Expression evaluation revised to reduce stack usage")
@@ -97,8 +96,6 @@ if (TARGET tinyusb_device)
     pico_printf_headers
     pico_stdio
     pico_stdio_uart
-    pico_stdio_usb
-    pico_stdlib
     pico_stdlib
     pico_sync
     pico_time
@@ -194,6 +191,7 @@ if (TARGET tinyusb_device)
       ../../src/pico_gui/picokbd.c
       ../../src/pico_gui/picofbuf.c
       ../../src/pico_gui/framebuffer.S
+      ../../src/pico/sym_stubs_gui.c
       )
     target_compile_definitions(bbcbasic PRIVATE -DPICO_GUI)
     target_compile_definitions(bbcbasic PRIVATE -DGUI_SERIAL=${GUI_SERIAL})
@@ -215,17 +213,32 @@ if (TARGET tinyusb_device)
       )
   elseif ( ${STDIO} STREQUAL "USB+UART" )
     message(STATUS "BBC Basic console I/O will be on USB or UART")
+    target_sources(bbcbasic PRIVATE
+      ../../src/pico/sym_stubs.c
+      )
+    target_link_libraries(bbcbasic
+      pico_stdio_usb
+      )
     pico_enable_stdio_usb(bbcbasic 1)
     pico_enable_stdio_uart(bbcbasic 1)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB -DSTDIO_UART)
     target_compile_definitions(bbcbasic PUBLIC PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1)
   elseif ( ${STDIO} STREQUAL "UART" )
     message(STATUS "BBC Basic console I/O will be on UART")
+    target_sources(bbcbasic PRIVATE
+      ../../src/pico/sym_stubs.c
+      )
     pico_enable_stdio_usb(bbcbasic 0)
     pico_enable_stdio_uart(bbcbasic 1)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_UART)
   else()
     message(STATUS "BBC Basic console I/O will be on USB")
+    target_sources(bbcbasic PRIVATE
+      ../../src/pico/sym_stubs.c
+      )
+    target_link_libraries(bbcbasic
+      pico_stdio_usb
+      )
     pico_enable_stdio_usb(bbcbasic 1)
     pico_enable_stdio_uart(bbcbasic 0)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB)

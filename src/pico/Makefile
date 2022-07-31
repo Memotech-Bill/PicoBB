@@ -60,12 +60,20 @@ GUI_SOURCES = \
     ../../src/pico_gui/picokbd.c \
     ../../src/pico_gui/picofbuf.c \
     ../../src/pico_gui/framebuffer.S
+HEADERS_FILE = sdk_headers_gui.txt
+SDK_SYMBOLS_FILE = sym_sdk_gui.txt
+MAP_SYMBOLS_FILE = sym_gui.txt
 MAP_FILE = ../../bin/pico/build/bbcbasic.elf.map
-SYMBOLS_FILE = ../../src/pico/symbols/sym_gui.txt
+STUB_SOURCE = sym_stubs_gui.c
+SYM_INCLUDE = sympico_gui.h
 else
 GUI_SOURCES =
+HEADERS_FILE = sdk_headers.txt
+SDK_SYMBOLS_FILE = sym_sdk.txt
+MAP_SYMBOLS_FILE = sym_console.txt
 MAP_FILE = ../../console/pico/build/bbcbasic.elf.map
-SYMBOLS_FILE = ../../src/pico/symbols/sym_console.txt
+STUB_SOURCE = sym_stubs.c
+SYM_INCLUDE = sympico.h
 endif
 
 ifneq ($(SERIAL_DEV), 0)
@@ -88,8 +96,8 @@ SOURCES= \
     ../../src/lfswrap.c \
     ../../src/fault.c \
     ../../src/pico/sympico.c \
-	../../src/pico/sympico.h \
-	../../src/pico/sym_stubs.c \
+	../../src/pico/$(SYM_INCLUDE) \
+	../../src/pico/$(STUB_SOURCE) \
     ../../src/pico/picoser.c \
 	../../src/pico/stack_trap.c \
 	../../src/pico/bbc_pico.ld \
@@ -140,17 +148,19 @@ bbcbasic.uf2: build/Makefile $(SOURCES)
 
 .PHONY: symbols
 symbols:
-	rm -f ../../src/pico/sympico.h
-	cd ../../src/pico && symbols/map_funcs.py $(MAP_FILE) $(SYMBOLS_FILE)
+	rm -f ../../src/pico/$(SYM_INCLUDE)
+	cd ../../src/pico && symbols/map_funcs.py $(MAP_FILE) symbols/$(MAP_SYMBOLS_FILE)
 
-../../src/pico/symbols/sym_sdk.txt: ../../src/pico/symbols/header_funcs.py \
-		../../src/pico/symbols/sdk_headers.txt
-	cd ../../src/pico/symbols && ./header_funcs.py sdk_headers.txt sym_sdk.txt ../sym_stubs.c
+../../src/pico/symbols/$(SDK_SYMBOLS_FILE) ../../src/pico/$(STUB_SOURCE) &: \
+		../../src/pico/symbols/header_funcs.py \
+		../../src/pico/symbols/$(HEADERS_FILE)
+	cd ../../src/pico/symbols && ./header_funcs.py $(HEADERS_FILE) $(SDK_SYMBOLS_FILE) ../$(STUB_SOURCE)
 
-../../src/pico/sympico.h: ../../src/pico/symbols/merge_funcs.py \
-		../../src/pico/symbols/sym_sdk.txt \
-		$(SYMBOLS_FILE)
-	cd ../../src/pico && symbols/merge_funcs.py sympico.h symbols/sym_sdk.txt $(SYMBOLS_FILE)
+../../src/pico/$(SYM_INCLUDE): ../../src/pico/symbols/merge_funcs.py \
+		../../src/pico/symbols/$(SDK_SYMBOLS_FILE) \
+		../../src/pico/symbols/$(MAP_SYMBOLS_FILE)
+	cd ../../src/pico && symbols/merge_funcs.py $(SYM_INCLUDE) symbols/$(SDK_SYMBOLS_FILE) \
+		symbols/$(MAP_SYMBOLS_FILE)
 
 ifeq ($(LFS), Y)
 ../../src/lfsutil/uf2merge:
@@ -168,5 +178,5 @@ endif
 
 clean:
 	rm -rf build
-	rm -f bbcbasic.* filesystem.*
+	rm -f bbcbasic.* filesystem.* *.uf2
 	cd ../../src/lfsutil && make clean

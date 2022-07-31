@@ -15,7 +15,11 @@ static int tud_cdc_connected ()
     }
 #endif
 
+#ifdef PICO_GUI
+#include "sympico_gui.h"
+#else
 #include "sympico.h"
+#endif
 
 void *sympico (char *name)
     {
