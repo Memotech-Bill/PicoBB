@@ -60,8 +60,36 @@ GUI_SOURCES = \
     ../../src/pico_gui/picokbd.c \
     ../../src/pico_gui/picofbuf.c \
     ../../src/pico_gui/framebuffer.S
+SYM_NAME := sym_gui
+SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt
+MAP_FILE = ../../bin/pico/build/bbcbasic.elf.map
 else
 GUI_SOURCES =
+SYM_NAME := sym_console
+SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
+	../../src/pico/symbols/sdk_stdio_usb.txt
+MAP_FILE = ../../console/pico/build/bbcbasic.elf.map
+endif
+
+SYM_EXTRA =
+ifeq ($(BOARD), pico_w)
+SYM_NAME := $(SYM_NAME)_cyw43
+ifeq ($(CYW43), POLL)
+SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
+	../../src/pico/symbols/sdk_cyw43_poll.txt
+SYM_NAME := $(SYM_NAME)_poll
+else ifeq ($(CYW43), Y)
+SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
+	../../src/pico/symbols/sdk_cyw43_background.txt
+SYM_NAME := $(SYM_NAME)_background
+else ifeq ($(CYW43), BACKGROUND)
+SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
+	../../src/pico/symbols/sdk_cyw43_background.txt
+SYM_NAME := $(SYM_NAME)_background
+else
+SYM_NAME := $(SYM_NAME)_none
+SYM_EXTRA += ../../src/pico/symbols/extra_cyw43_none_sdk.txt
+endif
 endif
 
 ifneq ($(SERIAL_DEV), 0)
@@ -70,15 +98,6 @@ DEV_SOURCES = \
 	../../include/bbuart.h
 else
 DEV_SOURCES =
-endif
-
-ifeq ($(CYW43), Y)
-SYMBOLS = \
-	../../src/pico/sym_gpio.txt \
-	../../src/pico/sym_cyw43.txt
-else
-SYMBOLS = \
-	../../src/pico/sym_gpio.txt
 endif
 
 SOURCES= \
@@ -93,7 +112,8 @@ SOURCES= \
     ../../src/lfswrap.c \
     ../../src/fault.c \
     ../../src/pico/sympico.c \
-	../../src/pico/sympico.i \
+	../../src/pico/symbols/$(SYM_NAME).h \
+	../../src/pico/symbols/$(SYM_NAME)_stub.c \
     ../../src/pico/picoser.c \
 	../../src/pico/stack_trap.c \
 	../../src/pico/bbc_pico.ld \
@@ -107,7 +127,7 @@ SOURCES= \
     $(FAT_SOURCES) \
     $(SND_SOURCES) \
     $(GUI_SOURCES) \
-	$(DEV_SOURCES)
+	$(DEV_SOURCES) \
 
 ifeq ($(LFS), Y)
 all: bbcbasic filesystem
@@ -115,7 +135,10 @@ else
 all: bbcbasic
 endif
 
-bbcbasic: bbcbasic.uf2
+.PHONY: bbcbasic
+bbcbasic: symbols bbcbasic.uf2
+
+.PHONY: filesystem
 filesystem:	bbcbasic+filesystem.uf2 filesystem.uf2
 
 build/Makefile: ../../src/pico/CMakeLists.txt Makefile ../../src/pico/Makefile
@@ -124,7 +147,8 @@ build/Makefile: ../../src/pico/CMakeLists.txt Makefile ../../src/pico/Makefile
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
 			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
-			-DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) --no-warn-unused-cli -S ../../../src/pico -B .
+			-DSYM_NAME=$(SYM_NAME) -DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) --no-warn-unused-cli \
+			-S ../../../src/pico -B .
 
 ifeq ($(BBC_SRC), ../../BBCSDL)
 $(BBC_SRC)/include/version.h:
@@ -134,26 +158,44 @@ endif
 ../../littlefs/lfs.c:
 	git submodule update --remote
 
-bbcbasic.uf2: build/Makefile $(SOURCES)
+bbcbasic.uf2: $(SOURCES) build/Makefile
 	cd build && make
 	cp build/bbcbasic.uf2 bbcbasic.uf2
 	cp build/bbcbasic.elf bbcbasic.elf
 
-../../src/pico/sympico.i: ../../src/pico/sympico.sh $(SYMBOLS)
-	cd ../../src/pico && ./sympico.sh $(SYMBOLS)
+.PHONY: symbols
+symbols:
+	rm -f ../../src/pico/symbols/$(SYM_NAME).h 
+	cd ../../src/pico && symbols/map_funcs.py $(MAP_FILE) symbols/$(SYM_NAME)_map.txt
+
+../../src/pico/symbols/$(SYM_NAME)_sdk.txt ../../src/pico/symbols/$(SYM_NAME)_stub.c &: \
+		../../src/pico/symbols/header_funcs.py \
+		$(SDK_HEADERS)
+	cd ../../src/pico && symbols/header_funcs.py symbols/$(SYM_NAME)_sdk.txt symbols/$(SYM_NAME)_stub.c \
+		$(SDK_HEADERS)
+
+../../src/pico/symbols/$(SYM_NAME).h: ../../src/pico/symbols/merge_funcs.py \
+		../../src/pico/symbols/$(SYM_NAME)_sdk.txt \
+		../../src/pico/symbols/$(SYM_NAME)_map.txt \
+		 $(SYM_EXTRA)
+	cd ../../src/pico && symbols/merge_funcs.py symbols/$(SYM_NAME).h symbols/$(SYM_NAME)_sdk.txt \
+		symbols/$(SYM_NAME)_map.txt $(SYM_EXTRA)
 
 ifeq ($(LFS), Y)
-bbcbasic+filesystem.uf2: bbcbasic.uf2 filesystem.uf2
+../../src/lfsutil/uf2merge:
+	cd ../../src/lfsutil && make uf2merge
+
+bbcbasic+filesystem.uf2: bbcbasic.uf2 filesystem.uf2 ../../src/lfsutil/uf2merge
 	../../src/lfsutil/uf2merge bbcbasic+filesystem.uf2 bbcbasic.uf2 filesystem.uf2
 
 filesystem.uf2:
 	cd ../../src/lfsutil && make clean
 	cd ../../src/lfsutil && make EXTRA=$(LFS_EXTRA) FILESYS=$(FILESYS)
-	cp ../../src/lfsutil/filesystem.uf2 ../../console/pico
-	cp ../../src/lfsutil/filesystem.elf ../../console/pico
+	cp ../../src/lfsutil/filesystem.uf2 .
+	cp ../../src/lfsutil/filesystem.elf .
 endif
 
 clean:
 	rm -rf build
-	rm -f bbcbasic.* filesystem.*
+	rm -f bbcbasic.* filesystem.* *.uf2
 	cd ../../src/lfsutil && make clean

@@ -57,3 +57,4 @@ mklfsimage
 uf2conv
 uf2merge
 tree
+sym_*

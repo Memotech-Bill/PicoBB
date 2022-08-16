@@ -38,6 +38,7 @@ if (TARGET tinyusb_device)
     ../../src/lfswrap.c 
     ../../src/fault.c
     ../../src/pico/sympico.c
+    ../../src/pico/symbols/${SYM_NAME}_stub.c
     )
   if (${MIN_STACK})
     message(STATUS "Expression evaluation revised to reduce stack usage")
@@ -63,41 +64,82 @@ if (TARGET tinyusb_device)
   target_compile_options(bbcbasic PRIVATE -O1 -g)
   target_link_options(bbcbasic PRIVATE -g)
   target_link_libraries(bbcbasic
-    pico_stdlib
-    hardware_flash
-    hardware_exception
     hardware_adc
+    hardware_claim
+    hardware_clocks
+    hardware_divider
+    hardware_dma
+    hardware_exception
+    hardware_flash
+    hardware_gpio
+    hardware_i2c
+    hardware_interp
+    hardware_irq
+    hardware_pio
+    hardware_pll
+    hardware_pwm
+    hardware_rtc
+    hardware_spi
+    hardware_sync
+    hardware_timer
+    hardware_uart
+    hardware_vreg
+    hardware_watchdog
+    hardware_xosc
+    pico_bit_ops
+    pico_divider
+    pico_double
+    pico_float
+    pico_multicore
+    pico_printf
     pico_printf_headers
+    pico_stdio
+    pico_stdio_uart
+    pico_stdlib
+    pico_sync
+    pico_time
+    pico_unique_id
+    pico_util
     )
-  target_compile_definitions(bbcbasic PUBLIC PICO)
-  target_compile_definitions(bbcbasic PUBLIC PICO_STACK_CHECK=${STACK_CHECK})
+  target_compile_definitions(bbcbasic PUBLIC
+    PICO
+    PICO_STACK_CHECK=${STACK_CHECK}
+    SYMPICO_H=symbols/${SYM_NAME}.h
+    )
   target_include_directories(bbcbasic PRIVATE
     ../../include
     ${BBC_SRC}/include
     ../../m0FaultDispatch
     )
 
-  if ( NOT CYW43 )
-    set(CYW43 "NONE")
+  if(NOT PICO_BOARD)
+    set(PICO_BOARD pico)
   endif()
-  if( ${CYW43} STREQUAL "NONE" )
-    message(STATUS "Pico W GPIO (LED) 0nly support")
-    target_link_libraries(bbcbasic
-      pico_cyw43_arch_none
-      )
-    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=none)
-  elseif( ${CYW43} STREQUAL "POLL" )
-    message(STATUS "Pico W CYW43 poll support")
-    target_link_libraries(bbcbasic
-      pico_cyw43_arch_lwip_poll
-      )
-    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=poll)
-  elseif( ${CYW43} )
-    message(STATUS "Pico W CYW43 background support")
-    target_link_libraries(bbcbasic
-      pico_cyw43_arch_lwip_threadsafe_background
-      )
-    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=background)
+  if( ${PICO_BOARD} STREQUAL "pico_w" )
+    if( NOT CYW43 )
+      set(CYW43 "NONE")
+    endif()
+    if( ${CYW43} STREQUAL "NONE" )
+      message(STATUS "Pico W GPIO (LED) 0nly support")
+      target_link_libraries(bbcbasic
+        pico_cyw43_arch_none
+        )
+      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=none)
+    elseif( ${CYW43} STREQUAL "POLL" )
+      message(STATUS "Pico W CYW43 poll support")
+      target_link_libraries(bbcbasic
+        pico_cyw43_arch_lwip_poll
+        )
+      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=poll)
+    elseif( ${CYW43} )
+      message(STATUS "Pico W CYW43 background support")
+      target_link_libraries(bbcbasic
+        pico_cyw43_arch_lwip_threadsafe_background
+        )
+      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=background)
+    endif()
+  else()
+    set(CYW43 0)
   endif()
 
   if ( ${SOUND} STREQUAL "I2S")
@@ -202,6 +244,9 @@ if (TARGET tinyusb_device)
       )
   elseif ( ${STDIO} STREQUAL "USB+UART" )
     message(STATUS "BBC Basic console I/O will be on USB or UART")
+    target_link_libraries(bbcbasic
+      pico_stdio_usb
+      )
     pico_enable_stdio_usb(bbcbasic 1)
     pico_enable_stdio_uart(bbcbasic 1)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB -DSTDIO_UART)
@@ -213,6 +258,9 @@ if (TARGET tinyusb_device)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_UART)
   else()
     message(STATUS "BBC Basic console I/O will be on USB")
+    target_link_libraries(bbcbasic
+      pico_stdio_usb
+      )
     pico_enable_stdio_usb(bbcbasic 1)
     pico_enable_stdio_uart(bbcbasic 0)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB)
@@ -229,7 +277,7 @@ if (TARGET tinyusb_device)
       )
     target_link_libraries(bbcbasic pico_multicore)
     pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico.ld)
-  elseif( ${SOUND} STREQUAL "SDL")
+  else()
     target_compile_definitions(bbcbasic PUBLIC
       PICO_STACK_SIZE=0x3B800
       PICO_CORE1_STACK_SIZE=0x800
@@ -239,13 +287,6 @@ if (TARGET tinyusb_device)
       pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_net_mc.ld)
     else()
       pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld)
-    endif()
-  else()
-    target_compile_definitions(bbcbasic PUBLIC PICO_STACK_SIZE=0x3C000)
-    if ( ${CYW43} )
-      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_net.ld)
-    else()
-      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico.ld)
     endif()
   endif()
   

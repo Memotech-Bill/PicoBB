@@ -3,33 +3,33 @@
 	This is free software released under the exact same terms as
 	stated in license.txt for the Basic interpreter.  */
 
-#include <string.h>
-#include <pico/stdlib.h>
-#include <pico/cyw43_arch.h>
-#include <lwip/pbuf.h>
-#include <lwip/tcp.h>
+int strcmp (const char *ps1, const char *ps2);
+void *sympico (char *name);
 
 #ifdef STDIO_USB
-#include "tusb.h"
+static int tud_cdc_connected ();
 #else
-static int tud_cdc_connected(){
+static int tud_cdc_connected ()
+    {
 	return 1;
-}
+    }
 #endif
 
-typedef struct { char *s; void *p; } symbols;
-#define SYMADD(X) { #X, &X }
-const symbols sdkfuncs[]={
-#include "sympico.i"
-};
+#define SFY(x) #x
+#define MVL(x) SFY(x)
+#include MVL(SYMPICO_H)
 
-void* sympico(char* name) {
-    int first = 0, last = sizeof(sdkfuncs) / sizeof(symbols) - 1;
-    while (first <= last) {
-        int middle = (first + last) / 2, r = strcmp(name, sdkfuncs[middle].s);
+void *sympico (char *name)
+    {
+    int first = 0;
+    int last = sizeof(sdkfuncs) / sizeof(symbols) - 1;
+    while (first <= last)
+        {
+        int middle = (first + last) / 2;
+        int r = strcmp(name, sdkfuncs[middle].s);
         if (r < 0) last = middle - 1;
         else if (r > 0) first = middle + 1;
         else return sdkfuncs[middle].p;
+        }
+    return (void *) 0;
     }
-    return NULL;
-}

@@ -1,0 +1,2 @@
+cyw43_arch_gpio_get
+cyw43_arch_gpio_put
