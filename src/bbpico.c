@@ -2149,8 +2149,9 @@ void *main_init (int argc, char *argv[])
     stdio_init_all();
 	// Wait for UART connection
 #ifdef RASPBERRYPI_PICO_W
-    adc_select_input(3);
-    if ( ( 3.3 / ( 1 << 12 ) ) * adc_read() < 0.25 )
+    adc_init ();
+    adc_select_input (3);
+    if ( ( 3.3 / ( 1 << 12 ) ) * adc_read () < 0.25 )
         {
         iCyw = cyw43_arch_init ();
         }
