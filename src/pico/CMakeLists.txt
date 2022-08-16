@@ -66,6 +66,7 @@ if (TARGET tinyusb_device)
     pico_stdlib
     hardware_flash
     hardware_exception
+    hardware_adc
     pico_printf_headers
     )
   target_compile_definitions(bbcbasic PUBLIC PICO)

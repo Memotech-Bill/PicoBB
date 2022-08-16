@@ -33,7 +33,8 @@
 #ifdef PICO
 #include <pico.h>
 #ifdef RASPBERRYPI_PICO_W
-#include "pico/cyw43_arch.h"
+#include <pico/cyw43_arch.h>
+#include <hardware/adc.h>
 #endif
 #ifdef PICO_GUI
 #if ( ! defined(PICO_SCANVIDEO_COLOR_PIN_BASE) ) || ( ! defined(PICO_SCANVIDEO_SYNC_PIN_BASE) )
@@ -284,7 +285,7 @@ static const unsigned char xkey[64] = {
 
 #ifdef RASPBERRYPI_PICO_W
 #define PICO_DEFAULT_LED_PIN 25
-int iCyw = 0;
+int iCyw = -1;
 #endif
 
 // Declared in bbcans.c:
@@ -2039,13 +2040,11 @@ void waitconsole(void){
 #ifndef PICO_GUI
 	printf("Waiting for connection\r\n");
 #ifdef RASPBERRYPI_PICO_W
-	const uint LED_PIN = CYW43_WL_GPIO_LED_PIN;
     if ( iCyw != 0 )
         {
 #endif
-	const uint LED_PIN = PICO_DEFAULT_LED_PIN;
-	gpio_init(LED_PIN);
-	gpio_set_dir(LED_PIN, GPIO_OUT);
+	gpio_init(PICO_DEFAULT_LED_PIN);
+	gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 #ifdef RASPBERRYPI_PICO_W
         }
 #endif
@@ -2055,10 +2054,10 @@ void waitconsole(void){
         iLED ^= 1;
 #ifdef RASPBERRYPI_PICO_W
         if ( iCyw == 0 )
-            cyw43_arch_gpio_put (LED_PIN, iLED);
+            cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, iLED);
         else
 #endif
-	    gpio_put(LED_PIN, iLED);
+	    gpio_put(PICO_DEFAULT_LED_PIN, iLED);
 #ifdef STDIO_USB
         if ( tud_cdc_connected() ) break;
 #endif
@@ -2074,10 +2073,10 @@ void waitconsole(void){
     printf ("\r\n");
 #ifdef RASPBERRYPI_PICO_W
     if ( iCyw == 0 )
-        cyw43_arch_gpio_put (LED_PIN, 0);
+        cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, 0);
     else
 #else
-    gpio_put(LED_PIN, 0);
+    gpio_put(PICO_DEFAULT_LED_PIN, 0);
 #endif
 #if defined (STDIO_USB) && defined (STDIO_UART)
     if ( tud_cdc_connected() ) stdio_filter_driver (&stdio_usb);
@@ -2150,12 +2149,19 @@ void *main_init (int argc, char *argv[])
     stdio_init_all();
 	// Wait for UART connection
 #ifdef RASPBERRYPI_PICO_W
-    iCyw = cyw43_arch_init ();
-	const uint LED_PIN = CYW43_WL_GPIO_LED_PIN;
-#else
-	const uint LED_PIN = PICO_DEFAULT_LED_PIN;
-	gpio_init(LED_PIN);
-	gpio_set_dir(LED_PIN, GPIO_OUT);
+    adc_select_input(3);
+    if ( ( 3.3 / ( 1 << 12 ) ) * adc_read() < 0.25 )
+        {
+        iCyw = cyw43_arch_init ();
+        }
+    else
+        {
+        iCyw = -1;
+#endif
+	gpio_init(PICO_DEFAULT_LED_PIN);
+	gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+#ifdef RASPBERRYPI_PICO_W
+        }
 #endif
 	for (int i = 3; i > 0; --i )
 	    {
@@ -2163,16 +2169,16 @@ void *main_init (int argc, char *argv[])
 #ifdef RASPBERRYPI_PICO_W
         if ( iCyw == 0 )
             {
-            cyw43_arch_gpio_put (LED_PIN, 1);
+            cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, 1);
             sleep_ms(500);
-            cyw43_arch_gpio_put (LED_PIN, 0);
+            cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, 0);
             }
         else
             {
 #endif
-	    gpio_put(LED_PIN, 1);
+	    gpio_put(PICO_DEFAULT_LED_PIN, 1);
 	    sleep_ms(500);
-	    gpio_put(LED_PIN, 0);
+	    gpio_put(PICO_DEFAULT_LED_PIN, 0);
 #ifdef RASPBERRYPI_PICO_W
             }
 #endif
