@@ -77,11 +77,27 @@ if (TARGET tinyusb_device)
     ../../m0FaultDispatch
     )
 
-  if( ${CYW43} )
+  if ( NOT CYW43 )
+    set(CYW43 "NONE")
+  endif()
+  if( ${CYW43} STREQUAL "NONE" )
+    message(STATUS "Pico W GPIO (LED) 0nly support")
+    target_link_libraries(bbcbasic
+      pico_cyw43_arch_none
+      )
+    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=none)
+  elseif( ${CYW43} STREQUAL "POLL" )
+    message(STATUS "Pico W CYW43 poll support")
+    target_link_libraries(bbcbasic
+      pico_cyw43_arch_lwip_poll
+      )
+    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=poll)
+  elseif( ${CYW43} )
+    message(STATUS "Pico W CYW43 background support")
     target_link_libraries(bbcbasic
       pico_cyw43_arch_lwip_threadsafe_background
       )
-    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43)
+    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=background)
   endif()
 
   if ( ${SOUND} STREQUAL "I2S")

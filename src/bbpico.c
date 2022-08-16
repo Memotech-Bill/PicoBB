@@ -227,8 +227,10 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef HAVE_FAT
     ", SD Filesystem"
 #endif
+#define SFY(x) #x
+#define MVL(x) SFY(x)
 #ifdef HAVE_CYW43
-    ", cyw43"
+    ", cyw43=" MVL(HAVE_CYW43)
 #endif
 #if PICO_SOUND == 1
     ", I2S Sound"
@@ -250,8 +252,6 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef MIN_STACK
     ", Min Stack"
 #endif
-#define SFY(x) #x
-#define MVL(x) SFY(x)
 #if PICO_STACK_CHECK > 0
     ", Stack Check " MVL(PICO_STACK_CHECK)
 #endif
