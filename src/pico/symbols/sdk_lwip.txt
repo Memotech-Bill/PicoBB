@@ -1,0 +1,10 @@
+# Header file for lwip functions
+lib/lwip/src/include/lwip/tcp.h
+%define LWIP_TCP            1
+%define LWIP_CALLBACK_API   1
+
+lib/lwip/src/include/lwip/udp.h
+%define LWIP_UDP            1
+
+lib/lwip/src/include/lwip/ip_addr.h
+lib/lwip/src/include/lwip/pbuf.h

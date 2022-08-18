@@ -1,0 +1,2 @@
+%function cyw43_arch_gpio_get
+%function cyw43_arch_gpio_put
