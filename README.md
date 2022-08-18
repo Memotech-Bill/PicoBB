@@ -21,12 +21,9 @@ There are two somewhat divergent lines of development:
 1.  Console Version: To be able to use the Pico as a microcontroller programmed in BBC Basic.
     User interaction (if any) would be via a console interface over USB or serial.
     Includes program and data storage either in Pico flash and/or an attached SD card.
-    This is in a fairly advanced state of development.
 
 2.  GUI Version: To be able to use the Pico as a computer programmable in BBC Basic with input
     by an attached USB keyboard and display on an attached VGA monitor.
-    This is now also fairly advanced, although there are some issues to be resolved and
-    more testing required.
 
 The following limitations are noted:
 
@@ -46,7 +43,6 @@ The following limitations are noted:
     library is free for hobby and other non-commercial products.  If
     you wish to create a commercial version of the program contained
     here, please add -DFREE to the CMakeLists.txt file.
-
 
 This project includes source from various locations with difference licenses. See the
 various LICENSE.txt files.
@@ -87,12 +83,18 @@ The following options may be specified on the make command line
   * SERIAL_DEV=0 for no serial devices.
   * SERIAL_DEV=1 (default) for one serial device, the one not used for the console.
   * SERIAL_DEV=2 for two serial devices. This should only be used if the console is USB only.
+* CYW43=... For Pico W builds (Note: BOARD=pico_w or another board using a Pico W must be specified):
+  * CYW43=GPIO for support of Pico W GPIOs only (including onboard LED).
+  * CYW43=POLL for network support requiring periodic polling. This option reduces the memory
+    available to BASIC.
+  * CYW43=BACKGROUND for network support with automatic (background) polling. This option reduces
+    the memory available to BASIC.
 
-Running make without any options pruduces a build for a bare Pico with:
+Running make without any options produces a build for a bare Pico with:
 
 * Console on both USB and default UART (pins 0 & 1)
 * Storage on Pico flash
-* No sound
+* Enhanced sound using the second core.
 * One serial device using UART 1
 
 If you have a VGA Demo board, and want a console build with SD card storage, then the following
@@ -126,6 +128,11 @@ to initiate the connection. The onboard LED will flash while awaiting connection
 
 Note that you may use minicom as well, however, minicom will not display color correctly
 or resize the terminal window for the different MODE settings in BBC Basic.
+
+For information BBC BASIC syntax and usage, see the
+[BBC BASIC Manual](https://www.bbcbasic.co.uk/bbcwin/manual/).
+Note that the description of the IDE in sections 1 and 2 of the documentation is not applicable,
+this is not supported by the Pico version.
 
 #### File system
 
@@ -232,6 +239,12 @@ configuration is described by the vgaboard_cut configuration file.
 
 If jumpers are used to reconnect GP20 to SD01 and GP21 to SD02, then 4-bit SD mode may
 be used and this configuration is described by the original vgaboard_sd configuration file.
+
+#### Pico W support
+
+In addition to the above three board definitions there is also *vgaboard_sd_w*,
+*vgaboard_serial_w*, and *vgaboard_cut_w* for use if a Pico W is used on the VGA board
+instead of a standard Pico.
     
 ### Build Instructions
 
@@ -265,6 +278,12 @@ The following options may be specified on the make command line:
   * SERIAL_DEV=1 for one serial device using the non-default UART. Do not use with the Pimoroni
     VGA board.
   * SERIAL_DEV=2 for two serial devices using both UARTs. Do not use with the Pimoroni VGA board.
+* CYW43=... For Pico W builds (Note: BOARD=vgaboard_sd_w or another board using a Pico W must be specified):
+  * CYW43=GPIO for support of Pico W GPIOs only (including onboard LED).
+  * CYW43=POLL for network support requiring periodic polling. This option reduces the memory
+    available to BASIC.
+  * CYW43=BACKGROUND for network support with automatic (background) polling. This option reduces
+    the memory available to BASIC.
 
 For the Pimoroni VGA board as delivered, specifying make without any options is probably
 the best option.
@@ -438,7 +457,7 @@ page or scroll mode.
 
 ## Custom Builds
 
-The makefiles (above) produce two standard builds. Custom builds can be performed using CMake.
+The makefiles (above) produce standard builds. Custom builds can be performed using CMake.
 
      $ mkdir build
      $ cd build
@@ -474,4 +493,10 @@ The following options may be specified with the cmake command:
 * -DMIN_STACK=Y to use restructured code to minimise stack utilisation. This appears to work
   but has not been as extensively validated as the original BBC Basic code. Use -DMIN_STACK=N
   to use the original coding.
+* -DCYW43=... For Pico W builds (Note: A board using a Pico W must be specified):
+  * -DCYW43=GPIO for support of Pico W GPIOs only (including onboard LED).
+  * -DCYW43=POLL for network support requiring periodic polling. This option reduces the memory
+    available to BASIC.
+  * -DCYW43=BACKGROUND for network support with automatic (background) polling. This option reduces
+    the memory available to BASIC.
 * Other cmake options if required.
