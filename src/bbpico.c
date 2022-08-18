@@ -32,9 +32,9 @@
 
 #ifdef PICO
 #include <pico.h>
-#ifdef RASPBERRYPI_PICO_W
-#include <pico/cyw43_arch.h>
 #include <hardware/adc.h>
+#ifdef HAVE_CYW43
+#include <pico/cyw43_arch.h>
 #endif
 #ifdef PICO_GUI
 #if ( ! defined(PICO_SCANVIDEO_COLOR_PIN_BASE) ) || ( ! defined(PICO_SCANVIDEO_SYNC_PIN_BASE) )
@@ -156,7 +156,7 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #define WM_TIMER 275
 #include "lfswrap.h"
 extern char __StackLimit;
-#ifdef RASPBERRYPI_PICO_W
+#ifdef HAVE_CYW43
 #define PLATFORM "Pico W"
 #else
 #define PLATFORM "Pico"
@@ -287,8 +287,9 @@ static const unsigned char xkey[64] = {
     0, 150, 151, 152, 153, 154,   0, 155, 156,   0,   0,   0,   0,   0,   0,   0 };
 #endif
 
-#ifdef RASPBERRYPI_PICO_W
-#define PICO_DEFAULT_LED_PIN 25
+#ifdef HAVE_CYW43
+#define PICO_DEFAULT_LED_PIN    25
+#define PICO_ERROR_NOT_W        -257
 int iCyw = -1;
 #endif
 
@@ -1838,10 +1839,17 @@ int entry (void *immediate)
 		crlf ();
 		text (szNotice);
 		crlf ();
-#ifdef RASPBERRYPI_PICO_W
-        text ("cyw43 initialisation ");
-        if ( iCyw == 0 ) text ("succeded");
-        else text ("failed");
+#ifdef HAVE_CYW43
+        if ( iCyw == PICO_ERROR_NOT_W )
+            {
+            text ("No cyw43 support");
+            }
+        else
+            {
+            text ("cyw43 initialisation ");
+            if ( iCyw == 0 ) text ("succeded");
+            else text ("failed");
+            }
         crlf ();
 #endif
 	    }
@@ -2043,20 +2051,20 @@ void waitconsole(void){
 	if(waitdone) return;
 #ifndef PICO_GUI
 	printf("Waiting for connection\r\n");
-#ifdef RASPBERRYPI_PICO_W
+#ifdef HAVE_CYW43
     if ( iCyw != 0 )
         {
 #endif
 	gpio_init(PICO_DEFAULT_LED_PIN);
 	gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-#ifdef RASPBERRYPI_PICO_W
+#ifdef HAVE_CYW43
         }
 #endif
     int iLED = 0;
 	while (true)
         {
         iLED ^= 1;
-#ifdef RASPBERRYPI_PICO_W
+#ifdef HAVE_CYW43
         if ( iCyw == 0 )
             cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, iLED);
         else
@@ -2075,7 +2083,7 @@ void waitconsole(void){
 		sleep_ms(1000);
         }
     printf ("\r\n");
-#ifdef RASPBERRYPI_PICO_W
+#ifdef HAVE_CYW43
     if ( iCyw == 0 )
         cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, 0);
     else
@@ -2150,12 +2158,17 @@ void main_term (int exitcode)
 #ifdef PICO
 bool is_pico_w (void)
     {
-#ifdef RASPBERRYPI_PICO_W
     adc_init ();
     adc_select_input (3);
     return ( 3.3 / ( 1 << 12 ) ) * adc_read () < 0.25;
+    }
+
+const char *cyw43_support (void)
+    {
+#ifdef HAVE_CYW43
+    return SFY(HAVE_CYW43);
 #else
-    return false;
+    return "None";
 #endif
     }
 #endif
@@ -2165,26 +2178,24 @@ void *main_init (int argc, char *argv[])
 #ifdef PICO
     stdio_init_all();
 	// Wait for UART connection
-#ifdef RASPBERRYPI_PICO_W
-    adc_init ();
-    adc_select_input (3);
-    if ( ( 3.3 / ( 1 << 12 ) ) * adc_read () < 0.25 )
+#ifdef HAVE_CYW43
+    if ( is_pico_w () )
         {
         iCyw = cyw43_arch_init ();
         }
     else
         {
-        iCyw = -1;
+        iCyw = PICO_ERROR_NOT_W;
 #endif
 	gpio_init(PICO_DEFAULT_LED_PIN);
 	gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-#ifdef RASPBERRYPI_PICO_W
+#ifdef HAVE_CYW43
         }
 #endif
 	for (int i = 3; i > 0; --i )
 	    {
 	    // printf ("%d seconds to start\n", i);
-#ifdef RASPBERRYPI_PICO_W
+#ifdef HAVE_CYW43
         if ( iCyw == 0 )
             {
             cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, 1);
@@ -2197,7 +2208,7 @@ void *main_init (int argc, char *argv[])
 	    gpio_put(PICO_DEFAULT_LED_PIN, 1);
 	    sleep_ms(500);
 	    gpio_put(PICO_DEFAULT_LED_PIN, 0);
-#ifdef RASPBERRYPI_PICO_W
+#ifdef HAVE_CYW43
             }
 #endif
 	    sleep_ms(500);

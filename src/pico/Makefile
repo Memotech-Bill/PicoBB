@@ -71,24 +71,24 @@ SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
 MAP_FILE = ../../console/pico/build/bbcbasic.elf.map
 endif
 
-ifeq ($(CYW43), POLL)
+ifeq ($(CYW43), GPIO)
+SYM_NAME := $(SYM_NAME)_cyw43_gpio
+SDK_HEADERS +=  ../../src/pico/symbols/sdk_cyw43_gpio.txt
+else ifeq ($(CYW43), POLL)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_cyw43_poll.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 SYM_NAME := $(SYM_NAME)_cyw43_poll
-else ifeq ($(CYW43), Y)
-SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
-	../../src/pico/symbols/sdk_cyw43_background.txt \
-	../../src/pico/symbols/sdk_lwip.txt
-SYM_NAME := $(SYM_NAME)_cyw43_background
 else ifeq ($(CYW43), BACKGROUND)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_cyw43_background.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 SYM_NAME := $(SYM_NAME)_cyw43_background
-else
-SYM_NAME := $(SYM_NAME)_cyw43_gpio
-SDK_HEADERS +=  ../../src/pico/symbols/sdk_cyw43_gpio.txt
+else ifeq ($(CYW43), Y)
+SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
+	../../src/pico/symbols/sdk_cyw43_background.txt \
+	../../src/pico/symbols/sdk_lwip.txt
+SYM_NAME := $(SYM_NAME)_cyw43_background
 endif
 
 ifneq ($(SERIAL_DEV), 0)

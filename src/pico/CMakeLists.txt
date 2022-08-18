@@ -7,10 +7,14 @@
 
 cmake_minimum_required(VERSION 3.12)
 
+if( DEFINED CYW43 )
+  set(PICO_CYW43_SUPPORTED 1)
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
-if ( ${STDIO} STREQUAL "PICO" )
+if ( "${STDIO}" STREQUAL "PICO" )
   include($ENV{PICO_EXTRAS_PATH}/external/pico_extras_import.cmake)
 endif()
 
@@ -111,27 +115,34 @@ if (TARGET tinyusb_device)
     ../../m0FaultDispatch
     )
 
-  if( ${CYW43} STREQUAL "GPIO" )
-    message(STATUS "Pico W GPIO (LED) 0nly support")
-    target_link_libraries(bbcbasic
-      pico_cyw43_arch_none
-      )
-    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=none)
-  elseif( ${CYW43} STREQUAL "POLL" )
-    message(STATUS "Pico W CYW43 poll support")
-    target_link_libraries(bbcbasic
-      pico_cyw43_arch_lwip_poll
-      )
-    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=poll)
-  elseif( ${CYW43} )
-    message(STATUS "Pico W CYW43 background support")
-    target_link_libraries(bbcbasic
-      pico_cyw43_arch_lwip_threadsafe_background
-      )
-    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=background)
+  if( DEFINED CYW43 )
+    if( "${CYW43}" STREQUAL "GPIO" )
+      message(STATUS "Pico W GPIO (LED) only support")
+      target_link_libraries(bbcbasic
+        pico_cyw43_arch_none
+        )
+      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=gpio)
+      set(CYW43_LINK 0)
+    elseif( "${CYW43}" STREQUAL "POLL" )
+      message(STATUS "Pico W CYW43 poll support")
+      target_link_libraries(bbcbasic
+        pico_cyw43_arch_lwip_poll
+        )
+      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=poll)
+      set(CYW43_LINK 1)
+    elseif( CYW43 )
+      message(STATUS "Pico W CYW43 background support")
+      target_link_libraries(bbcbasic
+        pico_cyw43_arch_lwip_threadsafe_background
+        )
+      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=background)
+      set(CYW43_LINK 1)
+    endif()
+  else()
+    set(CYW43_LINK 0)
   endif()
 
-  if ( ${SOUND} STREQUAL "I2S")
+  if ( "${SOUND}" STREQUAL "I2S")
     message(STATUS "Generate sound using I2S output")
     target_compile_definitions(bbcbasic PUBLIC -DPICO_SOUND=1)
     pico_generate_pio_header(bbcbasic ${CMAKE_CURRENT_LIST_DIR}/../../src/pico/sound.pio)
@@ -139,7 +150,7 @@ if (TARGET tinyusb_device)
       ../../src/sn76489.c
       ../../src/pico/pico_snd.c
       )
-  elseif ( ${SOUND} STREQUAL "PWM")
+  elseif ( "${SOUND}" STREQUAL "PWM")
     message(STATUS "Generate sound using PWM")
     target_compile_definitions(bbcbasic PUBLIC -DPICO_SOUND=2)
     target_sources(bbcbasic PRIVATE
@@ -147,7 +158,7 @@ if (TARGET tinyusb_device)
       ../../src/pico/pico_snd.c
       )
     target_link_libraries(bbcbasic hardware_pwm)
-  elseif ( ${SOUND} STREQUAL "SDL")
+  elseif ( "${SOUND}" STREQUAL "SDL")
     message(STATUS "Generate high quality sound using PWM on core 1")
     target_compile_definitions(bbcbasic PUBLIC
       -DPICO_SOUND=3
@@ -196,7 +207,7 @@ if (TARGET tinyusb_device)
     endif()
   endif()
   
-  if ( ${STDIO} STREQUAL "PICO" )
+  if ( "${STDIO}" STREQUAL "PICO" )
     message(STATUS "BBC Basic console I/O will be on USB keyboard and VGA screen")
     pico_enable_stdio_usb(bbcbasic 0)
     if (${PRINTER})
@@ -231,7 +242,7 @@ if (TARGET tinyusb_device)
       tinyusb_host
       tinyusb_board
       )
-  elseif ( ${STDIO} STREQUAL "USB+UART" )
+  elseif ( "${STDIO}" STREQUAL "USB+UART" )
     message(STATUS "BBC Basic console I/O will be on USB or UART")
     target_link_libraries(bbcbasic
       pico_stdio_usb
@@ -240,7 +251,7 @@ if (TARGET tinyusb_device)
     pico_enable_stdio_uart(bbcbasic 1)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB -DSTDIO_UART)
     target_compile_definitions(bbcbasic PUBLIC PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1)
-  elseif ( ${STDIO} STREQUAL "UART" )
+  elseif ( "${STDIO}" STREQUAL "UART" )
     message(STATUS "BBC Basic console I/O will be on UART")
     pico_enable_stdio_usb(bbcbasic 0)
     pico_enable_stdio_uart(bbcbasic 1)
@@ -256,25 +267,39 @@ if (TARGET tinyusb_device)
     target_compile_definitions(bbcbasic PUBLIC PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1)
   endif()
   
-  if ( ${STDIO} STREQUAL "PICO" )
-    if ( ${SOUND} STREQUAL "SDL")
+  if ( "${STDIO}" STREQUAL "PICO" )
+    if ( "${SOUND}" STREQUAL "SDL")
       message(FATAL_ERROR "Can not use core 1 for both sound and video")
     endif()
-    target_compile_definitions(bbcbasic PUBLIC
-      PICO_STACK_SIZE=0x2B800
-      PICO_CORE1_STACK_SIZE=0x800
-      )
-    target_link_libraries(bbcbasic pico_multicore)
-    pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico.ld)
+    if( CYW43_LINK )
+      message(STATUS "Link with space for VGA video and CYW43 driver")
+      target_compile_definitions(bbcbasic PUBLIC
+        PICO_STACK_SIZE=0x21800
+        PICO_CORE1_STACK_SIZE=0x800
+        )
+      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico_net.ld)
+    else()
+      message(STATUS "Link with space for VGA video")
+      target_compile_definitions(bbcbasic PUBLIC
+        PICO_STACK_SIZE=0x2B800
+        PICO_CORE1_STACK_SIZE=0x800
+        )
+      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico.ld)
+    endif()
   else()
-    target_compile_definitions(bbcbasic PUBLIC
-      PICO_STACK_SIZE=0x3B800
-      PICO_CORE1_STACK_SIZE=0x800
-      )
-    target_link_libraries(bbcbasic pico_multicore)
-    if ( ${CYW43} )
+    if( CYW43_LINK )
+      message(STATUS "Link with space for CYW43 driver")
+      target_compile_definitions(bbcbasic PUBLIC
+        PICO_STACK_SIZE=0x31800
+        PICO_CORE1_STACK_SIZE=0x800
+        )
       pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_net_mc.ld)
     else()
+      message(STATUS "Link with 2KB multicore stack")
+      target_compile_definitions(bbcbasic PUBLIC
+        PICO_STACK_SIZE=0x3B800
+        PICO_CORE1_STACK_SIZE=0x800
+        )
       pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld)
     endif()
   endif()

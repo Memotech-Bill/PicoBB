@@ -1,2 +1,5 @@
+# Minimum functions to support Pico W GPIOs (for LED)
+%function cyw43_arch_init
+%function cyw43_arch_deinit
 %function cyw43_arch_gpio_get
 %function cyw43_arch_gpio_put
