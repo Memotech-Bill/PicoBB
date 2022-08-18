@@ -15,9 +15,7 @@ static int tud_cdc_connected ()
     }
 #endif
 
-#define SFY(x) #x
-#define MVL(x) SFY(x)
-#include MVL(SYMPICO_H)
+#include "sympico.h"
 
 void *sympico (char *name)
     {

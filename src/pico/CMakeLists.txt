@@ -38,7 +38,7 @@ if (TARGET tinyusb_device)
     ../../src/lfswrap.c 
     ../../src/fault.c
     ../../src/pico/sympico.c
-    ../../src/pico/symbols/${SYM_NAME}_stub.c
+    ../../src/pico/${SYM_NAME}_stub.c
     )
   if (${MIN_STACK})
     message(STATUS "Expression evaluation revised to reduce stack usage")
@@ -104,7 +104,6 @@ if (TARGET tinyusb_device)
   target_compile_definitions(bbcbasic PUBLIC
     PICO
     PICO_STACK_CHECK=${STACK_CHECK}
-    SYMPICO_H=symbols/${SYM_NAME}.h
     )
   target_include_directories(bbcbasic PRIVATE
     ../../include
@@ -112,34 +111,24 @@ if (TARGET tinyusb_device)
     ../../m0FaultDispatch
     )
 
-  if(NOT PICO_BOARD)
-    set(PICO_BOARD pico)
-  endif()
-  if( ${PICO_BOARD} STREQUAL "pico_w" )
-    if( NOT CYW43 )
-      set(CYW43 "NONE")
-    endif()
-    if( ${CYW43} STREQUAL "NONE" )
-      message(STATUS "Pico W GPIO (LED) 0nly support")
-      target_link_libraries(bbcbasic
-        pico_cyw43_arch_none
-        )
-      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=none)
-    elseif( ${CYW43} STREQUAL "POLL" )
-      message(STATUS "Pico W CYW43 poll support")
-      target_link_libraries(bbcbasic
-        pico_cyw43_arch_lwip_poll
-        )
-      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=poll)
-    elseif( ${CYW43} )
-      message(STATUS "Pico W CYW43 background support")
-      target_link_libraries(bbcbasic
-        pico_cyw43_arch_lwip_threadsafe_background
-        )
-      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=background)
-    endif()
-  else()
-    set(CYW43 0)
+  if( ${CYW43} STREQUAL "GPIO" )
+    message(STATUS "Pico W GPIO (LED) 0nly support")
+    target_link_libraries(bbcbasic
+      pico_cyw43_arch_none
+      )
+    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=none)
+  elseif( ${CYW43} STREQUAL "POLL" )
+    message(STATUS "Pico W CYW43 poll support")
+    target_link_libraries(bbcbasic
+      pico_cyw43_arch_lwip_poll
+      )
+    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=poll)
+  elseif( ${CYW43} )
+    message(STATUS "Pico W CYW43 background support")
+    target_link_libraries(bbcbasic
+      pico_cyw43_arch_lwip_threadsafe_background
+      )
+    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=background)
   endif()
 
   if ( ${SOUND} STREQUAL "I2S")

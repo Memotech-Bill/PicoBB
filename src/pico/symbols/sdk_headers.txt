@@ -1,4 +1,5 @@
 # Header files for the majority of the SDK functions
+%global NDEBUG
 src/common/pico_base/include/pico/config.h
 src/common/pico_base/include/pico/error.h
 src/common/pico_base/include/pico.h
@@ -12,6 +13,7 @@ src/common/pico_sync/include/pico/mutex.h
 src/common/pico_sync/include/pico/sem.h
 src/common/pico_sync/include/pico/sync.h
 src/common/pico_time/include/pico/time.h
+%define "!PICO_TIME_DEFAULT_ALARM_POOL_DISABLED"   1
 src/common/pico_util/include/pico/util/datetime.h
 src/common/pico_util/include/pico/util/pheap.h
 src/common/pico_util/include/pico/util/queue.h

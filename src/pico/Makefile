@@ -71,25 +71,24 @@ SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
 MAP_FILE = ../../console/pico/build/bbcbasic.elf.map
 endif
 
-SYM_EXTRA =
-ifeq ($(BOARD), pico_w)
-SYM_NAME := $(SYM_NAME)_cyw43
 ifeq ($(CYW43), POLL)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
-	../../src/pico/symbols/sdk_cyw43_poll.txt
-SYM_NAME := $(SYM_NAME)_poll
+	../../src/pico/symbols/sdk_cyw43_poll.txt \
+	../../src/pico/symbols/sdk_lwip.txt
+SYM_NAME := $(SYM_NAME)_cyw43_poll
 else ifeq ($(CYW43), Y)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
-	../../src/pico/symbols/sdk_cyw43_background.txt
-SYM_NAME := $(SYM_NAME)_background
+	../../src/pico/symbols/sdk_cyw43_background.txt \
+	../../src/pico/symbols/sdk_lwip.txt
+SYM_NAME := $(SYM_NAME)_cyw43_background
 else ifeq ($(CYW43), BACKGROUND)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
-	../../src/pico/symbols/sdk_cyw43_background.txt
-SYM_NAME := $(SYM_NAME)_background
+	../../src/pico/symbols/sdk_cyw43_background.txt \
+	../../src/pico/symbols/sdk_lwip.txt
+SYM_NAME := $(SYM_NAME)_cyw43_background
 else
-SYM_NAME := $(SYM_NAME)_none
-SYM_EXTRA += ../../src/pico/symbols/extra_cyw43_none_sdk.txt
-endif
+SYM_NAME := $(SYM_NAME)_cyw43_gpio
+SDK_HEADERS +=  ../../src/pico/symbols/sdk_cyw43_gpio.txt
 endif
 
 ifneq ($(SERIAL_DEV), 0)
@@ -112,8 +111,8 @@ SOURCES= \
     ../../src/lfswrap.c \
     ../../src/fault.c \
     ../../src/pico/sympico.c \
-	../../src/pico/symbols/$(SYM_NAME).h \
-	../../src/pico/symbols/$(SYM_NAME)_stub.c \
+	../../src/pico/sympico.h \
+	../../src/pico/$(SYM_NAME)_stub.c \
     ../../src/pico/picoser.c \
 	../../src/pico/stack_trap.c \
 	../../src/pico/bbc_pico.ld \
@@ -165,21 +164,23 @@ bbcbasic.uf2: $(SOURCES) build/Makefile
 
 .PHONY: symbols
 symbols:
-	rm -f ../../src/pico/symbols/$(SYM_NAME).h 
+	rm -f ../../src/pico/sympico.h 
 	cd ../../src/pico && symbols/map_funcs.py $(MAP_FILE) symbols/$(SYM_NAME)_map.txt
 
-../../src/pico/symbols/$(SYM_NAME)_sdk.txt ../../src/pico/symbols/$(SYM_NAME)_stub.c &: \
+../../src/pico/sympico.h: ../../src/pico/$(SYM_NAME).h
+	cp ../../src/pico/$(SYM_NAME).h ../../src/pico/sympico.h
+
+../../src/pico/symbols/$(SYM_NAME)_sdk.txt ../../src/pico/$(SYM_NAME)_stub.c &: \
 		../../src/pico/symbols/header_funcs.py \
 		$(SDK_HEADERS)
-	cd ../../src/pico && symbols/header_funcs.py symbols/$(SYM_NAME)_sdk.txt symbols/$(SYM_NAME)_stub.c \
+	cd ../../src/pico && symbols/header_funcs.py symbols/$(SYM_NAME)_sdk.txt $(SYM_NAME)_stub.c \
 		$(SDK_HEADERS)
 
-../../src/pico/symbols/$(SYM_NAME).h: ../../src/pico/symbols/merge_funcs.py \
+../../src/pico/$(SYM_NAME).h: ../../src/pico/symbols/merge_funcs.py \
 		../../src/pico/symbols/$(SYM_NAME)_sdk.txt \
-		../../src/pico/symbols/$(SYM_NAME)_map.txt \
-		 $(SYM_EXTRA)
-	cd ../../src/pico && symbols/merge_funcs.py symbols/$(SYM_NAME).h symbols/$(SYM_NAME)_sdk.txt \
-		symbols/$(SYM_NAME)_map.txt $(SYM_EXTRA)
+		../../src/pico/symbols/$(SYM_NAME)_map.txt
+	cd ../../src/pico && symbols/merge_funcs.py $(SYM_NAME).h symbols/$(SYM_NAME)_sdk.txt \
+		symbols/$(SYM_NAME)_map.txt
 
 ifeq ($(LFS), Y)
 ../../src/lfsutil/uf2merge:

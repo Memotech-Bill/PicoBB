@@ -156,7 +156,11 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #define WM_TIMER 275
 #include "lfswrap.h"
 extern char __StackLimit;
-# define PLATFORM "Pico"
+#ifdef RASPBERRYPI_PICO_W
+#define PLATFORM "Pico W"
+#else
+#define PLATFORM "Pico"
+#endif
 # else
 #define HISTORY 100  // Number of items in command history
 #include <termios.h>
@@ -2142,6 +2146,19 @@ void main_term (int exitcode)
 
 	exit (exitcode);
     }
+
+#ifdef PICO
+bool is_pico_w (void)
+    {
+#ifdef RASPBERRYPI_PICO_W
+    adc_init ();
+    adc_select_input (3);
+    return ( 3.3 / ( 1 << 12 ) ) * adc_read () < 0.25;
+#else
+    return false;
+#endif
+    }
+#endif
 
 void *main_init (int argc, char *argv[])
     {
