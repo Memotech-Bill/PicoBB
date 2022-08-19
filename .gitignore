@@ -59,3 +59,4 @@ uf2merge
 tree
 sympico.h
 sym_*.txt
+*_stub.c
