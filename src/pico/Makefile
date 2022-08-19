@@ -128,6 +128,7 @@ SOURCES= \
     $(GUI_SOURCES) \
 	$(DEV_SOURCES) \
 
+.PHONY: all
 ifeq ($(LFS), Y)
 all: bbcbasic filesystem
 else
@@ -135,7 +136,7 @@ all: bbcbasic
 endif
 
 .PHONY: bbcbasic
-bbcbasic: symbols bbcbasic.uf2
+bbcbasic: bbcbasic.uf2 bbcbasic.elf
 
 .PHONY: filesystem
 filesystem:	bbcbasic+filesystem.uf2 filesystem.uf2
@@ -157,18 +158,17 @@ endif
 ../../littlefs/lfs.c:
 	git submodule update --remote
 
-bbcbasic.uf2: $(SOURCES) build/Makefile
+bbcbasic.uf2 bbcbasic.elf &: $(SOURCES) \
+		../../src/pico/symbols/$(SYM_NAME)_sdk.txt \
+		../../src/pico/$(SYM_NAME)_stub.c \
+		build/Makefile
+	cd build && make
+	cd ../../src/pico && symbols/map_funcs.py $(MAP_FILE) symbols/$(SYM_NAME)_map.txt
+	cd ../../src/pico && symbols/merge_funcs.py sympico.h symbols/$(SYM_NAME)_sdk.txt \
+		symbols/$(SYM_NAME)_map.txt
 	cd build && make
 	cp build/bbcbasic.uf2 bbcbasic.uf2
 	cp build/bbcbasic.elf bbcbasic.elf
-
-.PHONY: symbols
-symbols:
-	rm -f ../../src/pico/sympico.h 
-	cd ../../src/pico && symbols/map_funcs.py $(MAP_FILE) symbols/$(SYM_NAME)_map.txt
-
-../../src/pico/sympico.h: ../../src/pico/$(SYM_NAME).h
-	cp ../../src/pico/$(SYM_NAME).h ../../src/pico/sympico.h
 
 ../../src/pico/symbols/$(SYM_NAME)_sdk.txt ../../src/pico/$(SYM_NAME)_stub.c &: \
 		../../src/pico/symbols/header_funcs.py \
