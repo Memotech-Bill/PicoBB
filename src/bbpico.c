@@ -290,7 +290,7 @@ static const unsigned char xkey[64] = {
 #ifdef HAVE_CYW43
 #define PICO_DEFAULT_LED_PIN    25
 #define PICO_ERROR_NOT_W        -257
-int iCyw = -1;
+int iCyw = PICO_ERROR_NOT_W;
 #endif
 
 // Declared in bbcans.c:
@@ -2046,30 +2046,40 @@ void sigbus(void){
 	for(;;);
     }
 
+void led_init (void)
+    {
+#ifdef HAVE_CYW43
+    if ( iCyw != 0 )
+        {
+#endif
+        gpio_init(PICO_DEFAULT_LED_PIN);
+        gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+#ifdef HAVE_CYW43
+        }
+#endif
+    }
+
+void led_state (int iLED)
+    {
+#ifdef HAVE_CYW43
+    if ( iCyw == 0 )
+        cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, iLED);
+    else
+#endif
+	    gpio_put(PICO_DEFAULT_LED_PIN, iLED);
+    }
+
 static int waitdone=0;
 void waitconsole(void){
 	if(waitdone) return;
 #ifndef PICO_GUI
 	printf("Waiting for connection\r\n");
-#ifdef HAVE_CYW43
-    if ( iCyw != 0 )
-        {
-#endif
-	gpio_init(PICO_DEFAULT_LED_PIN);
-	gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-#ifdef HAVE_CYW43
-        }
-#endif
+    led_init ();
     int iLED = 0;
 	while (true)
         {
         iLED ^= 1;
-#ifdef HAVE_CYW43
-        if ( iCyw == 0 )
-            cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, iLED);
-        else
-#endif
-	    gpio_put(PICO_DEFAULT_LED_PIN, iLED);
+        led_state (iLED);
 #ifdef STDIO_USB
         if ( tud_cdc_connected() ) break;
 #endif
@@ -2083,13 +2093,7 @@ void waitconsole(void){
 		sleep_ms(1000);
         }
     printf ("\r\n");
-#ifdef HAVE_CYW43
-    if ( iCyw == 0 )
-        cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, 0);
-    else
-#else
-    gpio_put(PICO_DEFAULT_LED_PIN, 0);
-#endif
+    led_state (0);
 #if defined (STDIO_USB) && defined (STDIO_UART)
     if ( tud_cdc_connected() ) stdio_filter_driver (&stdio_usb);
     else stdio_filter_driver (&stdio_uart);
@@ -2189,7 +2193,11 @@ int cyw43_arch_init_safe (void)
 
 int cyw43_arch_init_with_country_safe (uint32_t country)
     {
-    if ( is_cyw43_init ) cyw43_arch_deinit ();
+    if ( is_cyw43_init )
+        {
+        cyw43_arch_deinit ();
+        is_cyw43_init = false;
+        }
     int iErr = cyw43_arch_init_with_country (country);
     if ( iErr == 0 ) is_cyw43_init = true;
     return iErr;
@@ -2220,31 +2228,17 @@ void *main_init (int argc, char *argv[])
         {
         iCyw = PICO_ERROR_NOT_W;
 #endif
-	gpio_init(PICO_DEFAULT_LED_PIN);
-	gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+        led_init ();
 #ifdef HAVE_CYW43
         }
 #endif
 	for (int i = 3; i > 0; --i )
 	    {
 	    // printf ("%d seconds to start\n", i);
-#ifdef HAVE_CYW43
-        if ( iCyw == 0 )
-            {
-            cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, 1);
-            sleep_ms(500);
-            cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, 0);
-            }
-        else
-            {
-#endif
-	    gpio_put(PICO_DEFAULT_LED_PIN, 1);
-	    sleep_ms(500);
-	    gpio_put(PICO_DEFAULT_LED_PIN, 0);
-#ifdef HAVE_CYW43
-            }
-#endif
-	    sleep_ms(500);
+        led_state (1);
+	    sleep_ms (500);
+        led_state (0);
+	    sleep_ms (500);
 	    }
     // waitconsole();
     // printf ("BBC Basic main build " __DATE__ " " __TIME__ "\n");

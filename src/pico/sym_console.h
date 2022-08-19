@@ -119,8 +119,82 @@ void critical_section_init (void);
 void critical_section_init_with_lock_num (void);
 void crlf (void);
 void ctime (void);
+void cyw43_arch_deinit (void);
+void cyw43_arch_deinit_safe (void);
+void cyw43_arch_enable_ap_mode (void);
+void cyw43_arch_enable_sta_mode (void);
+void cyw43_arch_get_country_code (void);
+void cyw43_arch_gpio_get (void);
+void cyw43_arch_gpio_put (void);
+void cyw43_arch_init (void);
+void cyw43_arch_init_safe (void);
+void cyw43_arch_init_with_country (void);
+void cyw43_arch_init_with_country_safe (void);
+void cyw43_arch_poll (void);
+void cyw43_arch_wifi_connect_async (void);
+void cyw43_arch_wifi_connect_blocking (void);
+void cyw43_arch_wifi_connect_timeout_ms (void);
+void cyw43_arch_wifi_connect_until (void);
+void cyw43_await_background_or_timeout_us (void);
+void cyw43_cb_ensure_awake (void);
+void cyw43_cb_process_async_event (void);
+void cyw43_cb_process_ethernet (void);
+void cyw43_cb_read_host_interrupt_pin (void);
+void cyw43_cb_tcpip_deinit (void);
+void cyw43_cb_tcpip_init (void);
+void cyw43_cb_tcpip_set_link_down (void);
+void cyw43_cb_tcpip_set_link_up (void);
+void cyw43_deinit (void);
+void cyw43_delay_ms (void);
+void cyw43_delay_us (void);
+void cyw43_gpio_get (void);
+void cyw43_gpio_set (void);
+void cyw43_hal_generate_laa_mac (void);
+void cyw43_hal_get_mac (void);
+void cyw43_init (void);
+void cyw43_ll_bus_init (void);
+void cyw43_ll_bus_sleep (void);
+void cyw43_ll_deinit (void);
+void cyw43_ll_gpio_get (void);
+void cyw43_ll_gpio_set (void);
+void cyw43_ll_has_work (void);
+void cyw43_ll_init (void);
+void cyw43_ll_ioctl (void);
+void cyw43_ll_process_packets (void);
+void cyw43_ll_send_ethernet (void);
+void cyw43_ll_wifi_ap_init (void);
+void cyw43_ll_wifi_ap_set_up (void);
+void cyw43_ll_wifi_get_mac (void);
+void cyw43_ll_wifi_join (void);
+void cyw43_ll_wifi_on (void);
+void cyw43_ll_wifi_pm (void);
+void cyw43_ll_wifi_rejoin (void);
+void cyw43_ll_wifi_set_wpa_auth (void);
+void cyw43_post_poll_hook (void);
+void cyw43_read_bytes (void);
+void cyw43_read_reg_u16 (void);
+void cyw43_read_reg_u32 (void);
+void cyw43_read_reg_u8 (void);
+void cyw43_schedule_internal_poll_dispatch (void);
+void cyw43_send_ethernet (void);
+void cyw43_spi_deinit (void);
+void cyw43_spi_gpio_setup (void);
+void cyw43_spi_init (void);
+void cyw43_spi_reset (void);
+void cyw43_spi_transfer (void);
 void cyw43_support (void);
-void d2fix_a (void);
+void cyw43_tcpip_link_status (void);
+void cyw43_thread_enter (void);
+void cyw43_thread_exit (void);
+void cyw43_wifi_get_mac (void);
+void cyw43_wifi_join (void);
+void cyw43_wifi_link_status (void);
+void cyw43_wifi_pm (void);
+void cyw43_wifi_set_up (void);
+void cyw43_write_bytes (void);
+void cyw43_write_reg_u16 (void);
+void cyw43_write_reg_u32 (void);
+void cyw43_write_reg_u8 (void);
 void datetime_to_str (void);
 void dcd_connect (void);
 void dcd_edpt0_status_complete (void);
@@ -137,10 +211,17 @@ void dcd_event_xfer_complete (void);
 void dcd_init (void);
 void dcd_int_enable (void);
 void dcd_set_address (void);
-void dcordic_rot_step (void);
-void dcordic_vec_step (void);
 void stub_delayed_by_ms (void);
 void stub_delayed_by_us (void);
+void dhcp_coarse_tmr (void);
+void dhcp_fine_tmr (void);
+void dhcp_network_changed_link_up (void);
+void dhcp_release_and_stop (void);
+void dhcp_renew (void);
+void dhcp_set_struct (void);
+void dhcp_start (void);
+void dhcp_stop (void);
+void dhcp_supplied_address (void);
 void div_s32s32 (void);
 void div_s64s64 (void);
 void div_u32u32 (void);
@@ -194,6 +275,9 @@ void dma_timer_is_claimed (void);
 void stub_dma_timer_set_fraction (void);
 void dma_timer_unclaim (void);
 void dma_unclaim_mask (void);
+void dns_init (void);
+void dns_setserver (void);
+void dns_tmr (void);
 void double2fix (void);
 void double2fix64 (void);
 void double2int (void);
@@ -204,11 +288,17 @@ void double2ufix (void);
 void double2ufix64 (void);
 void double2uint (void);
 void double_table_shim_on_use_helper (void);
-void dreduce (void);
-void dunpacks (void);
 void entry (void);
 void envel (void);
 void error (void);
+void etharp_cleanup_netif (void);
+void etharp_input (void);
+void etharp_output (void);
+void etharp_query (void);
+void etharp_request (void);
+void etharp_tmr (void);
+void ethernet_input (void);
+void ethernet_output (void);
 void exception_get_vtable_handler (void);
 void exception_restore_handler (void);
 void exception_set_exclusive_handler (void);
@@ -241,7 +331,6 @@ void float2int64_z (void);
 void float2int_z (void);
 void float2ufix (void);
 void float2ufix64 (void);
-void float_table_shim_on_use_helper (void);
 void floorl (void);
 void fltcall_ (void);
 void fputwc (void);
@@ -359,8 +448,6 @@ void stub_hw_divider_wait_ready (void);
 void hw_endpoint_reset_transfer (void);
 void hw_endpoint_xfer_continue (void);
 void hw_endpoint_xfer_start (void);
-void hw_enumeration_fix_force_ls_j_done (void);
-void hw_enumeration_fix_wait_se0_callback (void);
 void hw_is_claimed (void);
 void i2c_deinit (void);
 void stub_i2c_get_dreq (void);
@@ -381,6 +468,12 @@ void i2c_write_blocking_until (void);
 void stub_i2c_write_raw_blocking (void);
 void i2c_write_timeout_per_char_us (void);
 void stub_i2c_write_timeout_us (void);
+void icmp_dest_unreach (void);
+void icmp_input (void);
+void icmp_time_exceeded (void);
+void inet_chksum (void);
+void inet_chksum_pbuf (void);
+void inet_chksum_pseudo (void);
 void init_per_iteration_timeout_us (void);
 void init_single_timeout_until (void);
 void stub_interp_add_accumulater (void);
@@ -414,6 +507,15 @@ void stub_interp_set_config (void);
 void stub_interp_set_force_bits (void);
 void interp_unclaim_lane (void);
 void interp_unclaim_lane_mask (void);
+void ip4_addr_isbroadcast_u32 (void);
+void ip4_frag (void);
+void ip4_input (void);
+void ip4_output_if (void);
+void ip4_output_if_src (void);
+void ip4_reass (void);
+void ip4_route (void);
+void ip_chksum_pseudo (void);
+void ip_reass_tmr (void);
 void irq_add_shared_handler (void);
 void irq_add_tail_to_free_list (void);
 void stub_irq_clear (void);
@@ -437,6 +539,8 @@ void iswspace_l (void);
 void item (void);
 void itemi (void);
 void items (void);
+void led_init (void);
+void led_state (void);
 void lexan (void);
 void lfs_bbc_createcfg (void);
 void lfs_bbc_erase (void);
@@ -467,6 +571,10 @@ void localtime (void);
 void localtime_r (void);
 void lock_init (void);
 void longjmp (void);
+void lwip_htonl (void);
+void lwip_htons (void);
+void lwip_init (void);
+void lwip_standard_chksum (void);
 void main (void);
 void main_init (void);
 void main_term (void);
@@ -475,9 +583,17 @@ void stub_make_timeout_time_us (void);
 void malloc (void);
 void math (void);
 void mbrtowc (void);
+void mem_free (void);
+void mem_init (void);
+void mem_malloc (void);
+void mem_trim (void);
 void memchr (void);
 void memcmp (void);
 void memmove (void);
+void memp_free (void);
+void memp_init (void);
+void memp_init_pool (void);
+void memp_malloc (void);
 void modifs (void);
 void modify (void);
 void mount (void);
@@ -532,6 +648,16 @@ void mysleep (void);
 void myusleep (void);
 void nan (void);
 void nanf (void);
+void netif_add (void);
+void netif_get_by_index (void);
+void netif_init (void);
+void netif_remove (void);
+void netif_set_addr (void);
+void netif_set_default (void);
+void netif_set_down (void);
+void netif_set_link_down (void);
+void netif_set_link_up (void);
+void netif_set_up (void);
 void newlin (void);
 void next_striped_spin_lock_num (void);
 void nxt (void);
@@ -553,6 +679,37 @@ void osword (void);
 void oswrch (void);
 void outchr (void);
 void panic (void);
+void pbuf_add_header (void);
+void pbuf_add_header_force (void);
+void pbuf_alloc (void);
+void pbuf_alloc_reference (void);
+void pbuf_cat (void);
+void pbuf_chain (void);
+void pbuf_clen (void);
+void pbuf_clone (void);
+void pbuf_coalesce (void);
+void pbuf_copy (void);
+void pbuf_copy_partial (void);
+void pbuf_copy_partial_pbuf (void);
+void pbuf_dechain (void);
+void pbuf_free (void);
+void pbuf_free_header (void);
+void pbuf_free_ooseq (void);
+void pbuf_get_at (void);
+void pbuf_get_contiguous (void);
+void pbuf_header (void);
+void pbuf_header_force (void);
+void pbuf_memcmp (void);
+void pbuf_memfind (void);
+void pbuf_put_at (void);
+void pbuf_realloc (void);
+void pbuf_ref (void);
+void pbuf_remove_header (void);
+void pbuf_skip (void);
+void pbuf_strstr (void);
+void pbuf_take (void);
+void pbuf_take_at (void);
+void pbuf_try_get_at (void);
 void ph_clear (void);
 void stub_ph_contains_node (void);
 void ph_create (void);
@@ -570,6 +727,7 @@ void ph_remove_and_free_node (void);
 void ph_remove_head (void);
 void pico_get_unique_board_id (void);
 void pico_get_unique_board_id_string (void);
+void pico_lwip_rand (void);
 void pio_add_program (void);
 void pio_add_program_at_offset (void);
 void stub_pio_calculate_clkdiv_from_float (void);
@@ -719,6 +877,9 @@ void quiet (void);
 void range0 (void);
 void range1 (void);
 void range2 (void);
+void raw_input (void);
+void raw_netif_ip_addr_changed (void);
+void read_reg_u32_swap (void);
 void recursive_mutex_enter_block_until (void);
 void recursive_mutex_enter_blocking (void);
 void recursive_mutex_enter_timeout_ms (void);
@@ -734,7 +895,6 @@ void rnd (void);
 void rom_data_lookup (void);
 void rom_func_lookup (void);
 void rom_funcs_lookup (void);
-void rp2040_chip_version (void);
 void rp2040_usb_device_enumeration_fix (void);
 void rp2040_usb_init (void);
 void rtc_disable_alarm (void);
@@ -821,6 +981,7 @@ void spin_locks_reset (void);
 void sprintf (void);
 void sscanf (void);
 void stack_trap (void);
+void stats_init (void);
 void stdin_handler (void);
 void stdin_uart_init (void);
 void stdio_filter_driver (void);
@@ -866,9 +1027,71 @@ void strtoul (void);
 void strtoul_l (void);
 void strtoull (void);
 void strtoull_l (void);
+void sys_arch_protect (void);
+void sys_arch_unprotect (void);
+void sys_check_timeouts (void);
+void sys_now (void);
+void sys_timeout (void);
+void sys_timeouts_init (void);
 void sysadr (void);
 void syserror (void);
 void system (void);
+void tcp_abandon (void);
+void tcp_abort (void);
+void tcp_accept (void);
+void tcp_alloc (void);
+void tcp_arg (void);
+void tcp_bind (void);
+void tcp_bind_netif (void);
+void tcp_close (void);
+void tcp_connect (void);
+void tcp_eff_send_mss_netif (void);
+void tcp_enqueue_flags (void);
+void tcp_err (void);
+void tcp_fasttmr (void);
+void tcp_free (void);
+void tcp_free_ooseq (void);
+void tcp_init (void);
+void tcp_input (void);
+void tcp_keepalive (void);
+void tcp_listen_with_backlog (void);
+void tcp_listen_with_backlog_and_err (void);
+void tcp_netif_ip_addr_changed (void);
+void tcp_new (void);
+void tcp_new_ip_type (void);
+void tcp_next_iss (void);
+void tcp_output (void);
+void tcp_pcb_purge (void);
+void tcp_pcb_remove (void);
+void tcp_poll (void);
+void tcp_process_refused_data (void);
+void tcp_recv (void);
+void tcp_recv_null (void);
+void tcp_recved (void);
+void tcp_rexmit (void);
+void tcp_rexmit_fast (void);
+void tcp_rexmit_rto (void);
+void tcp_rexmit_rto_commit (void);
+void tcp_rexmit_rto_prepare (void);
+void tcp_rst (void);
+void tcp_rst_netif (void);
+void tcp_seg_copy (void);
+void tcp_seg_free (void);
+void tcp_segs_free (void);
+void tcp_send_empty_ack (void);
+void tcp_send_fin (void);
+void tcp_sent (void);
+void tcp_setprio (void);
+void tcp_shutdown (void);
+void tcp_slowtmr (void);
+void tcp_split_unsent_seg (void);
+void tcp_tcp_get_tcp_addrinfo (void);
+void tcp_timer_needed (void);
+void tcp_tmr (void);
+void tcp_trigger_input_pcb_close (void);
+void tcp_update_rcv_ann_wnd (void);
+void tcp_write (void);
+void tcp_zero_window_probe (void);
 void text (void);
 void time (void);
 void stub_time_reached (void);
@@ -939,6 +1162,21 @@ void uart_set_translate_crlf (void);
 void stub_uart_tx_wait_blocking (void);
 void stub_uart_write_blocking (void);
 void uclose (void);
+void udp_bind (void);
+void udp_bind_netif (void);
+void udp_connect (void);
+void udp_disconnect (void);
+void udp_init (void);
+void udp_input (void);
+void udp_netif_ip_addr_changed (void);
+void udp_new (void);
+void udp_new_ip_type (void);
+void udp_recv (void);
+void udp_remove (void);
+void udp_send (void);
+void udp_sendto (void);
+void udp_sendto_if (void);
+void udp_sendto_if_src (void);
 void ufix2double (void);
 void ufix2float (void);
 void ufix642double (void);
@@ -985,6 +1223,7 @@ void watchdog_start_tick (void);
 void watchdog_update (void);
 void wcrtomb (void);
 void widths (void);
+void write_reg_u32_swap (void);
 void xeq (void);
 void xeqvdu (void);
 void xfix (void);
@@ -1119,8 +1358,82 @@ const symbols sdkfuncs[] = {
     {"critical_section_init_with_lock_num", critical_section_init_with_lock_num},
     {"crlf", crlf},
     {"ctime", ctime},
+    {"cyw43_arch_deinit", cyw43_arch_deinit},
+    {"cyw43_arch_deinit_safe", cyw43_arch_deinit_safe},
+    {"cyw43_arch_enable_ap_mode", cyw43_arch_enable_ap_mode},
+    {"cyw43_arch_enable_sta_mode", cyw43_arch_enable_sta_mode},
+    {"cyw43_arch_get_country_code", cyw43_arch_get_country_code},
+    {"cyw43_arch_gpio_get", cyw43_arch_gpio_get},
+    {"cyw43_arch_gpio_put", cyw43_arch_gpio_put},
+    {"cyw43_arch_init", cyw43_arch_init},
+    {"cyw43_arch_init_safe", cyw43_arch_init_safe},
+    {"cyw43_arch_init_with_country", cyw43_arch_init_with_country},
+    {"cyw43_arch_init_with_country_safe", cyw43_arch_init_with_country_safe},
+    {"cyw43_arch_poll", cyw43_arch_poll},
+    {"cyw43_arch_wifi_connect_async", cyw43_arch_wifi_connect_async},
+    {"cyw43_arch_wifi_connect_blocking", cyw43_arch_wifi_connect_blocking},
+    {"cyw43_arch_wifi_connect_timeout_ms", cyw43_arch_wifi_connect_timeout_ms},
+    {"cyw43_arch_wifi_connect_until", cyw43_arch_wifi_connect_until},
+    {"cyw43_await_background_or_timeout_us", cyw43_await_background_or_timeout_us},
+    {"cyw43_cb_ensure_awake", cyw43_cb_ensure_awake},
+    {"cyw43_cb_process_async_event", cyw43_cb_process_async_event},
+    {"cyw43_cb_process_ethernet", cyw43_cb_process_ethernet},
+    {"cyw43_cb_read_host_interrupt_pin", cyw43_cb_read_host_interrupt_pin},
+    {"cyw43_cb_tcpip_deinit", cyw43_cb_tcpip_deinit},
+    {"cyw43_cb_tcpip_init", cyw43_cb_tcpip_init},
+    {"cyw43_cb_tcpip_set_link_down", cyw43_cb_tcpip_set_link_down},
+    {"cyw43_cb_tcpip_set_link_up", cyw43_cb_tcpip_set_link_up},
+    {"cyw43_deinit", cyw43_deinit},
+    {"cyw43_delay_ms", cyw43_delay_ms},
+    {"cyw43_delay_us", cyw43_delay_us},
+    {"cyw43_gpio_get", cyw43_gpio_get},
+    {"cyw43_gpio_set", cyw43_gpio_set},
+    {"cyw43_hal_generate_laa_mac", cyw43_hal_generate_laa_mac},
+    {"cyw43_hal_get_mac", cyw43_hal_get_mac},
+    {"cyw43_init", cyw43_init},
+    {"cyw43_ll_bus_init", cyw43_ll_bus_init},
+    {"cyw43_ll_bus_sleep", cyw43_ll_bus_sleep},
+    {"cyw43_ll_deinit", cyw43_ll_deinit},
+    {"cyw43_ll_gpio_get", cyw43_ll_gpio_get},
+    {"cyw43_ll_gpio_set", cyw43_ll_gpio_set},
+    {"cyw43_ll_has_work", cyw43_ll_has_work},
+    {"cyw43_ll_init", cyw43_ll_init},
+    {"cyw43_ll_ioctl", cyw43_ll_ioctl},
+    {"cyw43_ll_process_packets", cyw43_ll_process_packets},
+    {"cyw43_ll_send_ethernet", cyw43_ll_send_ethernet},
+    {"cyw43_ll_wifi_ap_init", cyw43_ll_wifi_ap_init},
+    {"cyw43_ll_wifi_ap_set_up", cyw43_ll_wifi_ap_set_up},
+    {"cyw43_ll_wifi_get_mac", cyw43_ll_wifi_get_mac},
+    {"cyw43_ll_wifi_join", cyw43_ll_wifi_join},
+    {"cyw43_ll_wifi_on", cyw43_ll_wifi_on},
+    {"cyw43_ll_wifi_pm", cyw43_ll_wifi_pm},
+    {"cyw43_ll_wifi_rejoin", cyw43_ll_wifi_rejoin},
+    {"cyw43_ll_wifi_set_wpa_auth", cyw43_ll_wifi_set_wpa_auth},
+    {"cyw43_post_poll_hook", cyw43_post_poll_hook},
+    {"cyw43_read_bytes", cyw43_read_bytes},
+    {"cyw43_read_reg_u16", cyw43_read_reg_u16},
+    {"cyw43_read_reg_u32", cyw43_read_reg_u32},
+    {"cyw43_read_reg_u8", cyw43_read_reg_u8},
+    {"cyw43_schedule_internal_poll_dispatch", cyw43_schedule_internal_poll_dispatch},
+    {"cyw43_send_ethernet", cyw43_send_ethernet},
+    {"cyw43_spi_deinit", cyw43_spi_deinit},
+    {"cyw43_spi_gpio_setup", cyw43_spi_gpio_setup},
+    {"cyw43_spi_init", cyw43_spi_init},
+    {"cyw43_spi_reset", cyw43_spi_reset},
+    {"cyw43_spi_transfer", cyw43_spi_transfer},
     {"cyw43_support", cyw43_support},
-    {"d2fix_a", d2fix_a},
+    {"cyw43_tcpip_link_status", cyw43_tcpip_link_status},
+    {"cyw43_thread_enter", cyw43_thread_enter},
+    {"cyw43_thread_exit", cyw43_thread_exit},
+    {"cyw43_wifi_get_mac", cyw43_wifi_get_mac},
+    {"cyw43_wifi_join", cyw43_wifi_join},
+    {"cyw43_wifi_link_status", cyw43_wifi_link_status},
+    {"cyw43_wifi_pm", cyw43_wifi_pm},
+    {"cyw43_wifi_set_up", cyw43_wifi_set_up},
+    {"cyw43_write_bytes", cyw43_write_bytes},
+    {"cyw43_write_reg_u16", cyw43_write_reg_u16},
+    {"cyw43_write_reg_u32", cyw43_write_reg_u32},
+    {"cyw43_write_reg_u8", cyw43_write_reg_u8},
     {"datetime_to_str", datetime_to_str},
     {"dcd_connect", dcd_connect},
     {"dcd_edpt0_status_complete", dcd_edpt0_status_complete},
@@ -1137,10 +1450,17 @@ const symbols sdkfuncs[] = {
     {"dcd_init", dcd_init},
     {"dcd_int_enable", dcd_int_enable},
     {"dcd_set_address", dcd_set_address},
-    {"dcordic_rot_step", dcordic_rot_step},
-    {"dcordic_vec_step", dcordic_vec_step},
     {"delayed_by_ms", stub_delayed_by_ms},
     {"delayed_by_us", stub_delayed_by_us},
+    {"dhcp_coarse_tmr", dhcp_coarse_tmr},
+    {"dhcp_fine_tmr", dhcp_fine_tmr},
+    {"dhcp_network_changed_link_up", dhcp_network_changed_link_up},
+    {"dhcp_release_and_stop", dhcp_release_and_stop},
+    {"dhcp_renew", dhcp_renew},
+    {"dhcp_set_struct", dhcp_set_struct},
+    {"dhcp_start", dhcp_start},
+    {"dhcp_stop", dhcp_stop},
+    {"dhcp_supplied_address", dhcp_supplied_address},
     {"div_s32s32", div_s32s32},
     {"div_s64s64", div_s64s64},
     {"div_u32u32", div_u32u32},
@@ -1194,6 +1514,9 @@ const symbols sdkfuncs[] = {
     {"dma_timer_set_fraction", stub_dma_timer_set_fraction},
     {"dma_timer_unclaim", dma_timer_unclaim},
     {"dma_unclaim_mask", dma_unclaim_mask},
+    {"dns_init", dns_init},
+    {"dns_setserver", dns_setserver},
+    {"dns_tmr", dns_tmr},
     {"double2fix", double2fix},
     {"double2fix64", double2fix64},
     {"double2int", double2int},
@@ -1204,11 +1527,17 @@ const symbols sdkfuncs[] = {
     {"double2ufix64", double2ufix64},
     {"double2uint", double2uint},
     {"double_table_shim_on_use_helper", double_table_shim_on_use_helper},
-    {"dreduce", dreduce},
-    {"dunpacks", dunpacks},
     {"entry", entry},
     {"envel", envel},
     {"error", error},
+    {"etharp_cleanup_netif", etharp_cleanup_netif},
+    {"etharp_input", etharp_input},
+    {"etharp_output", etharp_output},
+    {"etharp_query", etharp_query},
+    {"etharp_request", etharp_request},
+    {"etharp_tmr", etharp_tmr},
+    {"ethernet_input", ethernet_input},
+    {"ethernet_output", ethernet_output},
     {"exception_get_vtable_handler", exception_get_vtable_handler},
     {"exception_restore_handler", exception_restore_handler},
     {"exception_set_exclusive_handler", exception_set_exclusive_handler},
@@ -1241,7 +1570,6 @@ const symbols sdkfuncs[] = {
     {"float2int_z", float2int_z},
     {"float2ufix", float2ufix},
     {"float2ufix64", float2ufix64},
-    {"float_table_shim_on_use_helper", float_table_shim_on_use_helper},
     {"floorl", floorl},
     {"fltcall_", fltcall_},
     {"fputwc", fputwc},
@@ -1359,8 +1687,6 @@ const symbols sdkfuncs[] = {
     {"hw_endpoint_reset_transfer", hw_endpoint_reset_transfer},
     {"hw_endpoint_xfer_continue", hw_endpoint_xfer_continue},
     {"hw_endpoint_xfer_start", hw_endpoint_xfer_start},
-    {"hw_enumeration_fix_force_ls_j_done", hw_enumeration_fix_force_ls_j_done},
-    {"hw_enumeration_fix_wait_se0_callback", hw_enumeration_fix_wait_se0_callback},
     {"hw_is_claimed", hw_is_claimed},
     {"i2c_deinit", i2c_deinit},
     {"i2c_get_dreq", stub_i2c_get_dreq},
@@ -1381,6 +1707,12 @@ const symbols sdkfuncs[] = {
     {"i2c_write_raw_blocking", stub_i2c_write_raw_blocking},
     {"i2c_write_timeout_per_char_us", i2c_write_timeout_per_char_us},
     {"i2c_write_timeout_us", stub_i2c_write_timeout_us},
+    {"icmp_dest_unreach", icmp_dest_unreach},
+    {"icmp_input", icmp_input},
+    {"icmp_time_exceeded", icmp_time_exceeded},
+    {"inet_chksum", inet_chksum},
+    {"inet_chksum_pbuf", inet_chksum_pbuf},
+    {"inet_chksum_pseudo", inet_chksum_pseudo},
     {"init_per_iteration_timeout_us", init_per_iteration_timeout_us},
     {"init_single_timeout_until", init_single_timeout_until},
     {"interp_add_accumulater", stub_interp_add_accumulater},
@@ -1414,6 +1746,15 @@ const symbols sdkfuncs[] = {
     {"interp_set_force_bits", stub_interp_set_force_bits},
     {"interp_unclaim_lane", interp_unclaim_lane},
     {"interp_unclaim_lane_mask", interp_unclaim_lane_mask},
+    {"ip4_addr_isbroadcast_u32", ip4_addr_isbroadcast_u32},
+    {"ip4_frag", ip4_frag},
+    {"ip4_input", ip4_input},
+    {"ip4_output_if", ip4_output_if},
+    {"ip4_output_if_src", ip4_output_if_src},
+    {"ip4_reass", ip4_reass},
+    {"ip4_route", ip4_route},
+    {"ip_chksum_pseudo", ip_chksum_pseudo},
+    {"ip_reass_tmr", ip_reass_tmr},
     {"irq_add_shared_handler", irq_add_shared_handler},
     {"irq_add_tail_to_free_list", irq_add_tail_to_free_list},
     {"irq_clear", stub_irq_clear},
@@ -1437,6 +1778,8 @@ const symbols sdkfuncs[] = {
     {"item", item},
     {"itemi", itemi},
     {"items", items},
+    {"led_init", led_init},
+    {"led_state", led_state},
     {"lexan", lexan},
     {"lfs_bbc_createcfg", lfs_bbc_createcfg},
     {"lfs_bbc_erase", lfs_bbc_erase},
@@ -1467,6 +1810,10 @@ const symbols sdkfuncs[] = {
     {"localtime_r", localtime_r},
     {"lock_init", lock_init},
     {"longjmp", longjmp},
+    {"lwip_htonl", lwip_htonl},
+    {"lwip_htons", lwip_htons},
+    {"lwip_init", lwip_init},
+    {"lwip_standard_chksum", lwip_standard_chksum},
     {"main", main},
     {"main_init", main_init},
     {"main_term", main_term},
@@ -1475,9 +1822,17 @@ const symbols sdkfuncs[] = {
     {"malloc", malloc},
     {"math", math},
     {"mbrtowc", mbrtowc},
+    {"mem_free", mem_free},
+    {"mem_init", mem_init},
+    {"mem_malloc", mem_malloc},
+    {"mem_trim", mem_trim},
     {"memchr", memchr},
     {"memcmp", memcmp},
     {"memmove", memmove},
+    {"memp_free", memp_free},
+    {"memp_init", memp_init},
+    {"memp_init_pool", memp_init_pool},
+    {"memp_malloc", memp_malloc},
     {"modifs", modifs},
     {"modify", modify},
     {"mount", mount},
@@ -1532,6 +1887,16 @@ const symbols sdkfuncs[] = {
     {"myusleep", myusleep},
     {"nan", nan},
     {"nanf", nanf},
+    {"netif_add", netif_add},
+    {"netif_get_by_index", netif_get_by_index},
+    {"netif_init", netif_init},
+    {"netif_remove", netif_remove},
+    {"netif_set_addr", netif_set_addr},
+    {"netif_set_default", netif_set_default},
+    {"netif_set_down", netif_set_down},
+    {"netif_set_link_down", netif_set_link_down},
+    {"netif_set_link_up", netif_set_link_up},
+    {"netif_set_up", netif_set_up},
     {"newlin", newlin},
     {"next_striped_spin_lock_num", next_striped_spin_lock_num},
     {"nxt", nxt},
@@ -1553,6 +1918,37 @@ const symbols sdkfuncs[] = {
     {"oswrch", oswrch},
     {"outchr", outchr},
     {"panic", panic},
+    {"pbuf_add_header", pbuf_add_header},
+    {"pbuf_add_header_force", pbuf_add_header_force},
+    {"pbuf_alloc", pbuf_alloc},
+    {"pbuf_alloc_reference", pbuf_alloc_reference},
+    {"pbuf_cat", pbuf_cat},
+    {"pbuf_chain", pbuf_chain},
+    {"pbuf_clen", pbuf_clen},
+    {"pbuf_clone", pbuf_clone},
+    {"pbuf_coalesce", pbuf_coalesce},
+    {"pbuf_copy", pbuf_copy},
+    {"pbuf_copy_partial", pbuf_copy_partial},
+    {"pbuf_copy_partial_pbuf", pbuf_copy_partial_pbuf},
+    {"pbuf_dechain", pbuf_dechain},
+    {"pbuf_free", pbuf_free},
+    {"pbuf_free_header", pbuf_free_header},
+    {"pbuf_free_ooseq", pbuf_free_ooseq},
+    {"pbuf_get_at", pbuf_get_at},
+    {"pbuf_get_contiguous", pbuf_get_contiguous},
+    {"pbuf_header", pbuf_header},
+    {"pbuf_header_force", pbuf_header_force},
+    {"pbuf_memcmp", pbuf_memcmp},
+    {"pbuf_memfind", pbuf_memfind},
+    {"pbuf_put_at", pbuf_put_at},
+    {"pbuf_realloc", pbuf_realloc},
+    {"pbuf_ref", pbuf_ref},
+    {"pbuf_remove_header", pbuf_remove_header},
+    {"pbuf_skip", pbuf_skip},
+    {"pbuf_strstr", pbuf_strstr},
+    {"pbuf_take", pbuf_take},
+    {"pbuf_take_at", pbuf_take_at},
+    {"pbuf_try_get_at", pbuf_try_get_at},
     {"ph_clear", ph_clear},
     {"ph_contains_node", stub_ph_contains_node},
     {"ph_create", ph_create},
@@ -1570,6 +1966,7 @@ const symbols sdkfuncs[] = {
     {"ph_remove_head", ph_remove_head},
     {"pico_get_unique_board_id", pico_get_unique_board_id},
     {"pico_get_unique_board_id_string", pico_get_unique_board_id_string},
+    {"pico_lwip_rand", pico_lwip_rand},
     {"pio_add_program", pio_add_program},
     {"pio_add_program_at_offset", pio_add_program_at_offset},
     {"pio_calculate_clkdiv_from_float", stub_pio_calculate_clkdiv_from_float},
@@ -1719,6 +2116,9 @@ const symbols sdkfuncs[] = {
     {"range0", range0},
     {"range1", range1},
     {"range2", range2},
+    {"raw_input", raw_input},
+    {"raw_netif_ip_addr_changed", raw_netif_ip_addr_changed},
+    {"read_reg_u32_swap", read_reg_u32_swap},
     {"recursive_mutex_enter_block_until", recursive_mutex_enter_block_until},
     {"recursive_mutex_enter_blocking", recursive_mutex_enter_blocking},
     {"recursive_mutex_enter_timeout_ms", recursive_mutex_enter_timeout_ms},
@@ -1734,7 +2134,6 @@ const symbols sdkfuncs[] = {
     {"rom_data_lookup", rom_data_lookup},
     {"rom_func_lookup", rom_func_lookup},
     {"rom_funcs_lookup", rom_funcs_lookup},
-    {"rp2040_chip_version", rp2040_chip_version},
     {"rp2040_usb_device_enumeration_fix", rp2040_usb_device_enumeration_fix},
     {"rp2040_usb_init", rp2040_usb_init},
     {"rtc_disable_alarm", rtc_disable_alarm},
@@ -1821,6 +2220,7 @@ const symbols sdkfuncs[] = {
     {"sprintf", sprintf},
     {"sscanf", sscanf},
     {"stack_trap", stack_trap},
+    {"stats_init", stats_init},
     {"stdin_handler", stdin_handler},
     {"stdin_uart_init", stdin_uart_init},
     {"stdio_filter_driver", stdio_filter_driver},
@@ -1868,9 +2268,71 @@ const symbols sdkfuncs[] = {
     {"strtoull", strtoull},
     {"strtoull_l", strtoull_l},
     {"sympico", sympico},
+    {"sys_arch_protect", sys_arch_protect},
+    {"sys_arch_unprotect", sys_arch_unprotect},
+    {"sys_check_timeouts", sys_check_timeouts},
+    {"sys_now", sys_now},
+    {"sys_timeout", sys_timeout},
+    {"sys_timeouts_init", sys_timeouts_init},
     {"sysadr", sysadr},
     {"syserror", syserror},
     {"system", system},
+    {"tcp_abandon", tcp_abandon},
+    {"tcp_abort", tcp_abort},
+    {"tcp_accept", tcp_accept},
+    {"tcp_alloc", tcp_alloc},
+    {"tcp_arg", tcp_arg},
+    {"tcp_bind", tcp_bind},
+    {"tcp_bind_netif", tcp_bind_netif},
+    {"tcp_close", tcp_close},
+    {"tcp_connect", tcp_connect},
+    {"tcp_eff_send_mss_netif", tcp_eff_send_mss_netif},
+    {"tcp_enqueue_flags", tcp_enqueue_flags},
+    {"tcp_err", tcp_err},
+    {"tcp_fasttmr", tcp_fasttmr},
+    {"tcp_free", tcp_free},
+    {"tcp_free_ooseq", tcp_free_ooseq},
+    {"tcp_init", tcp_init},
+    {"tcp_input", tcp_input},
+    {"tcp_keepalive", tcp_keepalive},
+    {"tcp_listen_with_backlog", tcp_listen_with_backlog},
+    {"tcp_listen_with_backlog_and_err", tcp_listen_with_backlog_and_err},
+    {"tcp_netif_ip_addr_changed", tcp_netif_ip_addr_changed},
+    {"tcp_new", tcp_new},
+    {"tcp_new_ip_type", tcp_new_ip_type},
+    {"tcp_next_iss", tcp_next_iss},
+    {"tcp_output", tcp_output},
+    {"tcp_pcb_purge", tcp_pcb_purge},
+    {"tcp_pcb_remove", tcp_pcb_remove},
+    {"tcp_poll", tcp_poll},
+    {"tcp_process_refused_data", tcp_process_refused_data},
+    {"tcp_recv", tcp_recv},
+    {"tcp_recv_null", tcp_recv_null},
+    {"tcp_recved", tcp_recved},
+    {"tcp_rexmit", tcp_rexmit},
+    {"tcp_rexmit_fast", tcp_rexmit_fast},
+    {"tcp_rexmit_rto", tcp_rexmit_rto},
+    {"tcp_rexmit_rto_commit", tcp_rexmit_rto_commit},
+    {"tcp_rexmit_rto_prepare", tcp_rexmit_rto_prepare},
+    {"tcp_rst", tcp_rst},
+    {"tcp_rst_netif", tcp_rst_netif},
+    {"tcp_seg_copy", tcp_seg_copy},
+    {"tcp_seg_free", tcp_seg_free},
+    {"tcp_segs_free", tcp_segs_free},
+    {"tcp_send_empty_ack", tcp_send_empty_ack},
+    {"tcp_send_fin", tcp_send_fin},
+    {"tcp_sent", tcp_sent},
+    {"tcp_setprio", tcp_setprio},
+    {"tcp_shutdown", tcp_shutdown},
+    {"tcp_slowtmr", tcp_slowtmr},
+    {"tcp_split_unsent_seg", tcp_split_unsent_seg},
+    {"tcp_tcp_get_tcp_addrinfo", tcp_tcp_get_tcp_addrinfo},
+    {"tcp_timer_needed", tcp_timer_needed},
+    {"tcp_tmr", tcp_tmr},
+    {"tcp_trigger_input_pcb_close", tcp_trigger_input_pcb_close},
+    {"tcp_update_rcv_ann_wnd", tcp_update_rcv_ann_wnd},
+    {"tcp_write", tcp_write},
+    {"tcp_zero_window_probe", tcp_zero_window_probe},
     {"text", text},
     {"time", time},
     {"time_reached", stub_time_reached},
@@ -1941,6 +2403,21 @@ const symbols sdkfuncs[] = {
     {"uart_tx_wait_blocking", stub_uart_tx_wait_blocking},
     {"uart_write_blocking", stub_uart_write_blocking},
     {"uclose", uclose},
+    {"udp_bind", udp_bind},
+    {"udp_bind_netif", udp_bind_netif},
+    {"udp_connect", udp_connect},
+    {"udp_disconnect", udp_disconnect},
+    {"udp_init", udp_init},
+    {"udp_input", udp_input},
+    {"udp_netif_ip_addr_changed", udp_netif_ip_addr_changed},
+    {"udp_new", udp_new},
+    {"udp_new_ip_type", udp_new_ip_type},
+    {"udp_recv", udp_recv},
+    {"udp_remove", udp_remove},
+    {"udp_send", udp_send},
+    {"udp_sendto", udp_sendto},
+    {"udp_sendto_if", udp_sendto_if},
+    {"udp_sendto_if_src", udp_sendto_if_src},
     {"ufix2double", ufix2double},
     {"ufix2float", ufix2float},
     {"ufix642double", ufix642double},
@@ -1987,6 +2464,7 @@ const symbols sdkfuncs[] = {
     {"watchdog_update", watchdog_update},
     {"wcrtomb", wcrtomb},
     {"widths", widths},
+    {"write_reg_u32_swap", write_reg_u32_swap},
     {"xeq", xeq},
     {"xeqvdu", xeqvdu},
     {"xfix", xfix},
