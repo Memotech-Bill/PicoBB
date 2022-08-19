@@ -1,5 +1,7 @@
 # Header files for the majority of the SDK functions
 %global NDEBUG
+%function is_pico_w
+%function cyw43_support
 src/common/pico_base/include/pico/config.h
 src/common/pico_base/include/pico/error.h
 src/common/pico_base/include/pico.h

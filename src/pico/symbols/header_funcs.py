@@ -209,7 +209,7 @@ def header_list (sOut, sStub, lList):
                            lparts = sLine.split ()
                            fOut.write (lparts[1])
                            if ( len (lparts) > 2 ):
-                              fOut.write ('\t' + lParts[1] + '\n')
+                              fOut.write ('\t' + lparts[2] + '\n')
                            else:
                               fOut.write ('\n')
                         else:

@@ -2171,6 +2171,39 @@ const char *cyw43_support (void)
     return "None";
 #endif
     }
+
+// Work around bug in cyw43_arch_deinit()
+#ifdef HAVE_CYW43
+static bool is_cyw43_init = false;
+    
+int cyw43_arch_init_safe (void)
+    {
+    int iErr = 0;
+    if ( ! is_cyw43_init )
+        {
+        iErr = cyw43_arch_init ();
+        if ( iErr == 0 ) is_cyw43_init = true;
+        }
+    return iErr;
+    }
+
+int cyw43_arch_init_with_country_safe (uint32_t country)
+    {
+    if ( is_cyw43_init ) cyw43_arch_deinit ();
+    int iErr = cyw43_arch_init_with_country (country);
+    if ( iErr == 0 ) is_cyw43_init = true;
+    return iErr;
+    }
+
+void cyw43_arch_deinit_safe (void)
+    {
+    if ( is_cyw43_init )
+        {
+        cyw43_arch_deinit ();
+        is_cyw43_init = false;
+        }
+    }
+#endif
 #endif
 
 void *main_init (int argc, char *argv[])
@@ -2181,7 +2214,7 @@ void *main_init (int argc, char *argv[])
 #ifdef HAVE_CYW43
     if ( is_pico_w () )
         {
-        iCyw = cyw43_arch_init ();
+        iCyw = cyw43_arch_init_safe ();
         }
     else
         {
@@ -2232,10 +2265,10 @@ void *main_init (int argc, char *argv[])
     setup_keyboard ();
     waitdone = 1;
 #endif
-	mount ();
 #ifdef PICO_SOUND
     snd_setup ();
 #endif
+	mount ();
 #endif
     int i;
     char *env, *p, *q;

@@ -25,16 +25,15 @@ def map_funcs (sIn, sOut):
                     '# Do not edit\n#\n')
         bInMap = False
         bInText = False
-        sPrefix = ''
         for sLine in fIn:
-            sLine = sPrefix + sLine.strip ()
-            sPrefix = ''
+            sLine = sLine.strip ()
             if ( bInMap ):
-                if ( sLine.startswith ('.text ') ):
+                if ( sLine.startswith ('.text') ):
                     bInText = True
                 elif (( bInText ) and ( sLine.startswith ('0x') )):
                     lParts = sLine.split ()
-                    save_rtn (fOut, lParts[1])
+                    if ( len (lParts) == 2 ):
+                        save_rtn (fOut, lParts[1])
                 else:
                     bInText = False
             elif ( sLine == 'Linker script and memory map' ):

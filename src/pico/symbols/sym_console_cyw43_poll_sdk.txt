@@ -3,6 +3,8 @@
 # Do not edit
 #
 # Processing file ../../src/pico/symbols/sdk_headers.txt
+is_pico_w
+cyw43_support
 #
 # From file /home/pi/pico/pico-sdk/src/common/pico_base/include/pico/types.h
 to_us_since_boot	stub_to_us_since_boot
@@ -725,13 +727,13 @@ stdio_usb_init
 stdio_usb_connected
 #
 # Processing file ../../src/pico/symbols/sdk_cyw43.txt
+cyw43_arch_init	cyw43_arch_init_safe
+cyw43_arch_init_with_country	cyw43_arch_init_with_country_safe
+cyw43_arch_deinit	cyw43_arch_deinit_safe
 #
 # From file /home/pi/pico/pico-sdk/src/rp2_common/pico_cyw43_arch/include/pico/cyw43_arch.h
-cyw43_arch_init
-cyw43_arch_init_with_country
 cyw43_arch_enable_sta_mode
 cyw43_arch_enable_ap_mode
-cyw43_arch_deinit
 cyw43_arch_wifi_connect_blocking
 cyw43_arch_wifi_connect_timeout_ms
 cyw43_arch_wifi_connect_async

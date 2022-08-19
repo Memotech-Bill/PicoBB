@@ -3,6 +3,8 @@
 # Do not edit
 #
 # Processing file ../../src/pico/symbols/sdk_headers.txt
+is_pico_w
+cyw43_support
 #
 # From file /home/pi/pico/pico-sdk/src/common/pico_base/include/pico/types.h
 to_us_since_boot	stub_to_us_since_boot
@@ -725,7 +727,7 @@ stdio_usb_init
 stdio_usb_connected
 #
 # Processing file ../../src/pico/symbols/sdk_cyw43_gpio.txt
-cyw43_arch_init
-cyw43_arch_deinit
+cyw43_arch_init	cyw43_arch_init_safe
+cyw43_arch_deinit	cyw43_arch_deinit_safe
 cyw43_arch_gpio_get
 cyw43_arch_gpio_put

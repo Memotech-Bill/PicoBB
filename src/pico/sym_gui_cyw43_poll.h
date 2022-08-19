@@ -5,6 +5,10 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wbuiltin-declaration-mismatch"
 
+void GetTicks (void);
+void StartTimer (void);
+void StopTimer (void);
+void SystemIO (void);
 void stub__pio_encode_instr_and_args (void);
 void stub__pio_encode_instr_and_src_dest (void);
 void stub__pio_encode_irq (void);
@@ -31,6 +35,7 @@ void stub_add_alarm_in_ms (void);
 void stub_add_alarm_in_us (void);
 void stub_add_repeating_timer_ms (void);
 void stub_add_repeating_timer_us (void);
+void adval (void);
 void alarm_pool_add_alarm_at (void);
 void stub_alarm_pool_add_alarm_in_ms (void);
 void stub_alarm_pool_add_alarm_in_us (void);
@@ -42,11 +47,19 @@ void alarm_pool_destroy (void);
 void alarm_pool_get_default (void);
 void alarm_pool_hardware_alarm_num (void);
 void alarm_pool_init_default (void);
+void allocbuf (void);
+void allocs (void);
+void alloct (void);
+void apicall_ (void);
+void arrlen (void);
 void asctime (void);
 void asctime_r (void);
+void assemble (void);
 void atoi (void);
+void basic (void);
 void bbcfont (void);
 void best_effort_wfe_or_timeout (void);
+void braket (void);
 void busy_wait_ms (void);
 void busy_wait_until (void);
 void busy_wait_us (void);
@@ -54,6 +67,7 @@ void busy_wait_us_32 (void);
 void calloc (void);
 void stub_cancel_alarm (void);
 void cancel_repeating_timer (void);
+void channel (void);
 void stub_channel_config_get_ctrl_value (void);
 void stub_channel_config_set_bswap (void);
 void stub_channel_config_set_chain_to (void);
@@ -66,6 +80,7 @@ void stub_channel_config_set_ring (void);
 void stub_channel_config_set_sniff_enable (void);
 void stub_channel_config_set_transfer_data_size (void);
 void stub_channel_config_set_write_increment (void);
+void check (void);
 void stub_check_dma_channel_param (void);
 void stub_check_dma_timer_param (void);
 void stub_check_gpio_param (void);
@@ -76,6 +91,8 @@ void stub_check_slice_num_param (void);
 void stub_check_sm_mask (void);
 void stub_check_sm_param (void);
 void check_sys_clock_khz (void);
+void checkbuf (void);
+void clear (void);
 void clock_configure (void);
 void clock_configure_gpin (void);
 void clock_get_hz (void);
@@ -84,42 +101,132 @@ void clock_set_reported_hz (void);
 void clock_stop (void);
 void clocks_enable_resus (void);
 void clocks_init (void);
+void clrrgb (void);
+void clrtrp (void);
+void comma (void);
+void con (void);
+void cons (void);
+void core1_wrapper (void);
+void crash_report (void);
+void create (void);
 void critical_section_deinit (void);
 void stub_critical_section_enter_blocking (void);
 void stub_critical_section_exit (void);
 void critical_section_init (void);
 void critical_section_init_with_lock_num (void);
+void crlf (void);
+void csrdef (void);
 void ctime (void);
-void cyw43_arch_deinit (void);
+void cyw43_arch_deinit_safe (void);
+void cyw43_arch_deinit_safe (void);
 void cyw43_arch_enable_ap_mode (void);
 void cyw43_arch_enable_sta_mode (void);
 void cyw43_arch_get_country_code (void);
 void cyw43_arch_gpio_get (void);
 void cyw43_arch_gpio_put (void);
-void cyw43_arch_init (void);
-void cyw43_arch_init_with_country (void);
+void cyw43_arch_init_safe (void);
+void cyw43_arch_init_safe (void);
+void cyw43_arch_init_with_country_safe (void);
+void cyw43_arch_init_with_country_safe (void);
 void stub_cyw43_arch_lwip_protect (void);
 void cyw43_arch_poll (void);
 void cyw43_arch_wifi_connect_async (void);
 void cyw43_arch_wifi_connect_blocking (void);
 void cyw43_arch_wifi_connect_timeout_ms (void);
+void cyw43_arch_wifi_connect_until (void);
+void cyw43_cb_ensure_awake (void);
+void cyw43_cb_process_async_event (void);
+void cyw43_cb_process_ethernet (void);
+void cyw43_cb_read_host_interrupt_pin (void);
+void cyw43_cb_tcpip_deinit (void);
+void cyw43_cb_tcpip_init (void);
+void cyw43_cb_tcpip_set_link_down (void);
+void cyw43_cb_tcpip_set_link_up (void);
+void cyw43_deinit (void);
+void cyw43_gpio_get (void);
+void cyw43_gpio_set (void);
+void cyw43_hal_generate_laa_mac (void);
+void cyw43_hal_get_mac (void);
+void cyw43_init (void);
+void cyw43_ll_bus_init (void);
+void cyw43_ll_bus_sleep (void);
+void cyw43_ll_deinit (void);
+void cyw43_ll_gpio_get (void);
+void cyw43_ll_gpio_set (void);
+void cyw43_ll_has_work (void);
+void cyw43_ll_init (void);
+void cyw43_ll_ioctl (void);
+void cyw43_ll_process_packets (void);
+void cyw43_ll_send_ethernet (void);
+void cyw43_ll_wifi_ap_init (void);
+void cyw43_ll_wifi_ap_set_up (void);
+void cyw43_ll_wifi_get_mac (void);
+void cyw43_ll_wifi_join (void);
+void cyw43_ll_wifi_on (void);
+void cyw43_ll_wifi_pm (void);
+void cyw43_ll_wifi_rejoin (void);
+void cyw43_ll_wifi_set_wpa_auth (void);
 void cyw43_post_poll_hook (void);
+void cyw43_read_bytes (void);
+void cyw43_read_reg_u16 (void);
+void cyw43_read_reg_u32 (void);
+void cyw43_read_reg_u8 (void);
 void cyw43_schedule_internal_poll_dispatch (void);
+void cyw43_send_ethernet (void);
+void cyw43_spi_deinit (void);
+void cyw43_spi_gpio_setup (void);
+void cyw43_spi_init (void);
+void cyw43_spi_reset (void);
+void cyw43_spi_transfer (void);
+void cyw43_support (void);
+void cyw43_tcpip_link_status (void);
+void cyw43_wifi_get_mac (void);
+void cyw43_wifi_join (void);
+void cyw43_wifi_link_status (void);
+void cyw43_wifi_pm (void);
+void cyw43_wifi_set_up (void);
+void cyw43_write_bytes (void);
+void cyw43_write_reg_u16 (void);
+void cyw43_write_reg_u32 (void);
+void cyw43_write_reg_u8 (void);
 void datetime_to_str (void);
+void defclr (void);
 void stub_delayed_by_ms (void);
 void stub_delayed_by_us (void);
+void dhcp_coarse_tmr (void);
+void dhcp_fine_tmr (void);
+void dhcp_network_changed_link_up (void);
+void dhcp_release_and_stop (void);
+void dhcp_renew (void);
+void dhcp_set_struct (void);
+void dhcp_start (void);
+void dhcp_stop (void);
+void dhcp_supplied_address (void);
+void disk_initialize (void);
+void disk_ioctl (void);
+void disk_read (void);
+void disk_status (void);
+void disk_write (void);
+void dispmode (void);
 void div_s32s32 (void);
 void div_s64s64 (void);
 void div_u32u32 (void);
 void div_u64u64 (void);
 void divmod_s32s32 (void);
 void stub_divmod_s32s32_rem (void);
+void divmod_s32s32_savestate (void);
+void divmod_s32s32_unsafe (void);
 void divmod_s64s64 (void);
 void divmod_s64s64_rem (void);
+void divmod_s64s64_unsafe (void);
 void divmod_u32u32 (void);
 void stub_divmod_u32u32_rem (void);
+void divmod_u32u32_savestate (void);
+void divmod_u32u32_unsafe (void);
 void divmod_u64u64 (void);
 void divmod_u64u64_rem (void);
+void divmod_u64u64_savestate (void);
+void divmod_u64u64_unsafe (void);
 void stub_dma_channel_abort (void);
 void stub_dma_channel_acknowledge_irq0 (void);
 void stub_dma_channel_acknowledge_irq1 (void);
@@ -154,6 +261,9 @@ void dma_timer_is_claimed (void);
 void stub_dma_timer_set_fraction (void);
 void dma_timer_unclaim (void);
 void dma_unclaim_mask (void);
+void dns_init (void);
+void dns_setserver (void);
+void dns_tmr (void);
 void double2fix (void);
 void double2fix64 (void);
 void double2int (void);
@@ -162,17 +272,59 @@ void double2int64_z (void);
 void double2int_z (void);
 void double2ufix (void);
 void double2ufix64 (void);
+void double2uint (void);
+void double_table_shim_on_use_helper (void);
+void doublebuf (void);
+void entry (void);
+void envel (void);
+void error (void);
+void etharp_cleanup_netif (void);
+void etharp_input (void);
+void etharp_output (void);
+void etharp_query (void);
+void etharp_request (void);
+void etharp_tmr (void);
+void ethernet_input (void);
+void ethernet_output (void);
 void exception_get_vtable_handler (void);
 void exception_restore_handler (void);
 void exception_set_exclusive_handler (void);
+void exit (void);
 void exp10 (void);
 void exp10f (void);
+void expr (void);
+void expra (void);
+void expri (void);
+void exprn (void);
+void exprs (void);
+void f_chdir (void);
+void f_close (void);
+void f_closedir (void);
+void f_lseek (void);
+void f_mkdir (void);
+void f_mount (void);
+void f_open (void);
+void f_opendir (void);
+void f_read (void);
+void f_readdir (void);
+void f_rename (void);
+void f_sync (void);
+void f_unlink (void);
+void f_write (void);
+void faterr (void);
 void fclose (void);
+void ff_memalloc (void);
+void ff_memfree (void);
+void ff_oem2uni (void);
+void ff_uni2oem (void);
+void ff_wtoupper (void);
 void fflush (void);
+void findl (void);
 void fix2double (void);
 void fix2float (void);
 void fix642double (void);
 void fix642float (void);
+void fixs (void);
 void flash_do_cmd (void);
 void flash_get_unique_id (void);
 void flash_range_erase (void);
@@ -185,6 +337,8 @@ void float2int64_z (void);
 void float2int_z (void);
 void float2ufix (void);
 void float2ufix64 (void);
+void floorl (void);
+void fltcall_ (void);
 void fputwc (void);
 void fread (void);
 void free (void);
@@ -194,8 +348,23 @@ void fseek (void);
 void fseeko (void);
 void fvtab (void);
 void fwrite (void);
+void genrb (void);
 void stub_get_absolute_time (void);
 void getchar_timeout_us (void);
+void getcsr (void);
+void getdef (void);
+void getdim (void);
+void geteof (void);
+void getext (void);
+void getime (void);
+void getims (void);
+void getkey (void);
+void getptr (void);
+void getput (void);
+void gettop (void);
+void getvar (void);
+void gfxPrimitivesGetFont (void);
+void gfxPrimitivesSetFont (void);
 void gmtime_r (void);
 void gpio_acknowledge_irq (void);
 void stub_gpio_add_raw_irq_handler (void);
@@ -248,12 +417,43 @@ void gpio_set_outover (void);
 void gpio_set_pulls (void);
 void gpio_set_slew_rate (void);
 void stub_gpio_xor_mask (void);
+void guicall (void);
+void hard_assertion_failure (void);
 void hardware_alarm_cancel (void);
 void hardware_alarm_claim (void);
 void hardware_alarm_is_claimed (void);
 void hardware_alarm_set_callback (void);
 void hardware_alarm_set_target (void);
 void hardware_alarm_unclaim (void);
+void hcd_device_close (void);
+void hcd_edpt_open (void);
+void hcd_edpt_xfer (void);
+void hcd_event_device_attach (void);
+void hcd_event_device_remove (void);
+void hcd_event_handler (void);
+void hcd_event_xfer_complete (void);
+void hcd_init (void);
+void hcd_int_enable (void);
+void hcd_port_connect_status (void);
+void hcd_port_reset (void);
+void hcd_port_speed_get (void);
+void hcd_setup_send (void);
+void hidecsr (void);
+void hidh_close (void);
+void hidh_init (void);
+void hidh_open (void);
+void hidh_set_config (void);
+void hidh_xfer_cb (void);
+void hub_close (void);
+void hub_init (void);
+void hub_open (void);
+void hub_port_clear_feature (void);
+void hub_port_get_status (void);
+void hub_port_reset (void);
+void hub_port_set_feature (void);
+void hub_set_config (void);
+void hub_status_pipe_queue (void);
+void hub_xfer_cb (void);
 void hw_claim_clear (void);
 void hw_claim_lock (void);
 void hw_claim_or_assert (void);
@@ -281,6 +481,9 @@ void stub_hw_divider_u32_remainder (void);
 void stub_hw_divider_u32_remainder_inlined (void);
 void stub_hw_divider_u32_remainder_wait (void);
 void stub_hw_divider_wait_ready (void);
+void hw_endpoint_reset_transfer (void);
+void hw_endpoint_xfer_continue (void);
+void hw_endpoint_xfer_start (void);
 void hw_is_claimed (void);
 void i2c_deinit (void);
 void stub_i2c_get_dreq (void);
@@ -301,6 +504,14 @@ void i2c_write_blocking_until (void);
 void stub_i2c_write_raw_blocking (void);
 void i2c_write_timeout_per_char_us (void);
 void stub_i2c_write_timeout_us (void);
+void icmp_dest_unreach (void);
+void icmp_input (void);
+void icmp_time_exceeded (void);
+void inet_chksum (void);
+void inet_chksum_pbuf (void);
+void inet_chksum_pseudo (void);
+void init_per_iteration_timeout_us (void);
+void init_single_timeout_until (void);
 void stub_interp_add_accumulater (void);
 void interp_claim_lane (void);
 void interp_claim_lane_mask (void);
@@ -332,7 +543,17 @@ void stub_interp_set_config (void);
 void stub_interp_set_force_bits (void);
 void interp_unclaim_lane (void);
 void interp_unclaim_lane_mask (void);
+void ip4_addr_isbroadcast_u32 (void);
+void ip4_frag (void);
+void ip4_input (void);
+void ip4_output_if (void);
+void ip4_output_if_src (void);
+void ip4_reass (void);
+void ip4_route (void);
+void ip_chksum_pseudo (void);
+void ip_reass_tmr (void);
 void irq_add_shared_handler (void);
+void irq_add_tail_to_free_list (void);
 void stub_irq_clear (void);
 void irq_get_exclusive_handler (void);
 void irq_get_priority (void);
@@ -348,20 +569,75 @@ void irq_set_pending (void);
 void irq_set_priority (void);
 void stub_is_at_the_end_of_time (void);
 void stub_is_nil_time (void);
+void is_pico_w (void);
 void iswspace (void);
 void iswspace_l (void);
+void item (void);
+void itemi (void);
+void items (void);
+void lexan (void);
+void lfs_bbc_createcfg (void);
+void lfs_bbc_erase (void);
+void lfs_bbc_prog (void);
+void lfs_bbc_read (void);
+void lfs_bbc_sync (void);
+void lfs_crc (void);
+void lfs_dir_close (void);
+void lfs_dir_open (void);
+void lfs_dir_read (void);
+void lfs_file_close (void);
+void lfs_file_open (void);
+void lfs_file_read (void);
+void lfs_file_seek (void);
+void lfs_file_tell (void);
+void lfs_file_write (void);
+void lfs_format (void);
+void lfs_mkdir (void);
+void lfs_mount (void);
+void lfs_remove (void);
+void lfs_rename (void);
+void listline (void);
+void loadi (void);
+void loadn (void);
+void loads (void);
 void localeconv (void);
 void localtime (void);
 void localtime_r (void);
 void lock_init (void);
 void longjmp (void);
+void lwip_htonl (void);
+void lwip_htons (void);
+void lwip_init (void);
+void lwip_standard_chksum (void);
+void main (void);
+void main_init (void);
+void main_term (void);
 void stub_make_timeout_time_ms (void);
 void stub_make_timeout_time_us (void);
 void malloc (void);
+void math (void);
 void mbrtowc (void);
+void mem_free (void);
+void mem_init (void);
+void mem_malloc (void);
+void mem_trim (void);
 void memchr (void);
 void memcmp (void);
 void memmove (void);
+void memp_free (void);
+void memp_init (void);
+void memp_init_pool (void);
+void memp_malloc (void);
+void message (void);
+void modechg (void);
+void modifs (void);
+void modify (void);
+void mount (void);
+void mouse (void);
+void mouseoff (void);
+void mouseon (void);
+void mouseto (void);
+void moves (void);
 void stub_multicore_fifo_clear_irq (void);
 void stub_multicore_fifo_drain (void);
 void stub_multicore_fifo_get_status (void);
@@ -388,9 +664,57 @@ void mutex_exit (void);
 void mutex_init (void);
 void stub_mutex_is_initialized (void);
 void mutex_try_enter (void);
+void mychdir (void);
+void mychmod (void);
+void myclosedir (void);
+void myfclose (void);
+void myfopen (void);
+void myfread (void);
+void myfseek (void);
+void myftell (void);
+void myfwrite (void);
+void mygetcwd (void);
+void mymkdir (void);
+void myopendir (void);
+void myreaddir (void);
+void myrealpath (void);
+void myrename (void);
+void myrmdir (void);
+void mysleep (void);
+void myusleep (void);
 void nan (void);
 void nanf (void);
+void netif_add (void);
+void netif_get_by_index (void);
+void netif_init (void);
+void netif_remove (void);
+void netif_set_addr (void);
+void netif_set_default (void);
+void netif_set_down (void);
+void netif_set_link_down (void);
+void netif_set_link_up (void);
+void netif_set_up (void);
+void newlin (void);
 void next_striped_spin_lock_num (void);
+void nxt (void);
+void osbget (void);
+void osbput (void);
+void osbyte (void);
+void oscall (void);
+void oscli (void);
+void oshwm (void);
+void oskey (void);
+void osline (void);
+void osload (void);
+void osopen (void);
+void osrdch (void);
+void ossave (void);
+void osshut (void);
+void oswait (void);
+void osword (void);
+void oswrch (void);
+void outchr (void);
+void panic (void);
 void pbuf_add_header (void);
 void pbuf_add_header_force (void);
 void pbuf_alloc (void);
@@ -406,6 +730,7 @@ void pbuf_copy_partial_pbuf (void);
 void pbuf_dechain (void);
 void pbuf_free (void);
 void pbuf_free_header (void);
+void pbuf_free_ooseq (void);
 void pbuf_get_at (void);
 void pbuf_get_contiguous (void);
 void pbuf_header (void);
@@ -429,6 +754,7 @@ void ph_dump (void);
 void stub_ph_free_node (void);
 void stub_ph_get_node (void);
 void stub_ph_insert_node (void);
+void ph_merge_two_pass (void);
 void stub_ph_new_node (void);
 void stub_ph_peek_head (void);
 void ph_post_alloc_init (void);
@@ -437,6 +763,7 @@ void ph_remove_and_free_node (void);
 void ph_remove_head (void);
 void pico_get_unique_board_id (void);
 void pico_get_unique_board_id_string (void);
+void pico_lwip_rand (void);
 void pio_add_program (void);
 void pio_add_program_at_offset (void);
 void stub_pio_calculate_clkdiv_from_float (void);
@@ -524,10 +851,19 @@ void stub_pio_sm_set_wrap (void);
 void pio_sm_unclaim (void);
 void pll_deinit (void);
 void pll_init (void);
+void pop_r8_r11 (void);
 void powint (void);
 void powintf (void);
+void procfn (void);
+void push_r8_r11 (void);
+void pushs (void);
 void putchar_raw (void);
+void putdef (void);
+void putevt (void);
+void putime (void);
+void putkey (void);
 void puts_raw (void);
+void putvar (void);
 void stub_pwm_advance_count (void);
 void stub_pwm_clear_irq (void);
 void stub_pwm_config_set_clkdiv (void);
@@ -572,6 +908,13 @@ void queue_remove_blocking (void);
 void queue_try_add (void);
 void queue_try_peek (void);
 void queue_try_remove (void);
+void quiet (void);
+void range0 (void);
+void range1 (void);
+void range2 (void);
+void raw_input (void);
+void raw_netif_ip_addr_changed (void);
+void read_reg_u32_swap (void);
 void recursive_mutex_enter_block_until (void);
 void recursive_mutex_enter_blocking (void);
 void recursive_mutex_enter_timeout_ms (void);
@@ -580,7 +923,16 @@ void recursive_mutex_exit (void);
 void recursive_mutex_init (void);
 void stub_recursive_mutex_is_initialized (void);
 void recursive_mutex_try_enter (void);
+void refresh (void);
+void report (void);
+void reset (void);
 void stub_reset_block (void);
+void rgbclr (void);
+void rnd (void);
+void rom_data_lookup (void);
+void rom_func_lookup (void);
+void rom_funcs_lookup (void);
+void rp2040_usb_init (void);
 void rtc_disable_alarm (void);
 void rtc_enable_alarm (void);
 void rtc_get_datetime (void);
@@ -588,6 +940,25 @@ void rtc_init (void);
 void rtc_running (void);
 void rtc_set_alarm (void);
 void rtc_set_datetime (void);
+void running_on_fpga (void);
+void runtime_init (void);
+void scanvideo_set_scanline_repeat_fn (void);
+void scanvideo_setup (void);
+void scanvideo_setup_with_timing (void);
+void scanvideo_timing_enable (void);
+void sd_spi_clk (void);
+void sd_spi_cmd (void);
+void sd_spi_freq (void);
+void sd_spi_get (void);
+void sd_spi_init (void);
+void sd_spi_load (void);
+void sd_spi_put (void);
+void sd_spi_read (void);
+void sd_spi_set_crc7 (void);
+void sd_spi_set_lba (void);
+void sd_spi_write (void);
+void sd_spi_xfer (void);
+void search (void);
 void sem_acquire_block_until (void);
 void sem_acquire_blocking (void);
 void sem_acquire_timeout_ms (void);
@@ -597,14 +968,25 @@ void sem_init (void);
 void sem_release (void);
 void sem_reset (void);
 void sem_try_acquire (void);
+void set_leds (void);
 void set_sys_clock_48mhz (void);
 void stub_set_sys_clock_khz (void);
 void set_sys_clock_pll (void);
 void setjmp (void);
+void setlin (void);
 void setlocale (void);
+void setmode (void);
+void setptr (void);
+void setup (void);
 void setup_default_uart (void);
+void setup_keyboard (void);
+void setup_vdu (void);
+void setup_video (void);
+void showcsr (void);
 void sincos (void);
 void sincosf (void);
+void sincostan_remainder (void);
+void singlebuf (void);
 void siprintf (void);
 void siscanf (void);
 void sleep_ms (void);
@@ -624,7 +1006,17 @@ void stub_sm_config_set_set_pins (void);
 void stub_sm_config_set_sideset (void);
 void stub_sm_config_set_sideset_pins (void);
 void stub_sm_config_set_wrap (void);
+void snd_free (void);
+void snd_freq (void);
+void snd_init (void);
+void snd_process (void);
+void snd_setup (void);
+void snd_start (void);
+void snd_stop (void);
+void snd_term (void);
 void snprintf (void);
+void sound (void);
+void spaces (void);
 void spi_deinit (void);
 void spi_get_baudrate (void);
 void stub_spi_get_const_hw (void);
@@ -653,19 +1045,29 @@ void spin_lock_unclaim (void);
 void spin_locks_reset (void);
 void sprintf (void);
 void sscanf (void);
+void stack_trap (void);
+void stats_init (void);
+void stdin_handler (void);
 void stdin_uart_init (void);
 void stdio_filter_driver (void);
 void stdio_flush (void);
 void stdio_init_all (void);
 void stdio_set_driver_enabled (void);
 void stdio_set_translate_crlf (void);
+void stdio_uart_in_chars (void);
 void stdio_uart_init (void);
 void stdio_uart_init_full (void);
+void stdout_serialize_begin (void);
+void stdout_serialize_end (void);
 void stdout_uart_init (void);
+void storen (void);
+void stores (void);
+void str (void);
 void strcat (void);
 void strchr (void);
 void strcpy (void);
 void strcspn (void);
+void strhex (void);
 void strlen (void);
 void strncasecmp (void);
 void strncat (void);
@@ -687,36 +1089,104 @@ void strtoul (void);
 void strtoul_l (void);
 void strtoull (void);
 void strtoull_l (void);
+void swapbuf (void);
+void sys_arch_protect (void);
+void sys_arch_unprotect (void);
+void sys_check_timeouts (void);
+void sys_now (void);
+void sys_timeout (void);
+void sys_timeouts_init (void);
+void sysadr (void);
+void syserror (void);
 void system (void);
+void tcp_abandon (void);
 void tcp_abort (void);
 void tcp_accept (void);
+void tcp_alloc (void);
 void tcp_arg (void);
 void tcp_bind (void);
 void tcp_bind_netif (void);
 void tcp_close (void);
 void tcp_connect (void);
+void tcp_eff_send_mss_netif (void);
+void tcp_enqueue_flags (void);
 void tcp_err (void);
+void tcp_fasttmr (void);
+void tcp_free (void);
+void tcp_free_ooseq (void);
+void tcp_init (void);
+void tcp_input (void);
+void tcp_keepalive (void);
 void tcp_listen_with_backlog (void);
 void tcp_listen_with_backlog_and_err (void);
+void tcp_netif_ip_addr_changed (void);
 void tcp_new (void);
 void tcp_new_ip_type (void);
+void tcp_next_iss (void);
 void tcp_output (void);
+void tcp_pcb_purge (void);
+void tcp_pcb_remove (void);
 void tcp_poll (void);
+void tcp_process_refused_data (void);
 void tcp_recv (void);
+void tcp_recv_null (void);
 void tcp_recved (void);
+void tcp_rexmit (void);
+void tcp_rexmit_fast (void);
+void tcp_rexmit_rto (void);
+void tcp_rexmit_rto_commit (void);
+void tcp_rexmit_rto_prepare (void);
+void tcp_rst (void);
+void tcp_rst_netif (void);
+void tcp_seg_copy (void);
+void tcp_seg_free (void);
+void tcp_segs_free (void);
+void tcp_send_empty_ack (void);
+void tcp_send_fin (void);
 void tcp_sent (void);
 void tcp_setprio (void);
 void tcp_shutdown (void);
+void tcp_slowtmr (void);
+void tcp_split_unsent_seg (void);
 void tcp_tcp_get_tcp_addrinfo (void);
+void tcp_timer_needed (void);
+void tcp_tmr (void);
+void tcp_trigger_input_pcb_close (void);
+void tcp_update_rcv_ann_wnd (void);
 void tcp_write (void);
+void tcp_zero_window_probe (void);
+void testkey (void);
+void text (void);
 void time (void);
 void stub_time_reached (void);
 void stub_time_us_32 (void);
 void time_us_64 (void);
+void timer_pool_entry_comparator (void);
 void stub_to_ms_since_boot (void);
 void stub_to_us_since_boot (void);
+void token (void);
+void trap (void);
 void truncl (void);
 void ttxtfont (void);
+void tu_desc_get_interface_total_len (void);
+void tu_edpt_bind_driver (void);
+void tu_edpt_validate (void);
+void tu_fifo_clear (void);
+void tu_fifo_read (void);
+void tu_fifo_write (void);
+void tuh_control_xfer (void);
+void tuh_hid_interface_protocol (void);
+void tuh_hid_mount_cb (void);
+void tuh_hid_parse_report_descriptor (void);
+void tuh_hid_receive_report (void);
+void tuh_hid_report_received_cb (void);
+void tuh_hid_umount_cb (void);
+void tuh_init (void);
+void tuh_inited (void);
+void tuh_speed_get (void);
+void tuh_task (void);
+void tusb_init (void);
+void tusb_inited (void);
 void tzset (void);
 void stub_uart_default_tx_wait_blocking (void);
 void uart_deinit (void);
@@ -767,15 +1237,31 @@ void stub_unreset_block (void);
 void stub_unreset_block_wait (void);
 void stub_update_us_since_boot (void);
 void stub_us_to_ms (void);
+void usbh_control_xfer_cb (void);
+void usbh_driver_set_config_complete (void);
+void usbh_edpt_claim (void);
+void usbh_edpt_open (void);
+void usbh_edpt_xfer (void);
+void usbh_get_enum_buf (void);
+void usbh_get_rhport (void);
 void user_irq_claim (void);
 void user_irq_claim_unused (void);
 void user_irq_is_claimed (void);
 void user_irq_unclaim (void);
+void usleep (void);
+void val (void);
 void vfiprintf (void);
 void vfprintf (void);
+void vgetc (void);
+void video_24mhz_composable_adapt_for_mode (void);
+void video_24mhz_composable_configure_pio (void);
+void video_periodic (void);
+void vpoint (void);
 void vprintf (void);
 void vreg_set_voltage (void);
 void vsprintf (void);
+void vtint (void);
+void waitconsole (void);
 void watchdog_caused_reboot (void);
 void watchdog_enable (void);
 void watchdog_enable_caused_reboot (void);
@@ -784,10 +1270,17 @@ void watchdog_reboot (void);
 void watchdog_start_tick (void);
 void watchdog_update (void);
 void wcrtomb (void);
+void widths (void);
+void write_reg_u32_swap (void);
+void xeq (void);
+void xeqvdu (void);
+void xfix (void);
+void xfloat (void);
 void stub_xip_alias_check_addr (void);
 void xosc_disable (void);
 void xosc_dormant (void);
 void xosc_init (void);
+void xtrap (void);
 
 #pragma GCC diagnostic pop
 
@@ -799,6 +1292,10 @@ typedef struct st_symbols
     } symbols;
 
 const symbols sdkfuncs[] = {
+    {"GetTicks", GetTicks},
+    {"StartTimer", StartTimer},
+    {"StopTimer", StopTimer},
+    {"SystemIO", SystemIO},
     {"_pio_encode_instr_and_args", stub__pio_encode_instr_and_args},
     {"_pio_encode_instr_and_src_dest", stub__pio_encode_instr_and_src_dest},
     {"_pio_encode_irq", stub__pio_encode_irq},
@@ -825,6 +1322,7 @@ const symbols sdkfuncs[] = {
     {"add_alarm_in_us", stub_add_alarm_in_us},
     {"add_repeating_timer_ms", stub_add_repeating_timer_ms},
     {"add_repeating_timer_us", stub_add_repeating_timer_us},
+    {"adval", adval},
     {"alarm_pool_add_alarm_at", alarm_pool_add_alarm_at},
     {"alarm_pool_add_alarm_in_ms", stub_alarm_pool_add_alarm_in_ms},
     {"alarm_pool_add_alarm_in_us", stub_alarm_pool_add_alarm_in_us},
@@ -836,11 +1334,19 @@ const symbols sdkfuncs[] = {
     {"alarm_pool_get_default", alarm_pool_get_default},
     {"alarm_pool_hardware_alarm_num", alarm_pool_hardware_alarm_num},
     {"alarm_pool_init_default", alarm_pool_init_default},
+    {"allocbuf", allocbuf},
+    {"allocs", allocs},
+    {"alloct", alloct},
+    {"apicall_", apicall_},
+    {"arrlen", arrlen},
     {"asctime", asctime},
     {"asctime_r", asctime_r},
+    {"assemble", assemble},
     {"atoi", atoi},
+    {"basic", basic},
     {"bbcfont", bbcfont},
     {"best_effort_wfe_or_timeout", best_effort_wfe_or_timeout},
+    {"braket", braket},
     {"busy_wait_ms", busy_wait_ms},
     {"busy_wait_until", busy_wait_until},
     {"busy_wait_us", busy_wait_us},
@@ -848,6 +1354,7 @@ const symbols sdkfuncs[] = {
     {"calloc", calloc},
     {"cancel_alarm", stub_cancel_alarm},
     {"cancel_repeating_timer", cancel_repeating_timer},
+    {"channel", channel},
     {"channel_config_get_ctrl_value", stub_channel_config_get_ctrl_value},
     {"channel_config_set_bswap", stub_channel_config_set_bswap},
     {"channel_config_set_chain_to", stub_channel_config_set_chain_to},
@@ -860,6 +1367,7 @@ const symbols sdkfuncs[] = {
     {"channel_config_set_sniff_enable", stub_channel_config_set_sniff_enable},
     {"channel_config_set_transfer_data_size", stub_channel_config_set_transfer_data_size},
     {"channel_config_set_write_increment", stub_channel_config_set_write_increment},
+    {"check", check},
     {"check_dma_channel_param", stub_check_dma_channel_param},
     {"check_dma_timer_param", stub_check_dma_timer_param},
     {"check_gpio_param", stub_check_gpio_param},
@@ -870,6 +1378,8 @@ const symbols sdkfuncs[] = {
     {"check_sm_mask", stub_check_sm_mask},
     {"check_sm_param", stub_check_sm_param},
     {"check_sys_clock_khz", check_sys_clock_khz},
+    {"checkbuf", checkbuf},
+    {"clear", clear},
     {"clock_configure", clock_configure},
     {"clock_configure_gpin", clock_configure_gpin},
     {"clock_get_hz", clock_get_hz},
@@ -878,42 +1388,132 @@ const symbols sdkfuncs[] = {
     {"clock_stop", clock_stop},
     {"clocks_enable_resus", clocks_enable_resus},
     {"clocks_init", clocks_init},
+    {"clrrgb", clrrgb},
+    {"clrtrp", clrtrp},
+    {"comma", comma},
+    {"con", con},
+    {"cons", cons},
+    {"core1_wrapper", core1_wrapper},
+    {"crash_report", crash_report},
+    {"create", create},
     {"critical_section_deinit", critical_section_deinit},
     {"critical_section_enter_blocking", stub_critical_section_enter_blocking},
     {"critical_section_exit", stub_critical_section_exit},
     {"critical_section_init", critical_section_init},
     {"critical_section_init_with_lock_num", critical_section_init_with_lock_num},
+    {"crlf", crlf},
+    {"csrdef", csrdef},
     {"ctime", ctime},
-    {"cyw43_arch_deinit", cyw43_arch_deinit},
+    {"cyw43_arch_deinit", cyw43_arch_deinit_safe},
+    {"cyw43_arch_deinit_safe", cyw43_arch_deinit_safe},
     {"cyw43_arch_enable_ap_mode", cyw43_arch_enable_ap_mode},
     {"cyw43_arch_enable_sta_mode", cyw43_arch_enable_sta_mode},
     {"cyw43_arch_get_country_code", cyw43_arch_get_country_code},
     {"cyw43_arch_gpio_get", cyw43_arch_gpio_get},
     {"cyw43_arch_gpio_put", cyw43_arch_gpio_put},
-    {"cyw43_arch_init", cyw43_arch_init},
-    {"cyw43_arch_init_with_country", cyw43_arch_init_with_country},
+    {"cyw43_arch_init", cyw43_arch_init_safe},
+    {"cyw43_arch_init_safe", cyw43_arch_init_safe},
+    {"cyw43_arch_init_with_country", cyw43_arch_init_with_country_safe},
+    {"cyw43_arch_init_with_country_safe", cyw43_arch_init_with_country_safe},
     {"cyw43_arch_lwip_protect", stub_cyw43_arch_lwip_protect},
     {"cyw43_arch_poll", cyw43_arch_poll},
     {"cyw43_arch_wifi_connect_async", cyw43_arch_wifi_connect_async},
     {"cyw43_arch_wifi_connect_blocking", cyw43_arch_wifi_connect_blocking},
     {"cyw43_arch_wifi_connect_timeout_ms", cyw43_arch_wifi_connect_timeout_ms},
+    {"cyw43_arch_wifi_connect_until", cyw43_arch_wifi_connect_until},
+    {"cyw43_cb_ensure_awake", cyw43_cb_ensure_awake},
+    {"cyw43_cb_process_async_event", cyw43_cb_process_async_event},
+    {"cyw43_cb_process_ethernet", cyw43_cb_process_ethernet},
+    {"cyw43_cb_read_host_interrupt_pin", cyw43_cb_read_host_interrupt_pin},
+    {"cyw43_cb_tcpip_deinit", cyw43_cb_tcpip_deinit},
+    {"cyw43_cb_tcpip_init", cyw43_cb_tcpip_init},
+    {"cyw43_cb_tcpip_set_link_down", cyw43_cb_tcpip_set_link_down},
+    {"cyw43_cb_tcpip_set_link_up", cyw43_cb_tcpip_set_link_up},
+    {"cyw43_deinit", cyw43_deinit},
+    {"cyw43_gpio_get", cyw43_gpio_get},
+    {"cyw43_gpio_set", cyw43_gpio_set},
+    {"cyw43_hal_generate_laa_mac", cyw43_hal_generate_laa_mac},
+    {"cyw43_hal_get_mac", cyw43_hal_get_mac},
+    {"cyw43_init", cyw43_init},
+    {"cyw43_ll_bus_init", cyw43_ll_bus_init},
+    {"cyw43_ll_bus_sleep", cyw43_ll_bus_sleep},
+    {"cyw43_ll_deinit", cyw43_ll_deinit},
+    {"cyw43_ll_gpio_get", cyw43_ll_gpio_get},
+    {"cyw43_ll_gpio_set", cyw43_ll_gpio_set},
+    {"cyw43_ll_has_work", cyw43_ll_has_work},
+    {"cyw43_ll_init", cyw43_ll_init},
+    {"cyw43_ll_ioctl", cyw43_ll_ioctl},
+    {"cyw43_ll_process_packets", cyw43_ll_process_packets},
+    {"cyw43_ll_send_ethernet", cyw43_ll_send_ethernet},
+    {"cyw43_ll_wifi_ap_init", cyw43_ll_wifi_ap_init},
+    {"cyw43_ll_wifi_ap_set_up", cyw43_ll_wifi_ap_set_up},
+    {"cyw43_ll_wifi_get_mac", cyw43_ll_wifi_get_mac},
+    {"cyw43_ll_wifi_join", cyw43_ll_wifi_join},
+    {"cyw43_ll_wifi_on", cyw43_ll_wifi_on},
+    {"cyw43_ll_wifi_pm", cyw43_ll_wifi_pm},
+    {"cyw43_ll_wifi_rejoin", cyw43_ll_wifi_rejoin},
+    {"cyw43_ll_wifi_set_wpa_auth", cyw43_ll_wifi_set_wpa_auth},
     {"cyw43_post_poll_hook", cyw43_post_poll_hook},
+    {"cyw43_read_bytes", cyw43_read_bytes},
+    {"cyw43_read_reg_u16", cyw43_read_reg_u16},
+    {"cyw43_read_reg_u32", cyw43_read_reg_u32},
+    {"cyw43_read_reg_u8", cyw43_read_reg_u8},
     {"cyw43_schedule_internal_poll_dispatch", cyw43_schedule_internal_poll_dispatch},
+    {"cyw43_send_ethernet", cyw43_send_ethernet},
+    {"cyw43_spi_deinit", cyw43_spi_deinit},
+    {"cyw43_spi_gpio_setup", cyw43_spi_gpio_setup},
+    {"cyw43_spi_init", cyw43_spi_init},
+    {"cyw43_spi_reset", cyw43_spi_reset},
+    {"cyw43_spi_transfer", cyw43_spi_transfer},
+    {"cyw43_support", cyw43_support},
+    {"cyw43_tcpip_link_status", cyw43_tcpip_link_status},
+    {"cyw43_wifi_get_mac", cyw43_wifi_get_mac},
+    {"cyw43_wifi_join", cyw43_wifi_join},
+    {"cyw43_wifi_link_status", cyw43_wifi_link_status},
+    {"cyw43_wifi_pm", cyw43_wifi_pm},
+    {"cyw43_wifi_set_up", cyw43_wifi_set_up},
+    {"cyw43_write_bytes", cyw43_write_bytes},
+    {"cyw43_write_reg_u16", cyw43_write_reg_u16},
+    {"cyw43_write_reg_u32", cyw43_write_reg_u32},
+    {"cyw43_write_reg_u8", cyw43_write_reg_u8},
     {"datetime_to_str", datetime_to_str},
+    {"defclr", defclr},
     {"delayed_by_ms", stub_delayed_by_ms},
     {"delayed_by_us", stub_delayed_by_us},
+    {"dhcp_coarse_tmr", dhcp_coarse_tmr},
+    {"dhcp_fine_tmr", dhcp_fine_tmr},
+    {"dhcp_network_changed_link_up", dhcp_network_changed_link_up},
+    {"dhcp_release_and_stop", dhcp_release_and_stop},
+    {"dhcp_renew", dhcp_renew},
+    {"dhcp_set_struct", dhcp_set_struct},
+    {"dhcp_start", dhcp_start},
+    {"dhcp_stop", dhcp_stop},
+    {"dhcp_supplied_address", dhcp_supplied_address},
+    {"disk_initialize", disk_initialize},
+    {"disk_ioctl", disk_ioctl},
+    {"disk_read", disk_read},
+    {"disk_status", disk_status},
+    {"disk_write", disk_write},
+    {"dispmode", dispmode},
     {"div_s32s32", div_s32s32},
     {"div_s64s64", div_s64s64},
     {"div_u32u32", div_u32u32},
     {"div_u64u64", div_u64u64},
     {"divmod_s32s32", divmod_s32s32},
     {"divmod_s32s32_rem", stub_divmod_s32s32_rem},
+    {"divmod_s32s32_savestate", divmod_s32s32_savestate},
+    {"divmod_s32s32_unsafe", divmod_s32s32_unsafe},
     {"divmod_s64s64", divmod_s64s64},
     {"divmod_s64s64_rem", divmod_s64s64_rem},
+    {"divmod_s64s64_unsafe", divmod_s64s64_unsafe},
     {"divmod_u32u32", divmod_u32u32},
     {"divmod_u32u32_rem", stub_divmod_u32u32_rem},
+    {"divmod_u32u32_savestate", divmod_u32u32_savestate},
+    {"divmod_u32u32_unsafe", divmod_u32u32_unsafe},
     {"divmod_u64u64", divmod_u64u64},
     {"divmod_u64u64_rem", divmod_u64u64_rem},
+    {"divmod_u64u64_savestate", divmod_u64u64_savestate},
+    {"divmod_u64u64_unsafe", divmod_u64u64_unsafe},
     {"dma_channel_abort", stub_dma_channel_abort},
     {"dma_channel_acknowledge_irq0", stub_dma_channel_acknowledge_irq0},
     {"dma_channel_acknowledge_irq1", stub_dma_channel_acknowledge_irq1},
@@ -948,6 +1548,9 @@ const symbols sdkfuncs[] = {
     {"dma_timer_set_fraction", stub_dma_timer_set_fraction},
     {"dma_timer_unclaim", dma_timer_unclaim},
     {"dma_unclaim_mask", dma_unclaim_mask},
+    {"dns_init", dns_init},
+    {"dns_setserver", dns_setserver},
+    {"dns_tmr", dns_tmr},
     {"double2fix", double2fix},
     {"double2fix64", double2fix64},
     {"double2int", double2int},
@@ -956,17 +1559,59 @@ const symbols sdkfuncs[] = {
     {"double2int_z", double2int_z},
     {"double2ufix", double2ufix},
     {"double2ufix64", double2ufix64},
+    {"double2uint", double2uint},
+    {"double_table_shim_on_use_helper", double_table_shim_on_use_helper},
+    {"doublebuf", doublebuf},
+    {"entry", entry},
+    {"envel", envel},
+    {"error", error},
+    {"etharp_cleanup_netif", etharp_cleanup_netif},
+    {"etharp_input", etharp_input},
+    {"etharp_output", etharp_output},
+    {"etharp_query", etharp_query},
+    {"etharp_request", etharp_request},
+    {"etharp_tmr", etharp_tmr},
+    {"ethernet_input", ethernet_input},
+    {"ethernet_output", ethernet_output},
     {"exception_get_vtable_handler", exception_get_vtable_handler},
     {"exception_restore_handler", exception_restore_handler},
     {"exception_set_exclusive_handler", exception_set_exclusive_handler},
+    {"exit", exit},
     {"exp10", exp10},
     {"exp10f", exp10f},
+    {"expr", expr},
+    {"expra", expra},
+    {"expri", expri},
+    {"exprn", exprn},
+    {"exprs", exprs},
+    {"f_chdir", f_chdir},
+    {"f_close", f_close},
+    {"f_closedir", f_closedir},
+    {"f_lseek", f_lseek},
+    {"f_mkdir", f_mkdir},
+    {"f_mount", f_mount},
+    {"f_open", f_open},
+    {"f_opendir", f_opendir},
+    {"f_read", f_read},
+    {"f_readdir", f_readdir},
+    {"f_rename", f_rename},
+    {"f_sync", f_sync},
+    {"f_unlink", f_unlink},
+    {"f_write", f_write},
+    {"faterr", faterr},
     {"fclose", fclose},
+    {"ff_memalloc", ff_memalloc},
+    {"ff_memfree", ff_memfree},
+    {"ff_oem2uni", ff_oem2uni},
+    {"ff_uni2oem", ff_uni2oem},
+    {"ff_wtoupper", ff_wtoupper},
     {"fflush", fflush},
+    {"findl", findl},
     {"fix2double", fix2double},
     {"fix2float", fix2float},
     {"fix642double", fix642double},
     {"fix642float", fix642float},
+    {"fixs", fixs},
     {"flash_do_cmd", flash_do_cmd},
     {"flash_get_unique_id", flash_get_unique_id},
     {"flash_range_erase", flash_range_erase},
@@ -979,6 +1624,8 @@ const symbols sdkfuncs[] = {
     {"float2int_z", float2int_z},
     {"float2ufix", float2ufix},
     {"float2ufix64", float2ufix64},
+    {"floorl", floorl},
+    {"fltcall_", fltcall_},
     {"fputwc", fputwc},
     {"fread", fread},
     {"free", free},
@@ -988,8 +1635,23 @@ const symbols sdkfuncs[] = {
     {"fseeko", fseeko},
     {"fvtab", fvtab},
     {"fwrite", fwrite},
+    {"genrb", genrb},
     {"get_absolute_time", stub_get_absolute_time},
     {"getchar_timeout_us", getchar_timeout_us},
+    {"getcsr", getcsr},
+    {"getdef", getdef},
+    {"getdim", getdim},
+    {"geteof", geteof},
+    {"getext", getext},
+    {"getime", getime},
+    {"getims", getims},
+    {"getkey", getkey},
+    {"getptr", getptr},
+    {"getput", getput},
+    {"gettop", gettop},
+    {"getvar", getvar},
+    {"gfxPrimitivesGetFont", gfxPrimitivesGetFont},
+    {"gfxPrimitivesSetFont", gfxPrimitivesSetFont},
     {"gmtime_r", gmtime_r},
     {"gpio_acknowledge_irq", gpio_acknowledge_irq},
     {"gpio_add_raw_irq_handler", stub_gpio_add_raw_irq_handler},
@@ -1042,12 +1704,43 @@ const symbols sdkfuncs[] = {
     {"gpio_set_pulls", gpio_set_pulls},
     {"gpio_set_slew_rate", gpio_set_slew_rate},
     {"gpio_xor_mask", stub_gpio_xor_mask},
+    {"guicall", guicall},
+    {"hard_assertion_failure", hard_assertion_failure},
     {"hardware_alarm_cancel", hardware_alarm_cancel},
     {"hardware_alarm_claim", hardware_alarm_claim},
     {"hardware_alarm_is_claimed", hardware_alarm_is_claimed},
     {"hardware_alarm_set_callback", hardware_alarm_set_callback},
     {"hardware_alarm_set_target", hardware_alarm_set_target},
     {"hardware_alarm_unclaim", hardware_alarm_unclaim},
+    {"hcd_device_close", hcd_device_close},
+    {"hcd_edpt_open", hcd_edpt_open},
+    {"hcd_edpt_xfer", hcd_edpt_xfer},
+    {"hcd_event_device_attach", hcd_event_device_attach},
+    {"hcd_event_device_remove", hcd_event_device_remove},
+    {"hcd_event_handler", hcd_event_handler},
+    {"hcd_event_xfer_complete", hcd_event_xfer_complete},
+    {"hcd_init", hcd_init},
+    {"hcd_int_enable", hcd_int_enable},
+    {"hcd_port_connect_status", hcd_port_connect_status},
+    {"hcd_port_reset", hcd_port_reset},
+    {"hcd_port_speed_get", hcd_port_speed_get},
+    {"hcd_setup_send", hcd_setup_send},
+    {"hidecsr", hidecsr},
+    {"hidh_close", hidh_close},
+    {"hidh_init", hidh_init},
+    {"hidh_open", hidh_open},
+    {"hidh_set_config", hidh_set_config},
+    {"hidh_xfer_cb", hidh_xfer_cb},
+    {"hub_close", hub_close},
+    {"hub_init", hub_init},
+    {"hub_open", hub_open},
+    {"hub_port_clear_feature", hub_port_clear_feature},
+    {"hub_port_get_status", hub_port_get_status},
+    {"hub_port_reset", hub_port_reset},
+    {"hub_port_set_feature", hub_port_set_feature},
+    {"hub_set_config", hub_set_config},
+    {"hub_status_pipe_queue", hub_status_pipe_queue},
+    {"hub_xfer_cb", hub_xfer_cb},
     {"hw_claim_clear", hw_claim_clear},
     {"hw_claim_lock", hw_claim_lock},
     {"hw_claim_or_assert", hw_claim_or_assert},
@@ -1075,6 +1768,9 @@ const symbols sdkfuncs[] = {
     {"hw_divider_u32_remainder_inlined", stub_hw_divider_u32_remainder_inlined},
     {"hw_divider_u32_remainder_wait", stub_hw_divider_u32_remainder_wait},
     {"hw_divider_wait_ready", stub_hw_divider_wait_ready},
+    {"hw_endpoint_reset_transfer", hw_endpoint_reset_transfer},
+    {"hw_endpoint_xfer_continue", hw_endpoint_xfer_continue},
+    {"hw_endpoint_xfer_start", hw_endpoint_xfer_start},
     {"hw_is_claimed", hw_is_claimed},
     {"i2c_deinit", i2c_deinit},
     {"i2c_get_dreq", stub_i2c_get_dreq},
@@ -1095,6 +1791,14 @@ const symbols sdkfuncs[] = {
     {"i2c_write_raw_blocking", stub_i2c_write_raw_blocking},
     {"i2c_write_timeout_per_char_us", i2c_write_timeout_per_char_us},
     {"i2c_write_timeout_us", stub_i2c_write_timeout_us},
+    {"icmp_dest_unreach", icmp_dest_unreach},
+    {"icmp_input", icmp_input},
+    {"icmp_time_exceeded", icmp_time_exceeded},
+    {"inet_chksum", inet_chksum},
+    {"inet_chksum_pbuf", inet_chksum_pbuf},
+    {"inet_chksum_pseudo", inet_chksum_pseudo},
+    {"init_per_iteration_timeout_us", init_per_iteration_timeout_us},
+    {"init_single_timeout_until", init_single_timeout_until},
     {"interp_add_accumulater", stub_interp_add_accumulater},
     {"interp_claim_lane", interp_claim_lane},
     {"interp_claim_lane_mask", interp_claim_lane_mask},
@@ -1126,7 +1830,17 @@ const symbols sdkfuncs[] = {
     {"interp_set_force_bits", stub_interp_set_force_bits},
     {"interp_unclaim_lane", interp_unclaim_lane},
     {"interp_unclaim_lane_mask", interp_unclaim_lane_mask},
+    {"ip4_addr_isbroadcast_u32", ip4_addr_isbroadcast_u32},
+    {"ip4_frag", ip4_frag},
+    {"ip4_input", ip4_input},
+    {"ip4_output_if", ip4_output_if},
+    {"ip4_output_if_src", ip4_output_if_src},
+    {"ip4_reass", ip4_reass},
+    {"ip4_route", ip4_route},
+    {"ip_chksum_pseudo", ip_chksum_pseudo},
+    {"ip_reass_tmr", ip_reass_tmr},
     {"irq_add_shared_handler", irq_add_shared_handler},
+    {"irq_add_tail_to_free_list", irq_add_tail_to_free_list},
     {"irq_clear", stub_irq_clear},
     {"irq_get_exclusive_handler", irq_get_exclusive_handler},
     {"irq_get_priority", irq_get_priority},
@@ -1142,20 +1856,75 @@ const symbols sdkfuncs[] = {
     {"irq_set_priority", irq_set_priority},
     {"is_at_the_end_of_time", stub_is_at_the_end_of_time},
     {"is_nil_time", stub_is_nil_time},
+    {"is_pico_w", is_pico_w},
     {"iswspace", iswspace},
     {"iswspace_l", iswspace_l},
+    {"item", item},
+    {"itemi", itemi},
+    {"items", items},
+    {"lexan", lexan},
+    {"lfs_bbc_createcfg", lfs_bbc_createcfg},
+    {"lfs_bbc_erase", lfs_bbc_erase},
+    {"lfs_bbc_prog", lfs_bbc_prog},
+    {"lfs_bbc_read", lfs_bbc_read},
+    {"lfs_bbc_sync", lfs_bbc_sync},
+    {"lfs_crc", lfs_crc},
+    {"lfs_dir_close", lfs_dir_close},
+    {"lfs_dir_open", lfs_dir_open},
+    {"lfs_dir_read", lfs_dir_read},
+    {"lfs_file_close", lfs_file_close},
+    {"lfs_file_open", lfs_file_open},
+    {"lfs_file_read", lfs_file_read},
+    {"lfs_file_seek", lfs_file_seek},
+    {"lfs_file_tell", lfs_file_tell},
+    {"lfs_file_write", lfs_file_write},
+    {"lfs_format", lfs_format},
+    {"lfs_mkdir", lfs_mkdir},
+    {"lfs_mount", lfs_mount},
+    {"lfs_remove", lfs_remove},
+    {"lfs_rename", lfs_rename},
+    {"listline", listline},
+    {"loadi", loadi},
+    {"loadn", loadn},
+    {"loads", loads},
     {"localeconv", localeconv},
     {"localtime", localtime},
     {"localtime_r", localtime_r},
     {"lock_init", lock_init},
     {"longjmp", longjmp},
+    {"lwip_htonl", lwip_htonl},
+    {"lwip_htons", lwip_htons},
+    {"lwip_init", lwip_init},
+    {"lwip_standard_chksum", lwip_standard_chksum},
+    {"main", main},
+    {"main_init", main_init},
+    {"main_term", main_term},
     {"make_timeout_time_ms", stub_make_timeout_time_ms},
     {"make_timeout_time_us", stub_make_timeout_time_us},
     {"malloc", malloc},
+    {"math", math},
     {"mbrtowc", mbrtowc},
+    {"mem_free", mem_free},
+    {"mem_init", mem_init},
+    {"mem_malloc", mem_malloc},
+    {"mem_trim", mem_trim},
     {"memchr", memchr},
     {"memcmp", memcmp},
     {"memmove", memmove},
+    {"memp_free", memp_free},
+    {"memp_init", memp_init},
+    {"memp_init_pool", memp_init_pool},
+    {"memp_malloc", memp_malloc},
+    {"message", message},
+    {"modechg", modechg},
+    {"modifs", modifs},
+    {"modify", modify},
+    {"mount", mount},
+    {"mouse", mouse},
+    {"mouseoff", mouseoff},
+    {"mouseon", mouseon},
+    {"mouseto", mouseto},
+    {"moves", moves},
     {"multicore_fifo_clear_irq", stub_multicore_fifo_clear_irq},
     {"multicore_fifo_drain", stub_multicore_fifo_drain},
     {"multicore_fifo_get_status", stub_multicore_fifo_get_status},
@@ -1182,9 +1951,57 @@ const symbols sdkfuncs[] = {
     {"mutex_init", mutex_init},
     {"mutex_is_initialized", stub_mutex_is_initialized},
     {"mutex_try_enter", mutex_try_enter},
+    {"mychdir", mychdir},
+    {"mychmod", mychmod},
+    {"myclosedir", myclosedir},
+    {"myfclose", myfclose},
+    {"myfopen", myfopen},
+    {"myfread", myfread},
+    {"myfseek", myfseek},
+    {"myftell", myftell},
+    {"myfwrite", myfwrite},
+    {"mygetcwd", mygetcwd},
+    {"mymkdir", mymkdir},
+    {"myopendir", myopendir},
+    {"myreaddir", myreaddir},
+    {"myrealpath", myrealpath},
+    {"myrename", myrename},
+    {"myrmdir", myrmdir},
+    {"mysleep", mysleep},
+    {"myusleep", myusleep},
     {"nan", nan},
     {"nanf", nanf},
+    {"netif_add", netif_add},
+    {"netif_get_by_index", netif_get_by_index},
+    {"netif_init", netif_init},
+    {"netif_remove", netif_remove},
+    {"netif_set_addr", netif_set_addr},
+    {"netif_set_default", netif_set_default},
+    {"netif_set_down", netif_set_down},
+    {"netif_set_link_down", netif_set_link_down},
+    {"netif_set_link_up", netif_set_link_up},
+    {"netif_set_up", netif_set_up},
+    {"newlin", newlin},
     {"next_striped_spin_lock_num", next_striped_spin_lock_num},
+    {"nxt", nxt},
+    {"osbget", osbget},
+    {"osbput", osbput},
+    {"osbyte", osbyte},
+    {"oscall", oscall},
+    {"oscli", oscli},
+    {"oshwm", oshwm},
+    {"oskey", oskey},
+    {"osline", osline},
+    {"osload", osload},
+    {"osopen", osopen},
+    {"osrdch", osrdch},
+    {"ossave", ossave},
+    {"osshut", osshut},
+    {"oswait", oswait},
+    {"osword", osword},
+    {"oswrch", oswrch},
+    {"outchr", outchr},
+    {"panic", panic},
     {"pbuf_add_header", pbuf_add_header},
     {"pbuf_add_header_force", pbuf_add_header_force},
     {"pbuf_alloc", pbuf_alloc},
@@ -1200,6 +2017,7 @@ const symbols sdkfuncs[] = {
     {"pbuf_dechain", pbuf_dechain},
     {"pbuf_free", pbuf_free},
     {"pbuf_free_header", pbuf_free_header},
+    {"pbuf_free_ooseq", pbuf_free_ooseq},
     {"pbuf_get_at", pbuf_get_at},
     {"pbuf_get_contiguous", pbuf_get_contiguous},
     {"pbuf_header", pbuf_header},
@@ -1223,6 +2041,7 @@ const symbols sdkfuncs[] = {
     {"ph_free_node", stub_ph_free_node},
     {"ph_get_node", stub_ph_get_node},
     {"ph_insert_node", stub_ph_insert_node},
+    {"ph_merge_two_pass", ph_merge_two_pass},
     {"ph_new_node", stub_ph_new_node},
     {"ph_peek_head", stub_ph_peek_head},
     {"ph_post_alloc_init", ph_post_alloc_init},
@@ -1231,6 +2050,7 @@ const symbols sdkfuncs[] = {
     {"ph_remove_head", ph_remove_head},
     {"pico_get_unique_board_id", pico_get_unique_board_id},
     {"pico_get_unique_board_id_string", pico_get_unique_board_id_string},
+    {"pico_lwip_rand", pico_lwip_rand},
     {"pio_add_program", pio_add_program},
     {"pio_add_program_at_offset", pio_add_program_at_offset},
     {"pio_calculate_clkdiv_from_float", stub_pio_calculate_clkdiv_from_float},
@@ -1318,10 +2138,19 @@ const symbols sdkfuncs[] = {
     {"pio_sm_unclaim", pio_sm_unclaim},
     {"pll_deinit", pll_deinit},
     {"pll_init", pll_init},
+    {"pop_r8_r11", pop_r8_r11},
     {"powint", powint},
     {"powintf", powintf},
+    {"procfn", procfn},
+    {"push_r8_r11", push_r8_r11},
+    {"pushs", pushs},
     {"putchar_raw", putchar_raw},
+    {"putdef", putdef},
+    {"putevt", putevt},
+    {"putime", putime},
+    {"putkey", putkey},
     {"puts_raw", puts_raw},
+    {"putvar", putvar},
     {"pwm_advance_count", stub_pwm_advance_count},
     {"pwm_clear_irq", stub_pwm_clear_irq},
     {"pwm_config_set_clkdiv", stub_pwm_config_set_clkdiv},
@@ -1366,6 +2195,13 @@ const symbols sdkfuncs[] = {
     {"queue_try_add", queue_try_add},
     {"queue_try_peek", queue_try_peek},
     {"queue_try_remove", queue_try_remove},
+    {"quiet", quiet},
+    {"range0", range0},
+    {"range1", range1},
+    {"range2", range2},
+    {"raw_input", raw_input},
+    {"raw_netif_ip_addr_changed", raw_netif_ip_addr_changed},
+    {"read_reg_u32_swap", read_reg_u32_swap},
     {"recursive_mutex_enter_block_until", recursive_mutex_enter_block_until},
     {"recursive_mutex_enter_blocking", recursive_mutex_enter_blocking},
     {"recursive_mutex_enter_timeout_ms", recursive_mutex_enter_timeout_ms},
@@ -1374,7 +2210,16 @@ const symbols sdkfuncs[] = {
     {"recursive_mutex_init", recursive_mutex_init},
     {"recursive_mutex_is_initialized", stub_recursive_mutex_is_initialized},
     {"recursive_mutex_try_enter", recursive_mutex_try_enter},
+    {"refresh", refresh},
+    {"report", report},
+    {"reset", reset},
     {"reset_block", stub_reset_block},
+    {"rgbclr", rgbclr},
+    {"rnd", rnd},
+    {"rom_data_lookup", rom_data_lookup},
+    {"rom_func_lookup", rom_func_lookup},
+    {"rom_funcs_lookup", rom_funcs_lookup},
+    {"rp2040_usb_init", rp2040_usb_init},
     {"rtc_disable_alarm", rtc_disable_alarm},
     {"rtc_enable_alarm", rtc_enable_alarm},
     {"rtc_get_datetime", rtc_get_datetime},
@@ -1382,6 +2227,25 @@ const symbols sdkfuncs[] = {
     {"rtc_running", rtc_running},
     {"rtc_set_alarm", rtc_set_alarm},
     {"rtc_set_datetime", rtc_set_datetime},
+    {"running_on_fpga", running_on_fpga},
+    {"runtime_init", runtime_init},
+    {"scanvideo_set_scanline_repeat_fn", scanvideo_set_scanline_repeat_fn},
+    {"scanvideo_setup", scanvideo_setup},
+    {"scanvideo_setup_with_timing", scanvideo_setup_with_timing},
+    {"scanvideo_timing_enable", scanvideo_timing_enable},
+    {"sd_spi_clk", sd_spi_clk},
+    {"sd_spi_cmd", sd_spi_cmd},
+    {"sd_spi_freq", sd_spi_freq},
+    {"sd_spi_get", sd_spi_get},
+    {"sd_spi_init", sd_spi_init},
+    {"sd_spi_load", sd_spi_load},
+    {"sd_spi_put", sd_spi_put},
+    {"sd_spi_read", sd_spi_read},
+    {"sd_spi_set_crc7", sd_spi_set_crc7},
+    {"sd_spi_set_lba", sd_spi_set_lba},
+    {"sd_spi_write", sd_spi_write},
+    {"sd_spi_xfer", sd_spi_xfer},
+    {"search", search},
     {"sem_acquire_block_until", sem_acquire_block_until},
     {"sem_acquire_blocking", sem_acquire_blocking},
     {"sem_acquire_timeout_ms", sem_acquire_timeout_ms},
@@ -1391,14 +2255,25 @@ const symbols sdkfuncs[] = {
     {"sem_release", sem_release},
     {"sem_reset", sem_reset},
     {"sem_try_acquire", sem_try_acquire},
+    {"set_leds", set_leds},
     {"set_sys_clock_48mhz", set_sys_clock_48mhz},
     {"set_sys_clock_khz", stub_set_sys_clock_khz},
     {"set_sys_clock_pll", set_sys_clock_pll},
     {"setjmp", setjmp},
+    {"setlin", setlin},
     {"setlocale", setlocale},
+    {"setmode", setmode},
+    {"setptr", setptr},
+    {"setup", setup},
     {"setup_default_uart", setup_default_uart},
+    {"setup_keyboard", setup_keyboard},
+    {"setup_vdu", setup_vdu},
+    {"setup_video", setup_video},
+    {"showcsr", showcsr},
     {"sincos", sincos},
     {"sincosf", sincosf},
+    {"sincostan_remainder", sincostan_remainder},
+    {"singlebuf", singlebuf},
     {"siprintf", siprintf},
     {"siscanf", siscanf},
     {"sleep_ms", sleep_ms},
@@ -1418,7 +2293,17 @@ const symbols sdkfuncs[] = {
     {"sm_config_set_sideset", stub_sm_config_set_sideset},
     {"sm_config_set_sideset_pins", stub_sm_config_set_sideset_pins},
     {"sm_config_set_wrap", stub_sm_config_set_wrap},
+    {"snd_free", snd_free},
+    {"snd_freq", snd_freq},
+    {"snd_init", snd_init},
+    {"snd_process", snd_process},
+    {"snd_setup", snd_setup},
+    {"snd_start", snd_start},
+    {"snd_stop", snd_stop},
+    {"snd_term", snd_term},
     {"snprintf", snprintf},
+    {"sound", sound},
+    {"spaces", spaces},
     {"spi_deinit", spi_deinit},
     {"spi_get_baudrate", spi_get_baudrate},
     {"spi_get_const_hw", stub_spi_get_const_hw},
@@ -1447,20 +2332,30 @@ const symbols sdkfuncs[] = {
     {"spin_locks_reset", spin_locks_reset},
     {"sprintf", sprintf},
     {"sscanf", sscanf},
+    {"stack_trap", stack_trap},
+    {"stats_init", stats_init},
+    {"stdin_handler", stdin_handler},
     {"stdin_uart_init", stdin_uart_init},
     {"stdio_filter_driver", stdio_filter_driver},
     {"stdio_flush", stdio_flush},
     {"stdio_init_all", stdio_init_all},
     {"stdio_set_driver_enabled", stdio_set_driver_enabled},
     {"stdio_set_translate_crlf", stdio_set_translate_crlf},
+    {"stdio_uart_in_chars", stdio_uart_in_chars},
     {"stdio_uart_init", stdio_uart_init},
     {"stdio_uart_init_full", stdio_uart_init_full},
+    {"stdout_serialize_begin", stdout_serialize_begin},
+    {"stdout_serialize_end", stdout_serialize_end},
     {"stdout_uart_init", stdout_uart_init},
+    {"storen", storen},
+    {"stores", stores},
+    {"str", str},
     {"strcat", strcat},
     {"strchr", strchr},
     {"strcmp", strcmp},
     {"strcpy", strcpy},
     {"strcspn", strcspn},
+    {"strhex", strhex},
     {"strlen", strlen},
     {"strncasecmp", strncasecmp},
     {"strncat", strncat},
@@ -1482,36 +2377,105 @@ const symbols sdkfuncs[] = {
     {"strtoul_l", strtoul_l},
     {"strtoull", strtoull},
     {"strtoull_l", strtoull_l},
+    {"swapbuf", swapbuf},
+    {"sympico", sympico},
+    {"sys_arch_protect", sys_arch_protect},
+    {"sys_arch_unprotect", sys_arch_unprotect},
+    {"sys_check_timeouts", sys_check_timeouts},
+    {"sys_now", sys_now},
+    {"sys_timeout", sys_timeout},
+    {"sys_timeouts_init", sys_timeouts_init},
+    {"sysadr", sysadr},
+    {"syserror", syserror},
     {"system", system},
+    {"tcp_abandon", tcp_abandon},
     {"tcp_abort", tcp_abort},
     {"tcp_accept", tcp_accept},
+    {"tcp_alloc", tcp_alloc},
     {"tcp_arg", tcp_arg},
     {"tcp_bind", tcp_bind},
     {"tcp_bind_netif", tcp_bind_netif},
     {"tcp_close", tcp_close},
     {"tcp_connect", tcp_connect},
+    {"tcp_eff_send_mss_netif", tcp_eff_send_mss_netif},
+    {"tcp_enqueue_flags", tcp_enqueue_flags},
     {"tcp_err", tcp_err},
+    {"tcp_fasttmr", tcp_fasttmr},
+    {"tcp_free", tcp_free},
+    {"tcp_free_ooseq", tcp_free_ooseq},
+    {"tcp_init", tcp_init},
+    {"tcp_input", tcp_input},
+    {"tcp_keepalive", tcp_keepalive},
     {"tcp_listen_with_backlog", tcp_listen_with_backlog},
     {"tcp_listen_with_backlog_and_err", tcp_listen_with_backlog_and_err},
+    {"tcp_netif_ip_addr_changed", tcp_netif_ip_addr_changed},
     {"tcp_new", tcp_new},
     {"tcp_new_ip_type", tcp_new_ip_type},
+    {"tcp_next_iss", tcp_next_iss},
     {"tcp_output", tcp_output},
+    {"tcp_pcb_purge", tcp_pcb_purge},
+    {"tcp_pcb_remove", tcp_pcb_remove},
     {"tcp_poll", tcp_poll},
+    {"tcp_process_refused_data", tcp_process_refused_data},
     {"tcp_recv", tcp_recv},
+    {"tcp_recv_null", tcp_recv_null},
     {"tcp_recved", tcp_recved},
+    {"tcp_rexmit", tcp_rexmit},
+    {"tcp_rexmit_fast", tcp_rexmit_fast},
+    {"tcp_rexmit_rto", tcp_rexmit_rto},
+    {"tcp_rexmit_rto_commit", tcp_rexmit_rto_commit},
+    {"tcp_rexmit_rto_prepare", tcp_rexmit_rto_prepare},
+    {"tcp_rst", tcp_rst},
+    {"tcp_rst_netif", tcp_rst_netif},
+    {"tcp_seg_copy", tcp_seg_copy},
+    {"tcp_seg_free", tcp_seg_free},
+    {"tcp_segs_free", tcp_segs_free},
+    {"tcp_send_empty_ack", tcp_send_empty_ack},
+    {"tcp_send_fin", tcp_send_fin},
     {"tcp_sent", tcp_sent},
     {"tcp_setprio", tcp_setprio},
     {"tcp_shutdown", tcp_shutdown},
+    {"tcp_slowtmr", tcp_slowtmr},
+    {"tcp_split_unsent_seg", tcp_split_unsent_seg},
     {"tcp_tcp_get_tcp_addrinfo", tcp_tcp_get_tcp_addrinfo},
+    {"tcp_timer_needed", tcp_timer_needed},
+    {"tcp_tmr", tcp_tmr},
+    {"tcp_trigger_input_pcb_close", tcp_trigger_input_pcb_close},
+    {"tcp_update_rcv_ann_wnd", tcp_update_rcv_ann_wnd},
     {"tcp_write", tcp_write},
+    {"tcp_zero_window_probe", tcp_zero_window_probe},
+    {"testkey", testkey},
+    {"text", text},
     {"time", time},
     {"time_reached", stub_time_reached},
     {"time_us_32", stub_time_us_32},
     {"time_us_64", time_us_64},
+    {"timer_pool_entry_comparator", timer_pool_entry_comparator},
     {"to_ms_since_boot", stub_to_ms_since_boot},
     {"to_us_since_boot", stub_to_us_since_boot},
+    {"token", token},
+    {"trap", trap},
     {"truncl", truncl},
     {"ttxtfont", ttxtfont},
+    {"tu_desc_get_interface_total_len", tu_desc_get_interface_total_len},
+    {"tu_edpt_bind_driver", tu_edpt_bind_driver},
+    {"tu_edpt_validate", tu_edpt_validate},
+    {"tu_fifo_clear", tu_fifo_clear},
+    {"tu_fifo_read", tu_fifo_read},
+    {"tu_fifo_write", tu_fifo_write},
+    {"tuh_control_xfer", tuh_control_xfer},
+    {"tuh_hid_interface_protocol", tuh_hid_interface_protocol},
+    {"tuh_hid_mount_cb", tuh_hid_mount_cb},
+    {"tuh_hid_parse_report_descriptor", tuh_hid_parse_report_descriptor},
+    {"tuh_hid_receive_report", tuh_hid_receive_report},
+    {"tuh_hid_report_received_cb", tuh_hid_report_received_cb},
+    {"tuh_hid_umount_cb", tuh_hid_umount_cb},
+    {"tuh_init", tuh_init},
+    {"tuh_inited", tuh_inited},
+    {"tuh_speed_get", tuh_speed_get},
+    {"tuh_task", tuh_task},
+    {"tusb_init", tusb_init},
+    {"tusb_inited", tusb_inited},
     {"tzset", tzset},
     {"uart_default_tx_wait_blocking", stub_uart_default_tx_wait_blocking},
     {"uart_deinit", uart_deinit},
@@ -1562,15 +2526,31 @@ const symbols sdkfuncs[] = {
     {"unreset_block_wait", stub_unreset_block_wait},
     {"update_us_since_boot", stub_update_us_since_boot},
     {"us_to_ms", stub_us_to_ms},
+    {"usbh_control_xfer_cb", usbh_control_xfer_cb},
+    {"usbh_driver_set_config_complete", usbh_driver_set_config_complete},
+    {"usbh_edpt_claim", usbh_edpt_claim},
+    {"usbh_edpt_open", usbh_edpt_open},
+    {"usbh_edpt_xfer", usbh_edpt_xfer},
+    {"usbh_get_enum_buf", usbh_get_enum_buf},
+    {"usbh_get_rhport", usbh_get_rhport},
     {"user_irq_claim", user_irq_claim},
     {"user_irq_claim_unused", user_irq_claim_unused},
     {"user_irq_is_claimed", user_irq_is_claimed},
     {"user_irq_unclaim", user_irq_unclaim},
+    {"usleep", usleep},
+    {"val", val},
     {"vfiprintf", vfiprintf},
     {"vfprintf", vfprintf},
+    {"vgetc", vgetc},
+    {"video_24mhz_composable_adapt_for_mode", video_24mhz_composable_adapt_for_mode},
+    {"video_24mhz_composable_configure_pio", video_24mhz_composable_configure_pio},
+    {"video_periodic", video_periodic},
+    {"vpoint", vpoint},
     {"vprintf", vprintf},
     {"vreg_set_voltage", vreg_set_voltage},
     {"vsprintf", vsprintf},
+    {"vtint", vtint},
+    {"waitconsole", waitconsole},
     {"watchdog_caused_reboot", watchdog_caused_reboot},
     {"watchdog_enable", watchdog_enable},
     {"watchdog_enable_caused_reboot", watchdog_enable_caused_reboot},
@@ -1579,8 +2559,15 @@ const symbols sdkfuncs[] = {
     {"watchdog_start_tick", watchdog_start_tick},
     {"watchdog_update", watchdog_update},
     {"wcrtomb", wcrtomb},
+    {"widths", widths},
+    {"write_reg_u32_swap", write_reg_u32_swap},
+    {"xeq", xeq},
+    {"xeqvdu", xeqvdu},
+    {"xfix", xfix},
+    {"xfloat", xfloat},
     {"xip_alias_check_addr", stub_xip_alias_check_addr},
     {"xosc_disable", xosc_disable},
     {"xosc_dormant", xosc_dormant},
     {"xosc_init", xosc_init},
+    {"xtrap", xtrap},
 };
