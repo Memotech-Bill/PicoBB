@@ -162,6 +162,7 @@ bbcbasic.uf2 bbcbasic.elf &: $(SOURCES) \
 		../../src/pico/symbols/$(SYM_NAME)_sdk.txt \
 		../../src/pico/$(SYM_NAME)_stub.c \
 		build/Makefile
+	cd ../../src/pico && symbols/merge_funcs.py sympico.h symbols/$(SYM_NAME)_sdk.txt
 	cd build && make
 	cd ../../src/pico && symbols/map_funcs.py $(MAP_FILE) symbols/$(SYM_NAME)_map.txt
 	cd ../../src/pico && symbols/merge_funcs.py sympico.h symbols/$(SYM_NAME)_sdk.txt \

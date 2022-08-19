@@ -9,25 +9,29 @@ import os
 # exclude_funcs = ['vfctprintf', 'queue_get_max_level', 'queue_reset_max_level']
 
 def Clean (sLine):
-   nCh = sLine.find ('/*')
-   if ( nCh < 0 ):
-       nCh = sLine.find ('//')
-   if ( nCh > 0 ):
-       sLine = sLine[0:nCh]
-   return sLine.strip ()
+    nCh = sLine.find ('/*')
+    if ( nCh < 0 ):
+        nCh = sLine.find ('//')
+    if ( nCh > 0 ):
+        sLine = sLine[0:nCh]
+    return sLine.strip ()
 
 def Body (sLine):
-   nCh = sLine.find ('/*')
-   if ( nCh < 0 ):
-       nCh = sLine.find ('//')
-   if ( nCh > 0 ):
-       sLine = sLine[0:nCh]
-   return sLine.split (None, 1)[1].strip ()
+    nCh = sLine.find ('/*')
+    if ( nCh < 0 ):
+        nCh = sLine.find ('//')
+    if ( nCh > 0 ):
+        sLine = sLine[0:nCh]
+    return sLine.split (None, 1)[1].strip ()
 
 class Header:
     def __init__ (self, sIn, fOut, fStub, gldef):
         self.sIn = sIn
-        self.sHeader = sIn[sIn.find ('/include/') + 9:]
+        nCh = sIn.find ('/include/')
+        if ( nCh >= 0 ):
+            self.sHeader = sIn[nCh + 9:]
+        else:
+            self.sHeader = sIn
         self.fOut = fOut
         self.fStub = fStub
         self.defs = {}
@@ -106,7 +110,7 @@ class Header:
             if ( lTerms[-1][0] == '*' ):
                 lTerms[-1] = lTerms[-1][1:]
                 sPtr = '*'
-            if (( self.nBrace == 0 ) and ( lTerms[0] not in ['static', 'typedef'] )):
+            if (( self.nBrace == 0 ) and ( lTerms[0] not in ['static', 'extern', 'typedef'] )):
                 if ( not self.bFunc ):
                     self.fOut.write ('#\n# From file ' + self.sIn + '\n')
                     self.bFunc = True

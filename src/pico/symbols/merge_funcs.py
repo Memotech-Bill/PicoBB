@@ -2,6 +2,7 @@
 #
 # Merge lists of symbols and generate an include file
 #
+import os
 import sys
 
 # Exclude routines that are defined in sympico.c
@@ -25,7 +26,8 @@ class symbols:
     def load_all (self, lSym):
         self.lSym = lSym
         for sIn in lSym:
-            self.load (sIn)
+            if ( os.path.exists (sIn) ):
+                self.load (sIn)
 
     def save (self, sOut):
         self.names.sort ()
