@@ -33,7 +33,10 @@
 #ifdef PICO
 #include <pico.h>
 #include <hardware/adc.h>
-#ifdef HAVE_CYW43
+#ifndef HAVE_CYW43
+#define HAVE_CYW43  0
+#endif
+#if HAVE_CYW43
 #include <pico/cyw43_arch.h>
 #endif
 #ifdef PICO_GUI
@@ -156,7 +159,7 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #define WM_TIMER 275
 #include "lfswrap.h"
 extern char __StackLimit;
-#ifdef HAVE_CYW43
+#if HAVE_CYW43
 #define PLATFORM "Pico W"
 #else
 #define PLATFORM "Pico"
@@ -231,10 +234,12 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef HAVE_FAT
     ", SD Filesystem"
 #endif
-#define SFY(x) #x
-#define MVL(x) SFY(x)
-#ifdef HAVE_CYW43
-    ", cyw43=" MVL(HAVE_CYW43)
+#if HAVE_CYW43 == 1
+    ", cyw43=gpio"
+#elif HAVE_CYW43 == 2
+    ", cyw43=poll"
+#elif HAVE_CYW43 == 3
+    ", cyw43=background"
 #endif
 #if PICO_SOUND == 1
     ", I2S Sound"
@@ -256,6 +261,8 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef MIN_STACK
     ", Min Stack"
 #endif
+#define SFY(x) #x
+#define MVL(x) SFY(x)
 #if PICO_STACK_CHECK > 0
     ", Stack Check " MVL(PICO_STACK_CHECK)
 #endif
@@ -287,10 +294,10 @@ static const unsigned char xkey[64] = {
     0, 150, 151, 152, 153, 154,   0, 155, 156,   0,   0,   0,   0,   0,   0,   0 };
 #endif
 
-#ifdef HAVE_CYW43
+#if HAVE_CYW43
 #define PICO_DEFAULT_LED_PIN    25
-#define PICO_ERROR_NOT_W        -257
-int iCyw = PICO_ERROR_NOT_W;
+#define PICO_ERROR_NO_CYW43     -257        // No support
+int iCyw = PICO_ERROR_NO_CYW43;
 #endif
 
 // Declared in bbcans.c:
@@ -1839,8 +1846,8 @@ int entry (void *immediate)
 		crlf ();
 		text (szNotice);
 		crlf ();
-#ifdef HAVE_CYW43
-        if ( iCyw == PICO_ERROR_NOT_W )
+#if HAVE_CYW43
+        if ( iCyw == PICO_ERROR_NO_CYW43 )
             {
             text ("No cyw43 support");
             }
@@ -2048,20 +2055,20 @@ void sigbus(void){
 
 void led_init (void)
     {
-#ifdef HAVE_CYW43
+#if HAVE_CYW43
     if ( iCyw != 0 )
         {
 #endif
         gpio_init(PICO_DEFAULT_LED_PIN);
         gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-#ifdef HAVE_CYW43
+#if HAVE_CYW43
         }
 #endif
     }
 
 void led_state (int iLED)
     {
-#ifdef HAVE_CYW43
+#if HAVE_CYW43
     if ( iCyw == 0 )
         cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, iLED);
     else
@@ -2160,24 +2167,16 @@ void main_term (int exitcode)
     }
 
 #ifdef PICO
-bool is_pico_w (void)
+int is_pico_w (void)
     {
     adc_init ();
     adc_select_input (3);
-    return ( 3.3 / ( 1 << 12 ) ) * adc_read () < 0.25;
-    }
-
-const char *cyw43_support (void)
-    {
-#ifdef HAVE_CYW43
-    return SFY(HAVE_CYW43);
-#else
-    return "None";
-#endif
+    if ( ( 3.3 / ( 1 << 12 ) ) * adc_read () < 0.25 ) return HAVE_CYW43 + 1;
+    else return 0;
     }
 
 // Work around bug in cyw43_arch_deinit()
-#ifdef HAVE_CYW43
+#if HAVE_CYW43
 static bool is_cyw43_init = false;
     
 int cyw43_arch_init_safe (void)
@@ -2219,17 +2218,17 @@ void *main_init (int argc, char *argv[])
 #ifdef PICO
     stdio_init_all();
 	// Wait for UART connection
-#ifdef HAVE_CYW43
-    if ( is_pico_w () )
+#if HAVE_CYW43
+    if ( is_pico_w () > 1 )
         {
         iCyw = cyw43_arch_init_safe ();
         }
     else
         {
-        iCyw = PICO_ERROR_NOT_W;
+        iCyw = PICO_ERROR_NO_CYW43;
 #endif
         led_init ();
-#ifdef HAVE_CYW43
+#if HAVE_CYW43
         }
 #endif
 	for (int i = 3; i > 0; --i )
@@ -2332,7 +2331,7 @@ void *main_init (int argc, char *argv[])
 #endif
 
 #ifdef PICO
-	platform = 6;
+	platform = 6 + is_pico_w ();
 	MaximumRAM = MINIMUM_RAM;
 	userRAM = &__StackLimit;
 	if (userRAM + MaximumRAM > (void *)0x20040000) userRAM = 0;

@@ -121,14 +121,14 @@ if (TARGET tinyusb_device)
       target_link_libraries(bbcbasic
         pico_cyw43_arch_none
         )
-      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=gpio)
+      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=1)
       set(CYW43_LINK 0)
     elseif( "${CYW43}" STREQUAL "POLL" )
       message(STATUS "Pico W CYW43 poll support")
       target_link_libraries(bbcbasic
         pico_cyw43_arch_lwip_poll
         )
-      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=poll)
+      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=2)
       set(CYW43_LINK 1)
     elseif( CYW43 )
       message(STATUS "Pico W CYW43 background support")
@@ -150,11 +150,12 @@ if (TARGET tinyusb_device)
         )
       target_sources(bbcbasic PRIVATE ../../src/pico/cyw43_arch_threadsafe_background.c)
       #
-      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=background)
+      target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=3)
       set(CYW43_LINK 1)
     endif()
   else()
     set(CYW43_LINK 0)
+    target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=0)
   endif()
 
   if ( "${SOUND}" STREQUAL "I2S")
