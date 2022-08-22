@@ -2331,7 +2331,7 @@ void *main_init (int argc, char *argv[])
 #endif
 
 #ifdef PICO
-	platform = 6 + is_pico_w ();
+	platform = 6 + ( is_pico_w () << 8 );
 	MaximumRAM = MINIMUM_RAM;
 	userRAM = &__StackLimit;
 	if (userRAM + MaximumRAM > (void *)0x20040000) userRAM = 0;
