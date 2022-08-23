@@ -16,20 +16,28 @@ will start a new WiFi scan. Each successfull call will return another access poi
 The call following the last access point will return NET_ERR_DATA_END and all zero
 data.
 
-DIM ssid&(32)
-DIM mac&(5)
-SYS "net_wifi_scan",  ^ssid&(0), ^rssi%, ^chan%, ^mac&(0), ^auth% TO err%
+DIM net{rssi%, chan%, auth%, ssid&(32), mac&(5)}
+SYS "net_wifi_scan", net{} TO err%
 
+rssi% = Signal strength
+auth% = Authorisation mode
+chan% = Channel number
 ssid& = Station identifier (zero terminated string)
-rssi =  Signal strength
-chan =  Channel number
-mac =   MAC address (6 bytes)
-auth =  Authorisation mode
-err =   NET_ERR_NONE - Returned details of a station
+mac& =  MAC address (6 bytes)
+err% =  NET_ERR_NONE - Returned details of a station
         NET_ERR_DATA_END - No more stations
         Internal errors
 */
 
-int net_wifi_scan (char *ssid, int *rssi, int *chan, uint8_t *mac, int *auth);
+typedef struct s_net_scan_result
+    {
+    uint32_t    rssi;
+    uint32_t    chan;
+    uint32_t    auth;
+    char        ssid[33];
+    uint8_t     mac[6];
+    } net_scan_result_t;
+
+int net_wifi_scan (net_scan_result_t *pscan);
 
 #endif
