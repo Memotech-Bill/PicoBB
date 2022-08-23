@@ -1,2 +1,2 @@
 # Header file for CYW43 functions in background mode
-src/rp2_common/pico_cyw43_arch/include/pico/cyw43_arch/arch_threadsafe_background.h
+${PICO_SDK_PATH}/src/rp2_common/pico_cyw43_arch/include/pico/cyw43_arch/arch_threadsafe_background.h

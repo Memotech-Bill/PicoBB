@@ -71,6 +71,7 @@ SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
 MAP_FILE = ../../console/pico/build/bbcbasic.elf.map
 endif
 
+NET_SOURCES =
 ifeq ($(CYW43), GPIO)
 SYM_NAME := $(SYM_NAME)_cyw43_gpio
 SDK_HEADERS +=  ../../src/pico/symbols/sdk_cyw43_gpio.txt
@@ -79,16 +80,22 @@ SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_cyw43_poll.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 SYM_NAME := $(SYM_NAME)_cyw43_poll
+NET_SOURCES = ../../include/network.h \
+	../../src/pico/network_cyw43.c
 else ifeq ($(CYW43), BACKGROUND)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_cyw43_background.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 SYM_NAME := $(SYM_NAME)_cyw43_background
+NET_SOURCES = ../../include/network.h \
+	../../src/pico/network_cyw43.c
 else ifeq ($(CYW43), Y)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_cyw43_background.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 SYM_NAME := $(SYM_NAME)_cyw43_background
+NET_SOURCES = ../../include/network.h \
+	../../src/pico/network_cyw43.c
 endif
 
 ifneq ($(SERIAL_DEV), 0)
@@ -127,6 +134,7 @@ SOURCES= \
     $(SND_SOURCES) \
     $(GUI_SOURCES) \
 	$(DEV_SOURCES) \
+	$(NET_SOURCES)
 
 .PHONY: all
 ifeq ($(LFS), Y)

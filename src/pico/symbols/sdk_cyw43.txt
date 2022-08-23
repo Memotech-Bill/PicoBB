@@ -1,9 +1,10 @@
 # Header file for CYW43 functions
-src/rp2_common/pico_cyw43_arch/include/pico/cyw43_arch.h
+${PICO_SDK_PATH}/src/rp2_common/pico_cyw43_arch/include/pico/cyw43_arch.h
 %function cyw43_arch_init cyw43_arch_init_safe
 %function cyw43_arch_init_with_country cyw43_arch_init_with_country_safe
 %function cyw43_arch_deinit cyw43_arch_deinit_safe
 %exclude cyw43_arch_init
 %exclude cyw43_arch_init_with_country
 %exclude cyw43_arch_deinit
-lib/cyw43-driver/src/cyw43.h
+${PICO_SDK_PATH}/lib/cyw43-driver/src/cyw43.h
+../../include/network.h

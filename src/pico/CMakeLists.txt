@@ -125,6 +125,7 @@ if (TARGET tinyusb_device)
       set(CYW43_LINK 0)
     elseif( "${CYW43}" STREQUAL "POLL" )
       message(STATUS "Pico W CYW43 poll support")
+      target_sources(bbcbasic PRIVATE ../../src/pico/network_cyw43.c)
       target_link_libraries(bbcbasic
         pico_cyw43_arch_lwip_poll
         )
@@ -139,6 +140,7 @@ if (TARGET tinyusb_device)
       # Use our own copy
       # Note: All the cyw43_arch_*.c files are always included but #ifdef statements
       # turn the inappropriate files into (almost) empty files.
+      target_sources(bbcbasic PRIVATE ../../src/pico/network_cyw43.c)
       target_link_libraries(bbcbasic
         pico_cyw43_arch
         pico_lwip
