@@ -128,7 +128,8 @@ if (TARGET tinyusb_device)
       target_sources(bbcbasic PRIVATE ../../src/pico/network_cyw43.c)
       target_link_libraries(bbcbasic
         pico_cyw43_arch_lwip_poll
-        )
+        pico_lwip
+        pico_lwip_nosys)
       target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=2)
       set(CYW43_LINK 1)
     elseif( CYW43 )
