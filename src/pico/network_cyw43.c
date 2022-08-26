@@ -154,19 +154,23 @@ err_t net_tcp_connected_cb (void *connin, struct tcp_pcb *pcb, err_t err)
 
 err_t net_tcp_receive_cb (void *connin, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
     {
+    // printf ("net_tcp_receive_cb (%p, %p, %p, %d)\n", connin, pcb, p, err);
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     if ( p == NULL )
         {
         conn->err = NET_ERR_PEER_CLOSED;
         return ERR_OK;
         }
+    // printf ("pbuf: %p, len = %d, tot_len = %d\n", p, p->len, p->tot_len);
     if ( conn->p == NULL )
         {
+        // printf ("First buffer\n");
         conn->p = p;
         conn->nused = 0;
         }
     else
         {
+        // printf ("Append buffer\n");
         pbuf_cat (conn->p, p);
         }
     return ERR_OK;
@@ -290,34 +294,41 @@ intptr_t net_tcp_accept (intptr_t listen)
 
 err_t net_tcp_sent_cb (void *connin, struct tcp_pcb *pcb, uint16_t len)
     {
+    // printf ("net_tcp_sent_cb (%p, %p, %d)\n", connin, pcb, len);
     tcp_conn_t *conn = (tcp_conn_t *) connin;
-    conn->ndata = len;
-    conn->err = STATE_COMPLETED;
+    conn->ndata -= len;
+    if ( conn->ndata <= 0 ) conn->err = STATE_COMPLETED;
     return ERR_OK;
     }
 
 int net_tcp_write (intptr_t connin, uint32_t len, void *addr, uint32_t timeout)
     {
+    // printf ("net_tcp_write (%p, %d, %p, %d)\n", connin, len, addr, timeout);
     if ( connin < 0 ) return connin;
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     if ( conn->err != NET_ERR_NONE ) return conn->err;
     if ( timeout == 0 ) net_tend = at_the_end_of_time;
     else                net_tend = make_timeout_time_ms (timeout);
+    int nsent = 0;
     while ( len > 0 )
         {
-        conn->ndata = tcp_sndbuf (conn->pcb);
-        if ( conn->ndata > 0 )
+        int nsend = tcp_sndbuf (conn->pcb);
+        if ( nsend > 0 )
             {
             uint8_t flags = TCP_WRITE_FLAG_MORE;
-            if ( conn->ndata >= len )
+            // printf ("flags = %d, nsend = %d, len = %d\n", flags, nsend, len);
+            if ( nsend >= len )
                 {
                 flags = 0;
-                conn->ndata = len;
+                nsend = len;
                 }
+            // printf ("flags = %d, nsend = %d, len = %d\n", flags, nsend, len);
+            conn->ndata = nsend;
             conn->err = STATE_WAITING;
             tcp_sent (conn->pcb, net_tcp_sent_cb);
             cyw43_arch_lwip_begin();
-            tcp_write (conn->pcb, addr, conn->ndata, flags);
+            // printf ("tcp_write: addr = %p, nsend = %d, flags = %d\n", addr, nsend, flags);
+            tcp_write (conn->pcb, addr, nsend, flags);
             cyw43_arch_lwip_end();
             while (( conn->err == STATE_WAITING ) && net_continue () )
                 {
@@ -330,15 +341,22 @@ int net_tcp_write (intptr_t connin, uint32_t len, void *addr, uint32_t timeout)
                 cyw43_arch_lwip_end();
                 return conn->err;
                 }
-            addr += conn->ndata;
-            len -= conn->ndata;
+            addr += nsend;
+            len -= nsend;
+            nsent += nsend;
+            // printf ("Advance pointers: ndata = %d, addr = %p, len = %d\n", conn->ndata, addr, len);
+            }
+        else
+            {
+            net_wait ();
             }
         }
-    return NET_ERR_NONE;
+    return nsent;
     }
 
 int net_tcp_read (intptr_t connin, uint32_t len, void *addr, uint32_t timeout)
     {
+    // printf ("net_tcp_read (%p, %d, %p, %d)\n", connin, len, addr, timeout);
     if ( connin < 0 ) return connin;
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     if ( conn->err != NET_ERR_NONE ) return conn->err;
@@ -357,17 +375,21 @@ int net_tcp_read (intptr_t connin, uint32_t len, void *addr, uint32_t timeout)
         }
     if ( conn->p == NULL ) return NET_ERR_TIMEOUT;
     int nrecv = 0;
-    struct pbuf *p = conn->p;
-    while (( len > 0 ) && ( p != NULL ))
+    while (( len > 0 ) && ( conn->p != NULL ))
         {
+        struct pbuf *p = conn->p;
         int ndata = p->len - conn->nused;
         if ( ndata > len ) ndata = len;
+        // printf ("p = %p, p->len = %d, conn->nused = %d, ndata = %d, addr = %p\n",
+        //    p, p->len, conn->nused, ndata, addr);
         memcpy (addr, (uint8_t *)p->payload + conn->nused, ndata);
+        conn->nused += ndata;
         nrecv += ndata;
         addr += ndata;
         len -= ndata;
         if ( conn->nused == p->len )
             {
+            // printf ("tcp_recved (%p, %d)\n", conn->pcb, p->len);
             cyw43_arch_lwip_begin();
             tcp_recved (conn->pcb, p->len);
             cyw43_arch_lwip_end();
