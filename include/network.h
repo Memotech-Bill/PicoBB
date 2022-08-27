@@ -3,11 +3,7 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
-#define NET_ERR_NONE        0
-#define NET_ERR_DATA_END    -1
-#define NET_ERR_TIMEOUT     -2
-#define NET_ERR_PEER_CLOSED -3
-#define NET_ERR_NO_MEM      -101
+#include <lwip/err.h>
 
 #include <stdint.h>
 
@@ -26,8 +22,8 @@ auth% = Authorisation mode
 chan% = Channel number
 ssid& = Station identifier (zero terminated string)
 mac& =  MAC address (6 bytes)
-err% =  NET_ERR_NONE - Returned details of a station
-        NET_ERR_DATA_END - No more stations
+err% =  ERR_OK (0) - Returned details of a station
+        ERR_CLSD (-15) - No more stations
         Internal errors
 */
 

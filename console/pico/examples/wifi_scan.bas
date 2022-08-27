@@ -20,7 +20,7 @@
 200 PRINT
 210 ENDIF
 220 UNTIL err% <> 0
-230 IF err% = -1 THEN
+230 IF err% = -15 THEN
 240 PRINT "Scan complete"
 250 ELSE
 260 PRINT "Error ";err%
