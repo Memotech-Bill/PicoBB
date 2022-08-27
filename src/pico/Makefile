@@ -167,9 +167,9 @@ endif
 	git submodule update --remote
 
 bbcbasic.uf2 bbcbasic.elf &: $(SOURCES) \
-		../../src/pico/symbols/$(SYM_NAME)_sdk.txt \
-		../../src/pico/$(SYM_NAME)_stub.c \
 		build/Makefile
+	cd ../../src/pico && symbols/header_funcs.py symbols/$(SYM_NAME)_sdk.txt $(SYM_NAME)_stub.c \
+		$(SDK_HEADERS)
 	cd ../../src/pico && symbols/merge_funcs.py sympico.h symbols/$(SYM_NAME)_sdk.txt
 	cd build && make
 	cd ../../src/pico && symbols/map_funcs.py $(MAP_FILE) symbols/$(SYM_NAME)_map.txt
@@ -178,18 +178,6 @@ bbcbasic.uf2 bbcbasic.elf &: $(SOURCES) \
 	cd build && make
 	cp build/bbcbasic.uf2 bbcbasic.uf2
 	cp build/bbcbasic.elf bbcbasic.elf
-
-../../src/pico/symbols/$(SYM_NAME)_sdk.txt ../../src/pico/$(SYM_NAME)_stub.c &: \
-		../../src/pico/symbols/header_funcs.py \
-		$(SDK_HEADERS)
-	cd ../../src/pico && symbols/header_funcs.py symbols/$(SYM_NAME)_sdk.txt $(SYM_NAME)_stub.c \
-		$(SDK_HEADERS)
-
-../../src/pico/$(SYM_NAME).h: ../../src/pico/symbols/merge_funcs.py \
-		../../src/pico/symbols/$(SYM_NAME)_sdk.txt \
-		../../src/pico/symbols/$(SYM_NAME)_map.txt
-	cd ../../src/pico && symbols/merge_funcs.py $(SYM_NAME).h symbols/$(SYM_NAME)_sdk.txt \
-		symbols/$(SYM_NAME)_map.txt
 
 ifeq ($(LFS), Y)
 ../../src/lfsutil/uf2merge:

@@ -125,6 +125,23 @@ int net_wifi_scan (net_scan_result_t *pscan)
     return scan_err;
     }
 
+const cyw43_t *net_wifi_get_state (void)
+    {
+    return &cyw43_state;
+    }
+
+const struct netif *net_wifi_get_netif (int iface)
+    {
+    if ((iface >= 0) && (iface <= 1)) return &cyw43_state.netif[iface];
+    return NULL;
+    }
+
+uint32_t net_wifi_get_ipaddr (int iface)
+    {
+    if ((iface >= 0) && (iface <= 1)) return cyw43_state.netif[iface].ip_addr.addr;
+    return 0;
+    }
+
 typedef struct s_tcp_conn
     {
     struct tcp_pcb  *pcb;

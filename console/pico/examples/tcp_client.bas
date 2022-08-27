@@ -13,39 +13,41 @@
 130 PRINT "Error ";err%;" connecting to access point"
 140 END
 150 ENDIF
-160 PRINT "Connected to access point"
-170 DIM server{addr%, port%, conn%}
-180 INPUT "Server address", server$, "Server port", server.port%
-190 SYS "ip4addr_aton", server$, ^server.addr% TO err%
-200 IF err% = 0 THEN
-210 PRINT "Error ";err%;" in Server address"
-220 END
-230 ENDIF
-240 port% = 256 * ?^port% + ?(^port + 1)
-250 SYS "net_tcp_connect", server.addr%, server.port%, 5000 TO server.conn%
-260 IF server.conn% < 0 THEN
-270 PRINT "Error ";server.conn%;" connecting to server"
-280 END
-290 ENDIF
-300 PRINT "Connected to server"
-310 DIM data&(2047)
-320 FOR i% = 1 TO 10
-330 SYS "net_tcp_read", server.conn%, 2048, ^data&(0), 10000 TO err%
-340 IF err% < 0 THEN
-350 PRINT "Error ";err%;" reading data from server"
-360 EXIT FOR
-370 ENDIF
-380 PRINT "Received ";err%;" bytes from server"
-390 FOR j% = 0 TO 7
-400 PRINT data&(j%),
-410 NEXT
-420 PRINT
-430 SYS "net_tcp_write", server.conn%, err%, ^data&(0), 10000 TO err%
-440 IF err% < 0 THEN
-450 PRINT "Error ";err%;" writing data to server"
-460 EXIT FOR
-470 ENDIF
-480 PRINT "Sent ";err%;" bytes to server"
-490 NEXT
-500 SYS "net_tcp_close", server.conn%
-510 PRINT "Disconnected from server"
+160 SYS "net_wifi_get_ipaddr", 0 TO ipaddr%
+170 SYS "ip4addr_ntoa", ^ipaddr% TO ipname%
+180 PRINT "Connected to access point: IP address = ";$$ipname%
+190 DIM server{addr%, port%, conn%}
+200 INPUT "Server address", server$, "Server port", server.port%
+210 SYS "ip4addr_aton", server$, ^server.addr% TO err%
+220 IF err% = 0 THEN
+230 PRINT "Error ";err%;" in Server address"
+240 END
+250 ENDIF
+260 port% = 256 * ?^port% + ?(^port + 1)
+270 SYS "net_tcp_connect", server.addr%, server.port%, 5000 TO server.conn%
+280 IF server.conn% < 0 THEN
+290 PRINT "Error ";server.conn%;" connecting to server"
+300 END
+310 ENDIF
+320 PRINT "Connected to server"
+330 DIM data&(2047)
+340 FOR i% = 1 TO 10
+350 SYS "net_tcp_read", server.conn%, 2048, ^data&(0), 10000 TO err%
+360 IF err% < 0 THEN
+370 PRINT "Error ";err%;" reading data from server"
+380 EXIT FOR
+390 ENDIF
+400 PRINT "Received ";err%;" bytes from server"
+410 FOR j% = 0 TO 7
+420 PRINT data&(j%),
+430 NEXT
+440 PRINT
+450 SYS "net_tcp_write", server.conn%, err%, ^data&(0), 10000 TO err%
+460 IF err% < 0 THEN
+470 PRINT "Error ";err%;" writing data to server"
+480 EXIT FOR
+490 ENDIF
+500 PRINT "Sent ";err%;" bytes to server"
+510 NEXT
+520 SYS "net_tcp_close", server.conn%
+530 PRINT "Disconnected from server"
