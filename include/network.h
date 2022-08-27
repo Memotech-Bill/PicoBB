@@ -173,6 +173,14 @@ void net_tcp_close (intptr_t conn);
 
 /*-------------------------------------------------------------------------------
 
+net_tcp_freeall - Close all connections and free all memory
+
+*/
+
+void net_tcp_freeall (void);
+
+/*-------------------------------------------------------------------------------
+
 net_tcp_peer - Get information on the peer of a connection
 
 SYS "net_tcp_peer", conn%, ^ipaddr%, ^port%
