@@ -34,64 +34,63 @@
 340 PRINT "Error ";err%;" in Server address"
 350 END
 360 ENDIF
-370 port% = 50343
-380 port% = 256 * ?^port% + ?(^port% + 1)
-390 SYS "net_tcp_connect", ^server.addr%, server.port%, 5000 TO server.conn%
-400 IF server.conn% < 0 THEN
-410 PRINT "Error ";server.conn%;" connecting to server"
-420 END
-430 ENDIF
-440 PRINT "Connected to server"
-450 PRINT "Start typing to chat..."
-460 REPEAT
-470 key$ = INKEY$(1)
-480 IF key$ <> "" THEN
-490 COLOUR 4
-500 IF ASCkey$ = 27 EXIT REPEAT
-510 IF ASCkey$ = &D THEN
-520 PRINT
-530 chat$ = chat$ + CHR$(13) + CHR$(10)
-540 SYS "net_tcp_write", server.conn%, LEN(chat$), PTR(chat$), 5000 TO result%
-550 IF result% < 0 EXIT REPEAT
-560 chat$ = ""
-570 ELSE
-580 chat$ = chat$ + key$
-590 PRINT CHR$(13);chat$;
-600 ENDIF
-610 ENDIF
-620 result% = FN_readlinesocket(server.conn%, 4, reply$)
-630 IF result% > 0 THEN
-640 COLOUR 1
-650 PRINT
-660 PRINT reply$
-670 ENDIF
-680 UNTIL result% < 0
-690 COLOUR 0
-700 PRINT "Server closed connection, or error."
-710 PROCcleanup
-720 END
-730 DEF PROCcleanup
-740 IF server.conn% > 0 THEN
-750 SYS "net_tcp_close", server.conn%
-760 SYS "net_freeall"
-770 ENDPROC
-780 REM Read a line of text to A$ from socket S% with timeout T% centiseconds
-790 DEF FN_readlinesocket(S%,T%,RETURN A$)
-800 LOCAL buff%,E%,I%
-810 PRIVATE B$
-820 DIM buff% LOCAL 255
-830 REM ON ERROR LOCAL RESTORE LOCAL : ERROR ERR,REPORT$
-840 I%=INSTR(B$,CHR$10)
-850 IF I%=0 THEN
-860 T% += TIME
-870 REPEAT
-880 SYS "net_tcp_read", S%, 256, buff% TO E%
-890 IF E%>0 FOR I%=0 TO E%-1:B$ += CHR$buff%?I% : NEXT
-900 I% = INSTR(B$,CHR$10)
-910 UNTIL E%<0 OR I%<>0 OR TIME>T%
-920 ENDIF
-930 IF E%<0 THEN =E%
-940 IF I% A$=LEFT$(B$,I%-1) : B$ = MID$(B$,I%+1) ELSE A$=""
-950 IF RIGHT$(A$)=CHR$13 A$ = LEFT$(A$)
-960 IF ASCB$=13 B$ = MID$(B$,2)
-970 =LENA$
+370 SYS "net_tcp_connect", ^server.addr%, server.port%, 5000 TO server.conn%
+380 IF server.conn% < 0 THEN
+390 PRINT "Error ";server.conn%;" connecting to server"
+400 END
+410 ENDIF
+420 PRINT "Connected to server"
+430 PRINT "Start typing to chat..."
+440 REPEAT
+450 key$ = INKEY$(1)
+460 IF key$ <> "" THEN
+470 COLOUR 4
+480 IF ASCkey$ = 27 EXIT REPEAT
+490 IF ASCkey$ = &D THEN
+500 PRINT
+510 chat$ = chat$ + CHR$(13) + CHR$(10)
+520 SYS "net_tcp_write", server.conn%, LEN(chat$), PTR(chat$), 5000 TO result%
+530 IF result% < 0 EXIT REPEAT
+540 chat$ = ""
+550 ELSE
+560 chat$ = chat$ + key$
+570 PRINT CHR$(13);chat$;
+580 ENDIF
+590 ENDIF
+600 result% = FN_readlinesocket(server.conn%, 4, reply$)
+610 IF result% > 0 THEN
+620 COLOUR 1
+630 PRINT
+640 PRINT reply$
+650 ENDIF
+660 UNTIL result% < 0
+670 COLOUR 0
+680 PRINT "Server closed connection, or error."
+690 PROCcleanup
+700 END
+710 DEF PROCcleanup
+720 IF server.conn% > 0 THEN
+730 SYS "net_tcp_close", server.conn%
+740 ENDIF
+750 SYS "net_freeall"
+760 ENDPROC
+770 REM Read a line of text to A$ from socket S% with timeout T% centiseconds
+780 DEF FN_readlinesocket(S%,T%,RETURN A$)
+790 LOCAL buff%,E%,I%
+800 PRIVATE B$
+810 DIM buff% LOCAL 255
+820 REM ON ERROR LOCAL RESTORE LOCAL : ERROR ERR,REPORT$
+830 I%=INSTR(B$,CHR$10)
+840 IF I%=0 THEN
+850 T% += TIME
+860 REPEAT
+870 SYS "net_tcp_read", S%, 256, buff% TO E%
+880 IF E%>0 FOR I%=0 TO E%-1:B$ += CHR$buff%?I% : NEXT
+890 I% = INSTR(B$,CHR$10)
+900 UNTIL E%<0 OR I%<>0 OR TIME>T%
+910 ENDIF
+920 IF E%<0 THEN =E%
+930 IF I% A$=LEFT$(B$,I%-1) : B$ = MID$(B$,I%+1) ELSE A$=""
+940 IF RIGHT$(A$)=CHR$13 A$ = LEFT$(A$)
+950 IF ASCB$=13 B$ = MID$(B$,2)
+960 =LENA$

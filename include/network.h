@@ -89,8 +89,8 @@ net_tcp_connect - Open a TCP connection
 
 SYS "net_tcp_connect", ^ipaddr%, port%, timeout% TO conn%
 
-ipaddr% =   IP address in network byte order.
-port% =     Port number in network byte order.
+ipaddr% =   IP address.
+port% =     Port number.
 timeout% =  Timeout in ms. Zero for wait forever.
 conn% >0 -  Connection handle
       <0 -  Error number
@@ -105,8 +105,8 @@ net_tcp_listen - Listen for a connection on a specified address and port
 
 SYS "net_tcp_listen", ^ipaddr%, port% to listen%
 
-ipaddr% =       Local IP address in network byte order (0 = all local addresses).
-port% =         Port number in network byte order.
+ipaddr% =       Local IP address (0 = all local addresses).
+port% =         Port number
 listen% >0 -    Listening handle
         <0 -    Error number
 
