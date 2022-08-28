@@ -14,11 +14,16 @@
 140 END
 150 ENDIF
 160 DIM ipaddr{addr%, port%}
-170 SYS "net_wifi_get_ipaddr", 0 TO ipaddr.addr%
+170 SYS "net_wifi_get_ipaddr", 0, ^ipaddr.addr% TO err%
+171 IF err% <> 0 THEN
+172 PRINT "No IP address assigned to connection"
+173 END
+174 ENDIF
 180 SYS "ip4addr_ntoa", ^ipaddr.addr% TO ipname%
 190 PRINT "Connected to access point: IP address = ";$$ipname%
 200 ipaddr.port% = 4242
-210 SYS "net_tcp_listen", 0, ipaddr.port% TO listen%
+205 ipaddr.addr% = 0
+210 SYS "net_tcp_listen", ^ipaddr.addr, ipaddr.port% TO listen%
 220 IF ( listen% < 0 ) THEN
 230 PRINT "Error ";listen%;" opening listening socket"
 240 END

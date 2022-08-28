@@ -14,7 +14,11 @@
 140 END
 150 ENDIF
 160 DIM ipaddr{addr%}
-170 SYS "net_wifi_get_ipaddr", 0 TO ipaddr.addr%
+170 SYS "net_wifi_get_ipaddr", 0, ^ipaddr.addr% TO err%
+171 IF err% <> 0 THEN
+172 PRINT "No IP address assigned to connection"
+173 END
+174 ENDIF
 180 SYS "ip4addr_ntoa", ^ipaddr.addr% TO ipname%
 190 PRINT "Connected to access point: IP address = ";$$ipname%
 200 DIM server{addr%, port%, conn%}
@@ -26,7 +30,7 @@
 260 END
 270 ENDIF
 280 port% = 256 * ?^port% + ?(^port% + 1)
-290 SYS "net_tcp_connect", server.addr%, server.port%, 5000 TO server.conn%
+290 SYS "net_tcp_connect", ^server.addr%, server.port%, 5000 TO server.conn%
 300 IF server.conn% < 0 THEN
 310 PRINT "Error ";server.conn%;" connecting to server"
 320 END

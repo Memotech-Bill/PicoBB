@@ -136,10 +136,18 @@ const struct netif *net_wifi_get_netif (int iface)
     return NULL;
     }
 
-uint32_t net_wifi_get_ipaddr (int iface)
+int net_wifi_get_ipaddr (int iface, ip_addr_t *ipaddr)
     {
-    if ((iface >= 0) && (iface <= 1)) return cyw43_state.netif[iface].ip_addr.addr;
-    return 0;
+    if ((iface >= 0) && (iface <= 1))
+        {
+        if ( cyw43_tcpip_link_status (&cyw43_state, iface) == CYW43_LINK_UP )
+            {
+            memcpy (ipaddr, &cyw43_state.netif[iface].ip_addr, sizeof (ip_addr_t));
+            return ERR_OK;
+            }
+        return ERR_CONN;
+        }
+    return ERR_ARG;
     }
 
 typedef struct s_tcp_conn
@@ -153,16 +161,16 @@ typedef struct s_tcp_conn
     struct s_tcp_conn   *next;
     } tcp_conn_t;
 
-static tcp_conn_t  *conn_active = NULL;
-static tcp_conn_t  *conn_free = NULL;
+static tcp_conn_t  *tconn_active = NULL;
+static tcp_conn_t  *tconn_free = NULL;
 
 static tcp_conn_t *tcp_conn_alloc (void)
     {
     tcp_conn_t *conn = NULL;
-    if ( conn_free != NULL )
+    if ( tconn_free != NULL )
         {
-        conn = conn_free;
-        conn_free = conn->next;
+        conn = tconn_free;
+        tconn_free = conn->next;
         memset (conn, 0, sizeof (tcp_conn_t));
         }
     else
@@ -171,21 +179,21 @@ static tcp_conn_t *tcp_conn_alloc (void)
         }
     if ( conn != NULL )
         {
-        conn->next = conn_active;
-        conn_active = conn;
+        conn->next = tconn_active;
+        tconn_active = conn;
         }
     return conn;
     }
 
 static void tcp_conn_free (tcp_conn_t *conn)
     {
-    if ( conn == conn_active )
+    if ( conn == tconn_active )
         {
-        conn_active = conn->next;
+        tconn_active = conn->next;
         }
     else
         {
-        tcp_conn_t *pconn = conn_active;
+        tcp_conn_t *pconn = tconn_active;
         while (pconn != NULL)
             {
             if ( conn == pconn->next )
@@ -196,24 +204,24 @@ static void tcp_conn_free (tcp_conn_t *conn)
             pconn = pconn->next;
             }
         }
-    conn->next = conn_free;
-    conn_free = conn;
+    conn->next = tconn_free;
+    tconn_free = conn;
     }
 
-void net_tcp_err_cb (void *connin, err_t err)
+static void net_tcp_err_cb (void *connin, err_t err)
     {
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     conn->err = err;
     }
 
-err_t net_tcp_connected_cb (void *connin, struct tcp_pcb *pcb, err_t err)
+static err_t net_tcp_connected_cb (void *connin, struct tcp_pcb *pcb, err_t err)
     {
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     conn->err = err;
     return ERR_OK;
     }
 
-err_t net_tcp_receive_cb (void *connin, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
+static err_t net_tcp_receive_cb (void *connin, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
     {
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     if ( pcb == conn->acc )
@@ -242,7 +250,7 @@ err_t net_tcp_receive_cb (void *connin, struct tcp_pcb *pcb, struct pbuf *p, err
     return ERR_OK;
     }
 
-intptr_t net_tcp_connect (uint32_t ipaddr, uint32_t port, uint32_t timeout)
+intptr_t net_tcp_connect (const ip_addr_t *ipaddr, uint32_t port, uint32_t timeout)
     {
     tcp_conn_t *conn = tcp_conn_alloc ();
     if ( conn == NULL ) return ERR_MEM;
@@ -258,7 +266,7 @@ intptr_t net_tcp_connect (uint32_t ipaddr, uint32_t port, uint32_t timeout)
     tcp_arg (conn->pcb, conn);
     tcp_err (conn->pcb, net_tcp_err_cb);
     cyw43_arch_lwip_begin();
-    tcp_connect (conn->pcb, (ip_addr_t *) &ipaddr, port, net_tcp_connected_cb);
+    tcp_connect (conn->pcb, ipaddr, port, net_tcp_connected_cb);
     cyw43_arch_lwip_end();
     while (( conn->err == STATE_WAITING ) && net_continue () )
         {
@@ -278,7 +286,7 @@ intptr_t net_tcp_connect (uint32_t ipaddr, uint32_t port, uint32_t timeout)
     return  (intptr_t) conn;
     }
 
-err_t net_tcp_accept_cb (void *connin, struct tcp_pcb *pcb, err_t err)
+static err_t net_tcp_accept_cb (void *connin, struct tcp_pcb *pcb, err_t err)
     {
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     if ( conn->acc == NULL )
@@ -295,7 +303,7 @@ err_t net_tcp_accept_cb (void *connin, struct tcp_pcb *pcb, err_t err)
         }
     }
 
-intptr_t net_tcp_listen (uint32_t ipaddr, uint32_t port)
+intptr_t net_tcp_listen (const ip_addr_t *ipaddr, uint32_t port)
     {
     tcp_conn_t *conn = tcp_conn_alloc ();
     if ( conn == NULL ) return ERR_MEM;
@@ -309,7 +317,7 @@ intptr_t net_tcp_listen (uint32_t ipaddr, uint32_t port)
     tcp_arg (conn->pcb, conn);
     tcp_err (conn->pcb, net_tcp_err_cb);
     cyw43_arch_lwip_begin();
-    err_t err = tcp_bind (conn->pcb, (ip_addr_t *) &ipaddr, port);
+    err_t err = tcp_bind (conn->pcb, ipaddr, port);
     cyw43_arch_lwip_end();
     if ( err == ERR_OK )
         {
@@ -353,7 +361,7 @@ intptr_t net_tcp_accept (intptr_t listen)
     return (intptr_t) nconn;
     }
 
-err_t net_tcp_sent_cb (void *connin, struct tcp_pcb *pcb, uint16_t len)
+static err_t net_tcp_sent_cb (void *connin, struct tcp_pcb *pcb, uint16_t len)
     {
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     conn->ndata -= len;
@@ -361,7 +369,7 @@ err_t net_tcp_sent_cb (void *connin, struct tcp_pcb *pcb, uint16_t len)
     return ERR_OK;
     }
 
-int net_tcp_write (intptr_t connin, uint32_t len, void *addr, uint32_t timeout)
+int net_tcp_write (intptr_t connin, uint32_t len, void *data, uint32_t timeout)
     {
     if ( connin < 0 ) return connin;
     tcp_conn_t *conn = (tcp_conn_t *) connin;
@@ -384,7 +392,7 @@ int net_tcp_write (intptr_t connin, uint32_t len, void *addr, uint32_t timeout)
             conn->err = STATE_WAITING;
             tcp_sent (conn->pcb, net_tcp_sent_cb);
             cyw43_arch_lwip_begin();
-            tcp_write (conn->pcb, addr, nsend, flags);
+            tcp_write (conn->pcb, data, nsend, flags);
             cyw43_arch_lwip_end();
             while (( conn->err == STATE_WAITING ) && net_continue () )
                 {
@@ -397,7 +405,7 @@ int net_tcp_write (intptr_t connin, uint32_t len, void *addr, uint32_t timeout)
                 cyw43_arch_lwip_end();
                 return conn->err;
                 }
-            addr += nsend;
+            data += nsend;
             len -= nsend;
             nsent += nsend;
             }
@@ -409,35 +417,21 @@ int net_tcp_write (intptr_t connin, uint32_t len, void *addr, uint32_t timeout)
     return nsent;
     }
 
-int net_tcp_read (intptr_t connin, uint32_t len, void *addr, uint32_t timeout)
+int net_tcp_read (intptr_t connin, uint32_t len, void *data)
     {
     if ( connin < 0 ) return connin;
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     if ( conn->err != ERR_OK ) return conn->err;
-    if ( timeout == 0 ) net_tend = at_the_end_of_time;
-    else                net_tend = make_timeout_time_ms (timeout);
-    while (( conn->p == NULL ) && net_continue () )
-        {
-        net_wait ();
-        }
-    if ( conn->err != STATE_COMPLETED )
-        {
-        cyw43_arch_lwip_begin();
-        tcp_abort (conn->pcb);
-        cyw43_arch_lwip_end();
-        return conn->err;
-        }
-    if ( conn->p == NULL ) return ERR_TIMEOUT;
     int nrecv = 0;
     while (( len > 0 ) && ( conn->p != NULL ))
         {
         struct pbuf *p = conn->p;
         int ndata = p->len - conn->nused;
         if ( ndata > len ) ndata = len;
-        memcpy (addr, (uint8_t *)p->payload + conn->nused, ndata);
+        memcpy (data, (uint8_t *)p->payload + conn->nused, ndata);
         conn->nused += ndata;
         nrecv += ndata;
-        addr += ndata;
+        data += ndata;
         len -= ndata;
         if ( conn->nused == p->len )
             {
@@ -479,21 +473,7 @@ void net_tcp_close (intptr_t connin)
     tcp_conn_free (conn);
     }
 
-void net_tcp_freeall (void)
-    {
-    while ( conn_active != NULL )
-        {
-        net_tcp_close ((intptr_t) conn_active);
-        }
-    while ( conn_free != NULL )
-        {
-        tcp_conn_t *conn = conn_free;
-        conn_free = conn->next;
-        free ((void *) conn);
-        }
-    }
-
-void net_tcp_peer (intptr_t connin, uint32_t *ipaddr, uint32_t *port)
+void net_tcp_peer (intptr_t connin, ip_addr_t *ipaddr, uint32_t *port)
     {
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     ip_addr_t raddr;
@@ -501,7 +481,7 @@ void net_tcp_peer (intptr_t connin, uint32_t *ipaddr, uint32_t *port)
     cyw43_arch_lwip_begin();
     tcp_tcp_get_tcp_addrinfo (conn->pcb, 0, &raddr, &rport);
     cyw43_arch_lwip_end();
-    ISTORE (ipaddr, raddr.addr);
+    memcpy (ipaddr, &raddr, sizeof (ip_addr_t));
     ISTORE (port, rport);
     }
 
@@ -518,7 +498,7 @@ void net_dns_found_cb (const char *host, const ip_addr_t *addr, void *pfipin)
     pfip->found = true;
     }
 
-int net_dns_get_ip (const char *host, uint32_t timeout, uint32_t *ipaddr)
+int net_dns_get_ip (const char *host, uint32_t timeout, ip_addr_t *ipaddr)
     {
     find_ip_t   fip = { false, 0 };
     if ( timeout == 0 ) net_tend = at_the_end_of_time;
@@ -531,7 +511,7 @@ int net_dns_get_ip (const char *host, uint32_t timeout, uint32_t *ipaddr)
         }
     if ( fip.found )
         {
-        ISTORE (ipaddr, fip.ipaddr.addr);
+        memcpy (ipaddr, &fip.ipaddr, sizeof (ip_addr_t));
         err = ERR_OK;
         }
     else
@@ -539,4 +519,180 @@ int net_dns_get_ip (const char *host, uint32_t timeout, uint32_t *ipaddr)
         err = ERR_TIMEOUT;
         }
     return err;
+    }
+
+typedef struct s_udp_conn
+    {
+    struct udp_pcb      *pcb;
+    struct pbuf         *p;
+    ip_addr_t           addr;
+    uint16_t            port;
+    int                 nused;
+    struct s_udp_conn   *next;
+    } udp_conn_t;
+
+static udp_conn_t  *uconn_active = NULL;
+static udp_conn_t  *uconn_free = NULL;
+
+static udp_conn_t *udp_conn_alloc (void)
+    {
+    udp_conn_t *conn = NULL;
+    if ( uconn_free != NULL )
+        {
+        conn = uconn_free;
+        uconn_free = conn->next;
+        memset (conn, 0, sizeof (udp_conn_t));
+        }
+    else
+        {
+        conn = (udp_conn_t *) calloc (1, sizeof (udp_conn_t));
+        }
+    if ( conn != NULL )
+        {
+        conn->next = uconn_active;
+        uconn_active = conn;
+        }
+    return conn;
+    }
+
+static void udp_conn_free (udp_conn_t *conn)
+    {
+    if ( conn == uconn_active )
+        {
+        uconn_active = conn->next;
+        }
+    else
+        {
+        udp_conn_t *pconn = uconn_active;
+        while (pconn != NULL)
+            {
+            if ( conn == pconn->next )
+                {
+                pconn->next = conn->next;
+                break;
+                }
+            pconn = pconn->next;
+            }
+        }
+    conn->next = uconn_free;
+    uconn_free = conn;
+    }
+
+static void net_udp_receive_cb (void *connin, struct udp_pcb *pcb, struct pbuf *p,
+    const ip_addr_t *addr, uint16_t port)
+    {
+    udp_conn_t *conn = (udp_conn_t *) connin;
+    if ( conn->p == NULL )
+        {
+        conn->p = p;
+        conn->addr = *addr;
+        conn->port = port;
+        }
+    else if (( memcmp (&conn->addr, addr, sizeof (ip_addr_t)) == 0 ) && ( conn->port == port ))
+        {
+        pbuf_cat (conn->p, p);
+        }
+    else
+        {
+        pbuf_free (p);
+        }
+    }
+
+intptr_t net_udp_open (void)
+    {
+    udp_conn_t *conn = udp_conn_alloc ();
+    if ( conn == NULL ) return ERR_MEM;
+    conn->pcb = udp_new ();
+    if ( conn->pcb == NULL )
+        {
+        udp_conn_free (conn);
+        return ERR_MEM;
+        }
+    udp_recv (conn->pcb, net_udp_receive_cb, conn);
+    return (intptr_t) conn;
+    }
+
+int net_udp_bind (intptr_t connin, const ip_addr_t *ipaddr, uint32_t port)
+    {
+    udp_conn_t *conn = (udp_conn_t *) connin;
+    cyw43_arch_lwip_begin();
+    err_t err = udp_bind (conn->pcb, ipaddr, port);
+    cyw43_arch_lwip_end();
+    return err;
+    }
+
+int net_udp_send (intptr_t connin, uint32_t len, void *data, ip_addr_t *ipaddr, uint32_t port)
+    {
+    udp_conn_t *conn = (udp_conn_t *) connin;
+    struct pbuf *p = pbuf_alloc (PBUF_TRANSPORT, len, PBUF_RAM);
+    if ( p == NULL ) return ERR_MEM;
+    memcpy (p->payload, data, len);
+    cyw43_arch_lwip_begin();
+    err_t err = udp_sendto (conn->pcb, p, ipaddr, port);
+    cyw43_arch_lwip_end();
+    pbuf_free (p);
+    return err;
+    }
+
+int net_udp_recv (intptr_t connin, uint32_t len, void *data, ip_addr_t *ipaddr, uint32_t *port)
+    {
+    udp_conn_t *conn = (udp_conn_t *) connin;
+    int nrecv = 0;
+    while (( len > 0 ) && ( conn->p != NULL ))
+        {
+        struct pbuf *p = conn->p;
+        int ndata = p->len - conn->nused;
+        if ( ndata > len ) ndata = len;
+        memcpy (data, (uint8_t *)p->payload + conn->nused, ndata);
+        conn->nused += ndata;
+        nrecv += ndata;
+        data += ndata;
+        len -= ndata;
+        if ( conn->nused == p->len )
+            {
+            cyw43_arch_lwip_begin();
+            conn->p = p->next;
+            conn->nused = 0;
+            pbuf_ref (p->next);
+            pbuf_free (p);
+            cyw43_arch_lwip_end();
+            }
+        }
+    memcpy (ipaddr, &conn->addr, sizeof (ip_addr_t));
+    ISTORE (port, conn->port);
+    return nrecv;
+    }
+
+void net_udp_close (intptr_t connin)
+    {
+    udp_conn_t *conn = (udp_conn_t *) connin;
+    cyw43_arch_lwip_begin();
+    udp_disconnect (conn->pcb);
+    udp_remove (conn->pcb);
+    cyw43_arch_lwip_end();
+    udp_conn_free (conn);
+    }
+
+void net_freeall (void)
+    {
+    while ( tconn_active != NULL )
+        {
+        net_tcp_close ((intptr_t) tconn_active);
+        }
+    while ( tconn_free != NULL )
+        {
+        tcp_conn_t *conn = tconn_free;
+        tconn_free = conn->next;
+        free ((void *) conn);
+        }
+    while ( uconn_active != NULL )
+        {
+        net_udp_close ((intptr_t) uconn_active);
+        }
+    while ( uconn_free != NULL )
+        {
+        udp_conn_t *conn = uconn_free;
+        uconn_free = conn->next;
+        free ((void *) conn);
+        }
     }
