@@ -186,7 +186,9 @@ ifeq ($(LFS), Y)
 bbcbasic+filesystem.uf2: bbcbasic.uf2 filesystem.uf2 ../../src/lfsutil/uf2merge
 	../../src/lfsutil/uf2merge bbcbasic+filesystem.uf2 bbcbasic.uf2 filesystem.uf2
 
-filesystem.uf2:
+filesystem.uf2: ../../BBCSDL/lib/*.bbc \
+		../../BBCSDL/examples/general/*.bbc \
+		../../console/pico/examples/lib/*.bbc
 	cd ../../src/lfsutil && make clean
 	cd ../../src/lfsutil && make EXTRA=$(LFS_EXTRA) FILESYS=$(FILESYS)
 	cp ../../src/lfsutil/filesystem.uf2 .

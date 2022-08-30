@@ -2192,13 +2192,17 @@ int cyw43_arch_init_safe (void)
 
 int cyw43_arch_init_with_country_safe (uint32_t country)
     {
-    if ( is_cyw43_init )
+    int iErr = 0;
+    if (( is_cyw43_init ) && ( cyw43_arch_get_country_code () != country ))
         {
         cyw43_arch_deinit ();
         is_cyw43_init = false;
         }
-    int iErr = cyw43_arch_init_with_country (country);
-    if ( iErr == 0 ) is_cyw43_init = true;
+    if ( ! is_cyw43_init )
+        {
+        iErr = cyw43_arch_init_with_country (country);
+        if ( iErr == 0 ) is_cyw43_init = true;
+        }
     return iErr;
     }
 

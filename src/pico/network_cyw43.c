@@ -16,6 +16,53 @@
 #define STATE_WAITING       1
 
 static uint32_t net_interrupts;
+static err_t last_error = 0;
+
+static const char *psError[] =
+    {
+    "No error.",                    //   0 - ERR_OK
+    "Out of memory error.",         //  -1 - ERR_MEM
+    "Buffer error.",                //  -2 - ERR_BUF
+    "Timeout.",                     //  -3 - ERR_TIMEOUT
+    "Routing problem.",             //  -4 - ERR_RTE
+    "Operation in progress",        //  -5 - ERR_INPROGRESS
+    "Illegal value.",               //  -6 - ERR_VAL
+    "Operation would block.",       //  -7 - ERR_WOULDBLOCK
+    "Address in use.",              //  -8 - ERR_USE
+    "Already connecting.",          //  -9 - ERR_ALREADY
+    "Conn already established.",    // -10 - ERR_ISCONN
+    "Not connected.",               // -11 - ERR_CONN
+    "Low-level netif error",        // -12 - ERR_IF
+    "Connection aborted.",          // -13 - ERR_ABRT
+    "Connection reset.",            // -14 - ERR_RST
+    "Connection closed.",           // -15 - ERR_CLSD
+    "Illegal argument. ",           // -16 - ERR_ARG
+    };
+
+static inline int net_error (err_t err)
+    {
+    if ( err != 0 ) last_error = err;
+    return err;
+    }
+
+int net_last_errno (void)
+    {
+    return last_error;
+    }
+
+const char *net_error_desc (int err)
+    {
+    if (( err <= 0 ) && ( err > ( sizeof (psError) / sizeof (psError[0]) )))
+        {
+        return psError[-last_error];
+        }
+    return "Unknown error.";
+    }
+
+void net_error_clear (void)
+    {
+    last_error = 0;
+    }
 
 static inline void net_crit_begin (void)
     {
@@ -99,7 +146,7 @@ int net_wifi_scan (net_scan_result_t *pscan)
         scan_last = NULL;
         cyw43_wifi_scan_options_t scan_options = {0};
         int err = cyw43_wifi_scan(&cyw43_state, &scan_options, NULL, net_scan_cb);
-        if ( err != 0 ) return err;
+        if ( err != 0 ) return net_error (err);
         scan_err = ERR_OK;
         bScan = true;
         }
@@ -122,7 +169,7 @@ int net_wifi_scan (net_scan_result_t *pscan)
     memset (pscan, 0, sizeof (net_scan_result_t));
     bScan = false;
     if ( scan_err == ERR_OK ) scan_err = ERR_CLSD;
-    return scan_err;
+    return net_error (scan_err);
     }
 
 const cyw43_t *net_wifi_get_state (void)
@@ -145,9 +192,9 @@ int net_wifi_get_ipaddr (int iface, ip_addr_t *ipaddr)
             memcpy (ipaddr, &cyw43_state.netif[iface].ip_addr, sizeof (ip_addr_t));
             return ERR_OK;
             }
-        return ERR_CONN;
+        return net_error (ERR_CONN);
         }
-    return ERR_ARG;
+    return net_error (ERR_ARG);
     }
 
 typedef struct s_tcp_conn
@@ -208,6 +255,18 @@ static void tcp_conn_free (tcp_conn_t *conn)
     tconn_free = conn;
     }
 
+int net_tcp_valid (intptr_t connin)
+    {
+    tcp_conn_t *conn = (tcp_conn_t *) connin;
+    tcp_conn_t *tconn = tconn_active;
+    while ( tconn != NULL )
+        {
+        if ( conn == tconn ) return 1;
+        tconn = tconn->next;
+        }
+    return 0;
+    }
+
 static void net_tcp_err_cb (void *connin, err_t err)
     {
     tcp_conn_t *conn = (tcp_conn_t *) connin;
@@ -231,7 +290,7 @@ static err_t net_tcp_receive_cb (void *connin, struct tcp_pcb *pcb, struct pbuf 
             conn->acc = NULL;
             return ERR_OK;
             }
-        return ERR_BUF;
+        return net_error (ERR_BUF);
         }
     if ( p == NULL )
         {
@@ -253,12 +312,12 @@ static err_t net_tcp_receive_cb (void *connin, struct tcp_pcb *pcb, struct pbuf 
 intptr_t net_tcp_connect (const ip_addr_t *ipaddr, uint32_t port, uint32_t timeout)
     {
     tcp_conn_t *conn = tcp_conn_alloc ();
-    if ( conn == NULL ) return ERR_MEM;
+    if ( conn == NULL ) return net_error (ERR_MEM);
     conn->pcb = tcp_new ();
     if ( conn->pcb == NULL )
         {
         tcp_conn_free (conn);
-        return ERR_MEM;
+        return net_error (ERR_MEM);
         }
     if ( timeout == 0 ) net_tend = at_the_end_of_time;
     else                net_tend = make_timeout_time_ms (timeout);
@@ -279,7 +338,7 @@ intptr_t net_tcp_connect (const ip_addr_t *ipaddr, uint32_t port, uint32_t timeo
         tcp_abort (conn->pcb);
         cyw43_arch_lwip_end();
         tcp_conn_free (conn);
-        if ( conn->err == STATE_WAITING ) return ERR_TIMEOUT;
+        if ( conn->err == STATE_WAITING ) return net_error (ERR_TIMEOUT);
         return err;
         }
     tcp_recv (conn->pcb, net_tcp_receive_cb);
@@ -306,12 +365,12 @@ static err_t net_tcp_accept_cb (void *connin, struct tcp_pcb *pcb, err_t err)
 intptr_t net_tcp_listen (const ip_addr_t *ipaddr, uint32_t port)
     {
     tcp_conn_t *conn = tcp_conn_alloc ();
-    if ( conn == NULL ) return ERR_MEM;
+    if ( conn == NULL ) return net_error (ERR_MEM);
     conn->pcb = tcp_new ();
     if ( conn->pcb == NULL )
         {
         tcp_conn_free (conn);
-        return ERR_MEM;
+        return net_error (ERR_MEM);
         }
     conn->err = STATE_WAITING;
     tcp_arg (conn->pcb, conn);
@@ -333,7 +392,7 @@ intptr_t net_tcp_listen (const ip_addr_t *ipaddr, uint32_t port)
         tcp_abort (conn->pcb);
         cyw43_arch_lwip_end();
         tcp_conn_free (conn);
-        return err;
+        return net_error (err);
         }
     tcp_accept (conn->pcb, net_tcp_accept_cb);
     return (intptr_t) conn;
@@ -352,7 +411,7 @@ intptr_t net_tcp_accept (intptr_t listen)
         cyw43_arch_lwip_begin();
         tcp_abort (pcb);
         cyw43_arch_lwip_end();
-        return ERR_MEM;
+        return net_error (ERR_MEM);
         }
     nconn->pcb = pcb;
     tcp_arg (nconn->pcb, nconn);
@@ -371,9 +430,9 @@ static err_t net_tcp_sent_cb (void *connin, struct tcp_pcb *pcb, uint16_t len)
 
 int net_tcp_write (intptr_t connin, uint32_t len, void *data, uint32_t timeout)
     {
-    if ( connin < 0 ) return connin;
+    if ( ! net_tcp_valid (connin) ) return net_error (ERR_ARG);
     tcp_conn_t *conn = (tcp_conn_t *) connin;
-    if ( conn->err != ERR_OK ) return conn->err;
+    if ( conn->err != ERR_OK ) return net_error (conn->err);
     if ( timeout == 0 ) net_tend = at_the_end_of_time;
     else                net_tend = make_timeout_time_ms (timeout);
     int nsent = 0;
@@ -403,7 +462,7 @@ int net_tcp_write (intptr_t connin, uint32_t len, void *data, uint32_t timeout)
                 cyw43_arch_lwip_begin();
                 tcp_abort (conn->pcb);
                 cyw43_arch_lwip_end();
-                return conn->err;
+                return net_error (conn->err);
                 }
             data += nsend;
             len -= nsend;
@@ -419,9 +478,9 @@ int net_tcp_write (intptr_t connin, uint32_t len, void *data, uint32_t timeout)
 
 int net_tcp_read (intptr_t connin, uint32_t len, void *data)
     {
-    if ( connin < 0 ) return connin;
+    if ( ! net_tcp_valid (connin) ) return net_error (ERR_ARG);
     tcp_conn_t *conn = (tcp_conn_t *) connin;
-    if ( conn->err != ERR_OK ) return conn->err;
+    if ( conn->err != ERR_OK ) return net_error (conn->err);
     int nrecv = 0;
     while (( len > 0 ) && ( conn->p != NULL ))
         {
@@ -449,6 +508,7 @@ int net_tcp_read (intptr_t connin, uint32_t len, void *data)
 
 void net_tcp_close (intptr_t connin)
     {
+    if ( ! net_tcp_valid (connin) ) return;
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     if ( conn->p != NULL )
         {
@@ -475,6 +535,12 @@ void net_tcp_close (intptr_t connin)
 
 void net_tcp_peer (intptr_t connin, ip_addr_t *ipaddr, uint32_t *port)
     {
+    if ( ! net_tcp_valid (connin) )
+        {
+        memset (ipaddr, 0, sizeof (ip_addr_t));
+        ISTORE (port, 0);
+        return;
+        }
     tcp_conn_t *conn = (tcp_conn_t *) connin;
     ip_addr_t raddr;
     uint16_t rport;
@@ -504,7 +570,7 @@ int net_dns_get_ip (const char *host, uint32_t timeout, ip_addr_t *ipaddr)
     if ( timeout == 0 ) net_tend = at_the_end_of_time;
     else                net_tend = make_timeout_time_ms (timeout);
     err_t err = dns_gethostbyname (host, &fip.ipaddr, net_dns_found_cb, &fip);
-    if ( err != ERR_OK ) return err;
+    if ( err != ERR_OK ) return net_error (err);
     while (( ! fip.found ) && ( net_continue () ))
         {
         net_wait ();
@@ -512,13 +578,9 @@ int net_dns_get_ip (const char *host, uint32_t timeout, ip_addr_t *ipaddr)
     if ( fip.found )
         {
         memcpy (ipaddr, &fip.ipaddr, sizeof (ip_addr_t));
-        err = ERR_OK;
+        return ERR_OK;
         }
-    else
-        {
-        err = ERR_TIMEOUT;
-        }
-    return err;
+    return net_error (ERR_TIMEOUT);
     }
 
 typedef struct s_udp_conn
@@ -578,6 +640,18 @@ static void udp_conn_free (udp_conn_t *conn)
     uconn_free = conn;
     }
 
+int net_udp_valid (intptr_t connin)
+    {
+    udp_conn_t *conn = (udp_conn_t *) connin;
+    udp_conn_t *uconn = uconn_active;
+    while ( uconn != NULL )
+        {
+        if ( conn == uconn ) return 1;
+        uconn = uconn->next;
+        }
+    return 0;
+    }
+
 static void net_udp_receive_cb (void *connin, struct udp_pcb *pcb, struct pbuf *p,
     const ip_addr_t *addr, uint16_t port)
     {
@@ -601,12 +675,12 @@ static void net_udp_receive_cb (void *connin, struct udp_pcb *pcb, struct pbuf *
 intptr_t net_udp_open (void)
     {
     udp_conn_t *conn = udp_conn_alloc ();
-    if ( conn == NULL ) return ERR_MEM;
+    if ( conn == NULL ) return net_error (ERR_MEM);
     conn->pcb = udp_new ();
     if ( conn->pcb == NULL )
         {
         udp_conn_free (conn);
-        return ERR_MEM;
+        return net_error (ERR_MEM);
         }
     udp_recv (conn->pcb, net_udp_receive_cb, conn);
     return (intptr_t) conn;
@@ -614,28 +688,31 @@ intptr_t net_udp_open (void)
 
 int net_udp_bind (intptr_t connin, const ip_addr_t *ipaddr, uint32_t port)
     {
+    if ( ! net_udp_valid (connin) ) return net_error (ERR_ARG);
     udp_conn_t *conn = (udp_conn_t *) connin;
     cyw43_arch_lwip_begin();
     err_t err = udp_bind (conn->pcb, ipaddr, port);
     cyw43_arch_lwip_end();
-    return err;
+    return net_error (err);
     }
 
 int net_udp_send (intptr_t connin, uint32_t len, void *data, ip_addr_t *ipaddr, uint32_t port)
     {
+    if ( ! net_udp_valid (connin) ) return net_error (ERR_ARG);
     udp_conn_t *conn = (udp_conn_t *) connin;
     struct pbuf *p = pbuf_alloc (PBUF_TRANSPORT, len, PBUF_RAM);
-    if ( p == NULL ) return ERR_MEM;
+    if ( p == NULL ) return net_error (ERR_MEM);
     memcpy (p->payload, data, len);
     cyw43_arch_lwip_begin();
     err_t err = udp_sendto (conn->pcb, p, ipaddr, port);
     cyw43_arch_lwip_end();
     pbuf_free (p);
-    return err;
+    return net_error (err);
     }
 
 int net_udp_recv (intptr_t connin, uint32_t len, void *data, ip_addr_t *ipaddr, uint32_t *port)
     {
+    if ( ! net_udp_valid (connin) ) return net_error (ERR_ARG);
     udp_conn_t *conn = (udp_conn_t *) connin;
     int nrecv = 0;
     while (( len > 0 ) && ( conn->p != NULL ))
@@ -665,6 +742,7 @@ int net_udp_recv (intptr_t connin, uint32_t len, void *data, ip_addr_t *ipaddr, 
 
 void net_udp_close (intptr_t connin)
     {
+    if ( ! net_udp_valid (connin) ) return;
     udp_conn_t *conn = (udp_conn_t *) connin;
     cyw43_arch_lwip_begin();
     udp_disconnect (conn->pcb);
@@ -695,4 +773,5 @@ void net_freeall (void)
         uconn_free = conn->next;
         free ((void *) conn);
         }
+    last_error = 0;
     }

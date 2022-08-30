@@ -10,6 +10,41 @@
 
 /*-------------------------------------------------------------------------------
 
+net_last_errno - Get last error number
+
+SYS "net_last_errno" TO err%
+
+err% =      Last error number.
+
+*/
+
+int net_last_errno (void);
+
+/*-------------------------------------------------------------------------------
+
+net_error_desc - Get the description of an error number
+
+SYS "net_error_desc", err% TO desc%
+
+err% =      Error number
+desc% =     Pointer to description string
+
+*/
+
+const char *net_error_desc (int err);
+
+/*-------------------------------------------------------------------------------
+
+net_error_clear - Clear the last error code
+
+SYS "net_error_clear"
+
+*/
+
+void net_error_clear (void);
+
+/*-------------------------------------------------------------------------------
+
 net_wifi_scan - Scan for available WiFi access points
 
 The first call to this routine (or another call after a non-zero error return)
@@ -101,13 +136,27 @@ intptr_t net_tcp_connect (const ip_addr_t *ipaddr, uint32_t port, uint32_t timeo
 
 /*-------------------------------------------------------------------------------
 
-net_tcp_listen - Listen for a connection on a specified address and port
+net_tcp_valid - Test for a valid TCP socket
+
+SYS "net_tcp_valid" conn% TO valid%
+
+conn% =     Connection handle
+valid% =    1 - Valid connection
+            0 - Invalid
+
+*/
+
+int net_tcp_valid (intptr_t connin);
+
+/*-------------------------------------------------------------------------------
+
+net_tcp_listen - Open a socket to listen for a connection on a specified address and port
 
 SYS "net_tcp_listen", ^ipaddr%, port% to listen%
 
 ipaddr% =       Local IP address (0 = all local addresses).
 port% =         Port number
-listen% >0 -    Listening handle
+listen% >0 -    Listening socket
         <0 -    Error number
 
 */
@@ -120,7 +169,7 @@ net_tcp_accept - Accept a connection from a listening port
 
 SYS "net_tcp_accept", listen% TO conn%
 
-listen% =   Listening handle.
+listen% =   Listening socket
 conn% >0 -  Connection handle
       =0 -  No waiting connection.
       <0 -  Error number
@@ -208,10 +257,9 @@ int net_dns_get_ip (const char *host, uint32_t timeout, ip_addr_t *ipaddr);
 
 net_udp_open - Create a UDP connection
 
-SYS "net_udp_bind" TO conn%
+SYS "net_udp_open" TO conn%
 
-conn% >0 -  Connection handle
-      <0 -  Error number
+conn% =     Connection handle
 
 */
 
@@ -219,15 +267,28 @@ intptr_t net_udp_open (void);
 
 /*-------------------------------------------------------------------------------
 
+net_udp_valid - Test for a valid UDP socket
+
+SYS "net_udp_valid" conn% TO valid%
+
+conn% =     Connection handle
+valid% =    1 - Valid connection
+            0 - Invalid
+
+*/
+
+int net_udp_valid (intptr_t connin);
+
+/*-------------------------------------------------------------------------------
+
 net_udp_bind - Bind a UDP connection to a local address and port
 
-SYS "net_udp_bind", conn%, ^ipaddr%, port% TO conn%
+SYS "net_udp_bind", conn%, ^ipaddr%, port% TO err%
 
 conn% =     UDP connection handle
 ipaddr% =   Local IP address in network byte order (0 = all local addresses).
 port% =     Port number in network byte order.
-conn% >0 -  Connection handle
-      <0 -  Error number
+err% =      Error status
 
 */
 

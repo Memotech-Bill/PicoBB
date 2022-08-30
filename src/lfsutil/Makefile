@@ -15,16 +15,20 @@ filesystem.lfs: $(FILESYS) mklfsimage
 	rm -f filesystem.lfs
 	./mklfsimage $(FILESYS)
 else
-tree:
+tree: ../../BBCSDL/lib/*.bbc \
+		../../BBCSDL/examples/general/*.bbc \
+		../../console/pico/examples/lib/*.bbc
 	rm -rf tree
 	mkdir tree
 	mkdir tree/lib
 	for i in arraylib.bbc classlib.bbc datelib.bbc fnusing.bbc \
 		sortlib.bbc stringlib.bbc utf8lib.bbc xmllib.bbc; \
 		do cp -v ../../BBCSDL/lib/$$i tree/lib/$$i; done 
-	cp -v ../../console/pico/examples/*.bbc tree/
+	for i in client.bbc server.bbc lanchat.bbc; \
+		do cp -v ../../BBCSDL/examples/general/$$i tree/$$i; done 
+	cp -v ../../console/pico/examples/lib/*.bbc tree/lib/
 
-filesystem.lfs: ../../BBCSDL/lib/* mklfsimage tree
+filesystem.lfs: mklfsimage tree
 	rm -f filesystem.lfs
 	./mklfsimage tree ../../console/pico/examples
 	./mklfsimage -p tests ../../BBCSDL/tests
