@@ -98,11 +98,11 @@ void crash_report (int *pReport)
     else text ("????????");
     if (( pReport[0] >= stk_guard ) && ( pReport[0] < stk_guard + 0x200 ))
         {
-        error (0, "\r\nStack overrun");
+        error (4, "\r\nStack overrun");
         }
     else
         {
-        error (0, "\r\nHard fault");
+        error (4, "\r\nHard fault");
         }
     }
 
