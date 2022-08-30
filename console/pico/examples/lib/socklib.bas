@@ -27,6 +27,7 @@ REM Initialise the BBCSDL Sockets interface
 DEF PROC_initsockets(N%)
 DEF PROC_initsockets
 LOCAL chan%, err%
+SYS "net_freeall"
 chan% = OPENIN("wifi.cfg")
 IF chan% = 0 THEN
 LOCAL ccode$, cc1%, cc2%
@@ -117,9 +118,9 @@ IF N% < 0 PROC_closesocket(S%) : = TRUE : REM Connection closed or error
 
 REM Create a UDP socket and optionally bind to host
 DEF FN_udpsocket(host$,port$)
+LOCAL S%, IPaddress{} : DIM IPaddress{host%, port%}
 SYS "net_udp_open" TO S%
 IF S% = 0 THEN = -1
-LOCAL S%, IPaddress{} : DIM IPaddress{host%, port%}
 IF host$<>"" IPaddress.host% = FN_sethost(host$)
 IF port$<>"" IPaddress.port% = FN_setport(port$)
 IF IPaddress.port% > 0 THEN
@@ -136,8 +137,8 @@ REM S%=socket, buff%%=buffer address, L%=buffer size, H%=host IP, P%=host port
 DEF FN_sendtosocket(S%,buff%%,L%,H%,P%)
 LOCAL B%, N%, host{} : DIM host{addr%}
 B% = buff%%
-host.addr = H%
-SYS "net_udp_send", S%, L%, B%, ^host.addr, P% TO N%
+host.addr% = H%
+SYS "net_udp_send", S%, L%, B%, ^host.addr%, P% TO N%
 = N%
 
 REM Read from bound UDP socket, returning peer's address
