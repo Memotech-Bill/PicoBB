@@ -52,7 +52,7 @@ int net_last_errno (void)
 
 const char *net_error_desc (int err)
     {
-    if (( err <= 0 ) && ( err > ( sizeof (psError) / sizeof (psError[0]) )))
+    if (( err <= 0 ) && ( err > -( sizeof (psError) / sizeof (psError[0]) )))
         {
         return psError[-last_error];
         }

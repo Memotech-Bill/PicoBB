@@ -14,6 +14,7 @@
 #include <string.h>
 #ifdef PICO
 #include "lfswrap.h"
+#include <hardware/watchdog.h>
 extern char *szLoadDir ;  // @dir$
 extern int dirlen;
 #else
@@ -642,7 +643,9 @@ void oscli (char *cmd)
 	    {
 		case BYE:			// *BYE
 		case QUIT:			// *QUIT
-			error (-1, NULL) ;
+			// error (-1, NULL) ;
+            watchdog_reboot (0, 0, 1);
+            watchdog_start_tick (1);
 
 		case CD:			// *CD [directory]
 		case CHDIR:			// *CHDIR [directory]

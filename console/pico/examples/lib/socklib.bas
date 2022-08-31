@@ -120,14 +120,14 @@ REM Create a UDP socket and optionally bind to host
 DEF FN_udpsocket(host$,port$)
 LOCAL S%, IPaddress{} : DIM IPaddress{host%, port%}
 SYS "net_udp_open" TO S%
-IF S% = 0 THEN = -1
+IF S% = 0 THEN = S%
 IF host$<>"" IPaddress.host% = FN_sethost(host$)
 IF port$<>"" IPaddress.port% = FN_setport(port$)
 IF IPaddress.port% > 0 THEN
 SYS "net_udp_bind", S%, ^IPaddress.host%, IPaddress.port% TO E%
 IF E% < 0 THEN
 SYS "net_udp_close", S%
-= -1
+= E%
 ENDIF
 ENDIF
 = S%
