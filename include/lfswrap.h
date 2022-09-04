@@ -1,6 +1,9 @@
 #ifndef LFSWRAP_H
 #define LFSWRAP_H
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #ifdef HAVE_FAT
 #include <../fatfs/ff.h>
 #else

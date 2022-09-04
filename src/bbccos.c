@@ -14,6 +14,7 @@
 #include <string.h>
 #ifdef PICO
 #include "lfswrap.h"
+#include "zmodem.h"
 #include <hardware/watchdog.h>
 extern char *szLoadDir ;  // @dir$
 extern int dirlen;
@@ -593,6 +594,14 @@ void oscli (char *cmd)
 	if ((*cmd == 0x0D) || (*cmd == '|'))
 		return ;
 
+#ifdef PICO
+    if ( strncmp (cmd, "*B00", 4) == 0 )
+        {
+        zmodem (cmd);
+        return;
+        }
+#endif
+    
 	q = memchr (cmd, 0x0D, 256) ;
 	if (q == NULL)
 		error (204, "Bad name") ;

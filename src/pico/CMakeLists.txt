@@ -43,6 +43,8 @@ if (TARGET tinyusb_device)
     ../../src/fault.c
     ../../src/pico/sympico.c
     ../../src/pico/${SYM_NAME}_stub.c
+    ../../src/pico/crctab.c
+    ../../src/pico/zmodem.c
     )
   if (${MIN_STACK})
     message(STATUS "Expression evaluation revised to reduce stack usage")

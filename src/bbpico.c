@@ -77,14 +77,16 @@
 #if ( ! defined(PICO_AUDIO_I2S_DATA_PIN) ) || ( ! defined(PICO_AUDIO_I2S_CLOCK_PIN_BASE) )
 #error I2S audio pins not defined for sound
 #endif
-#elif PICO_SOUND == 1
+#elif PICO_SOUND == 2
 #if ( ! defined(PICO_AUDIO_PWM_L_PIN)
 #error PWM audio pins not defined for sound
 #endif
-#elif PICO_SOUND == 2
-#if ( ! defined(PICO_AUDIO_PWM_L_PIN) ) || ( ! defined(PICO_AUDIO_PWM_R_PIN )
+#elif PICO_SOUND == 3
+/*
+#if ( ! defined(PICO_AUDIO_PWM_L_PIN) ) || ( ! defined(PICO_AUDIO_PWM_R_PIN) )
 #error PWM audio pins not defined for SDL sound
 #endif
+*/
 #endif
 
 #if defined(PICO_GUI) && defined(HAVE_PRINTER)
@@ -323,6 +325,9 @@ int testkey (int);
 #endif
 
 #ifdef PICO_SOUND
+#if PICO_SOUND == 3
+#include <hardware/uart.h>
+#endif
 // Defined in snd_pico.c
 void snd_setup (void);
 // Defined in sn76489.c
@@ -548,6 +553,17 @@ int getkey (unsigned char *pkey)
 		return 1;
 	    }
 	return 0;
+    }
+
+// Get a character from any input queue
+int anykey (unsigned char *pkey, int tmo)
+    {
+    if ( kbdqr != kbdqw ) return getkey (pkey);
+    if ( inpqr != inpqw ) return getinp (pkey);
+    int c = getchar_timeout_us (tmo);
+    if ( c == PICO_ERROR_TIMEOUT ) return 0;
+    *pkey = c;
+    return 1;
     }
 
 // Get millisecond tick count:
@@ -1073,6 +1089,7 @@ void osline (char *buffer)
 	char *eol = buffer;
 	char *p = buffer;
 	*buffer = 0x0D;
+    bool bUpload = (exchan == 0) && ((optval >> 4) == 0) && (keyptr == 0);
 	int n;
 
 	while (1)
@@ -1080,6 +1097,7 @@ void osline (char *buffer)
 		unsigned char key;
 
 		key = osrdch ();
+        if (( key == 0x01 ) && bUpload && ( *buffer == 0x0D )) ymodem (1);
 		switch (key)
 		    {
 			case 0x0A:
@@ -2264,6 +2282,9 @@ void *main_init (int argc, char *argv[])
 #endif
 #ifdef PICO_SOUND
     snd_setup ();
+#if PICO_SOUND == 3
+    uart_set_baudrate (uart_default, PICO_DEFAULT_UART_BAUD_RATE);
+#endif
 #endif
 	mount ();
 #endif

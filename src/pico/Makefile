@@ -122,11 +122,15 @@ SOURCES= \
 	../../src/pico/$(SYM_NAME)_stub.c \
     ../../src/pico/picoser.c \
 	../../src/pico/stack_trap.c \
+	../../src/pico/crctab.c \
+	../../src/pico/zmodem.c \
 	../../src/pico/bbc_pico.ld \
 	../../include/ffconf.h \
 	../../include/lfswrap.h \
 	../../include/sconfig.h \
 	../../include/bbuart.h \
+	../../include/crctab.h \
+	../../include/zmodem.h \
     ../../m0FaultDispatch/m0FaultDispatch.c \
     $(EXEC_SOURCES) \
     $(LFS_SOURCES) \
