@@ -39,8 +39,6 @@ typedef dispatch_source_t timer_t ;
 #endif
 
 #undef MAX_PATH
-#define NCMDS 42	// number of OSCLI commands
-#define POWR2 32	// largest power-of-2 less than NCMDS
 #ifdef PICO
 #define COPYBUFLEN 512	// length of buffer used for *COPY command
 #else
@@ -88,21 +86,23 @@ static short modetab[NUMMODES][5] =
         {640,512,16,16,16}     // MODE 9
 } ;
 
+enum {
+        BYE, CD, CHDIR, COPY, DEL, DELETE, DIRCMD, DOWNLOAD,
+		DUMP, ERA, ERASE, ESC, EXEC, FLOAT, FX,
+		HELP, HEX, INPUT, KEY, LIST, LOAD, LOCK, LOWERCASE,
+		MD, MKDIR, OUTPUT, QUIT, RD, REFRESH,
+		REN, RENAME, RMDIR, RUN, SAVE, SPOOL, SPOOLON,
+		STEREO, TEMPO, TIMER, TV, TYPE, UNLOCK, VOICE, NCMDS } ;
+// #define NCMDS 43	// number of OSCLI commands
+#define POWR2 32	// largest power-of-2 less than NCMDS
+
 static char *cmds[NCMDS] = {
-		"bye", "cd", "chdir", "copy", "del", "delete", "dir",
+        "bye", "cd", "chdir", "copy", "del", "delete", "dir", "download",
 		"dump", "era", "erase", "esc", "exec", "float", "fx",
 		"help", "hex", "input", "key", "list", "load", "lock", "lowercase",
 		"md", "mkdir", "output", "quit", "rd", "refresh",
 		"ren", "rename", "rmdir", "run", "save", "spool", "spoolon",
 		"stereo", "tempo", "timer", "tv", "type", "unlock", "voice" } ;
-
-enum {
-		BYE, CD, CHDIR, COPY, DEL, DELETE, DIRCMD,
-		DUMP, ERA, ERASE, ESC, EXEC, FLOAT, FX,
-		HELP, HEX, INPUT, KEY, LIST, LOAD, LOCK, LOWERCASE,
-		MD, MKDIR, OUTPUT, QUIT, RD, REFRESH,
-		REN, RENAME, RMDIR, RUN, SAVE, SPOOL, SPOOLON,
-		STEREO, TEMPO, TIMER, TV, TYPE, UNLOCK, VOICE } ;
 
 // Change to a new screen mode:
 static void newmode (short wx, short wy, short cx, short cy, short nc, signed char bc) 
@@ -579,6 +579,747 @@ static int wild (char *ebx, char *edx)
 	return 0 ;
 }
 
+void os_DOWNLOAD (char *p)
+    {
+    }
+
+void os_zmodem (char *p)
+    {
+    zmodem (p);
+    }
+
+#ifdef MIN_STACK
+
+void os_QUIT (char *p)
+    {
+    // error (-1, NULL);
+    watchdog_reboot (0, 0, 1);
+    watchdog_start_tick (1);
+    }
+
+void os_CHDIR (char *p)
+    {
+	char path[MAX_PATH];
+	unsigned char flag ;
+    setup (path, p, "", ' ', &flag);
+    if (flag == 0)
+        {
+        getcwd (path, MAX_PATH);
+        text (path);
+        crlf ();
+        return;
+        }
+    if (chdir (path))
+        error (206, "Bad directory");
+#ifdef PICO
+    getcwd (szLoadDir,255);
+    dirlen = strlen (szLoadDir);
+    szLoadDir[dirlen++] = '/';
+#endif
+    }
+
+void os_COPY (char *p)
+    {
+	char path[MAX_PATH];
+    int n;
+    p = setup (path, p, ".bbc", ' ', NULL);
+    FILE *srcfile = fopen (path, "rb");
+    if (srcfile == NULL)
+        error (214, "File or path not found");
+    setup (path, p, ".bbc", ' ', NULL);
+    FILE *dstfile = fopen (path, "wb");
+    if (dstfile == NULL)
+        {
+        fclose (srcfile);
+        error (189, "Couldn't create file");
+        }
+    p = malloc (COPYBUFLEN);
+    if (p == NULL)
+        error (255, "Out of memory");
+    do
+        {
+        n = fread (p, 1, COPYBUFLEN, srcfile);
+        if (n == 0)
+            break;
+        }
+    while (fwrite (p, 1, n, dstfile));
+    free (p);
+    fclose (srcfile);
+    fclose (dstfile);
+    if (n)
+        error (189, "Couldn't copy file");
+    }
+
+void os_DEL (char *p)
+    {
+	char path[MAX_PATH];
+    setup (path, p, ".bbc", ' ', NULL);
+    if (remove (path))
+        error (254, "Bad command") ;	// Bad command
+    }
+
+void os_DIR (char *p)
+    {
+	char path[MAX_PATH];
+	char path2[MAX_PATH];
+	DIR *d ;
+    char *q;
+    char dd;
+	unsigned char flag ;
+    setup (path, p, ".bbc", ' ', &flag);
+    if ((flag & BIT0) == 0)
+        strcat (path, "*.bbc");
+    if (flag & BIT1)
+        {
+        p = path + strlen (path);
+        q = path;
+        while ((*p != '/') && (*p != '\\')) p--;
+        if ((p == path) || (*(p - 1) == ':'))
+            {
+            dd = 0;
+            *++p = 0 ;	// root
+            }
+        else
+            {
+            dd = *p;
+            *p++ = 0 ;	// not root
+            }
+        }
+    else
+        {
+        getcwd (path2, MAX_PATH);
+#ifdef _WIN32
+        dd = '\\';
+#else
+        dd = '/';
+#endif
+        p = path;
+        q = path2;
+        }
+    text ("Directory of ");
+    text (q);
+    outchr (dd);
+    text (p);
+    crlf ();
+
+    d = opendir (q);
+    if (d == NULL)
+        error (254, "Bad command");
+
+    while (1)
+        {
+        stdin_handler (NULL, NULL);
+        if (flags & (ESCFLG | KILL))
+            {
+            closedir (d);
+            crlf ();
+            trap ();
+            }
+        struct dirent *r = readdir (d);
+        if (r == NULL)
+            break;
+        if (!wild (p, r -> d_name))
+            continue;
+        outchr (' ');
+        outchr (' ');
+        text (r -> d_name);
+        do
+            outchr (' ');
+        while ( (vcount != 0) && (vcount != 20) &&
+            (vcount != 40) && (vcount < 60));
+        if (vcount > 60)
+            crlf ();
+        }
+    closedir (d);
+    crlf ();
+    }
+
+void os_ESC (char *p)
+    {
+    if (onoff (p))
+        flags &= ~ESCDIS;
+    else
+        flags |= ESCDIS;
+    }
+
+void os_EXEC (char *p)
+    {
+	char path[MAX_PATH];
+    if (exchan)
+        {
+        fclose (exchan);
+        exchan = NULL;
+        }
+    setup (path, p, ".bbc", ' ', NULL);
+    if (*path == 0)
+        return;
+    exchan = fopen (path, "rb");
+    if (exchan == NULL)
+        error (214, "File or path not found");
+    }
+
+void os_FLOAT (char *p)
+    {
+    int n = 0;
+    sscanf (p, "%i", &n);
+    switch (n)
+        {
+        case 40:
+            liston &= ~(BIT0 + BIT1);
+            break;
+        case 64:
+            liston &= ~BIT1;
+            liston |= BIT0;
+            break;
+        case 80:
+#if defined __arm__ || defined __aarch64__
+            error (255, "Unsupported");
+#else
+            liston |= (BIT0 + BIT1);
+#endif
+            break;
+        default:
+            error (254, "Bad command");
+        }
+    }
+
+void os_FX (char *p)
+    {
+    int n = 0;
+    int b = 0;
+    sscanf (p, "%i,%i", &n, &b);
+    if (n == 15)
+        {
+        if (b == 0)
+            quiet ();
+        kbdqr = kbdqw;
+        }
+    else if (n == 21)
+        {
+        if (b == 0)
+            kbdqr = kbdqw;
+        else if ((b >= 4) && (b <= 7))
+            {
+            sndqw[b - 4] = 0;
+            sndqr[b - 4] = 0;
+            eenvel[b - 4] = 0;
+            }
+        }
+    }
+
+void os_HELP (char *p)
+    {
+    text (szVersion);
+    crlf ();
+    }
+
+void os_HEX (char *p)
+    {
+    int n = 0;
+    sscanf (p, "%i", &n);
+    switch (n)
+        {
+        case 32:
+            liston &= ~BIT2;
+            break;
+        case 64:
+            liston |= BIT2;
+            break;
+        default:
+            error (254, "Bad command");
+        }
+    }
+
+void os_KEY (char *p)
+    {
+    int n = 0;
+    if (*p != 0x0D)
+        n = strtol (p, &p, 10);
+    if ((n < 1) || (n > 24))
+        error (251, "Bad key");
+    if (*(keystr + n))
+        {
+        free (*(keystr + n));
+        *(keystr + n) = NULL;
+        }
+    int b = parse (NULL, p, 0);
+    if (b == 0)
+        return;
+    *(keystr + n) = malloc (b + 1);
+    parse (*(keystr + n), p, 0);
+    }
+
+void os_LIST (char *p)
+    {
+	char path[MAX_PATH];
+	char path2[MAX_PATH];
+    setup (path, p, ".bbc", ' ', NULL);
+    FILE *srcfile = fopen (path, "rb");
+    if (srcfile == NULL)
+        error (214, "File or path not found");
+    int b = 0;
+    while (1)
+        {
+        unsigned char al;
+        stdin_handler (NULL, NULL);
+        if (flags & (ESCFLG | KILL))
+            {
+            fclose (srcfile);
+            trap ();
+            }
+        int n = fread (&al, 1, 1, srcfile);
+        if (n && al)
+            {
+            fread (path2, 1, al - 1, srcfile);
+            listline ((signed char *)path2, &b);
+            crlf ();
+            }
+        else
+            break;
+        };
+    fclose (srcfile);
+    }
+
+void os_LOAD (char *p)
+    {		// *LOAD filename hexaddr [+maxlen]
+	char path[MAX_PATH];
+	char path2[MAX_PATH];
+    p = setup (path, p, ".bbc", ' ', NULL);
+    int n = 0;
+    char *q = 0;
+    if (*p != 0x0D)
+        {
+        q = (char *) (size_t) strtoull (p, &p, 16);
+        while (*p == ' ') p++;
+        if (*p == '+')
+            n = strtol (p + 1, &p, 16);
+        else
+            n = (char *) (size_t) strtoull (p, &p, 16) - q;
+        }
+    if ((n <= 0) && ((q < (char *)userRAM) || (q >= (char *)userTOP)))
+        error (8, NULL) ; // 'Address out of range'
+    if (n <= 0)
+        n = (char *)userTOP - q;
+    FILE *srcfile = fopen (path, "rb");
+    if (srcfile == NULL)
+        error (214, "File or path not found");
+    if (0 == fread(q, 1, n, srcfile))
+        error (189, "Couldn't read file");
+    fclose (srcfile );
+    }
+
+void os_LOCK (char *p)
+    {
+	char path[MAX_PATH];
+    setup (path, p, ".bbc", ' ', NULL);
+    if (0 != chmod (path, _S_IREAD))
+        error (254, "Bad command");
+    }
+
+void os_LOWERCASE (char *p)
+    {
+    if (onoff (p))
+        liston |= BIT3;
+    else
+        liston &= ~BIT3;
+    }
+
+void os_MKDIR (char *p)
+    {
+	char path[MAX_PATH];
+    setup (path, p, "", ' ', NULL);
+#ifdef _WIN32
+    if (0 != mkdir (path))
+#else
+        if (0 != mkdir (path, 0777))
+#endif
+            error (254, "Bad command");
+    }
+
+void os_RMDIR (char *p)
+    {
+	char path[MAX_PATH];
+    setup (path, p, "", ' ', NULL);
+    if (0 != rmdir (path))
+        error (254, "Bad command");
+    }
+
+void os_REFRESH (char *p)
+    {
+#ifdef PICO_GUI
+    refresh (p);
+#endif
+    }
+
+void os_RENAME (char *p)
+    {
+	char path[MAX_PATH];
+	char path2[MAX_PATH];
+    p = setup (path, p, ".bbc", ' ', NULL);
+    setup (path2, p, ".bbc", ' ', NULL);
+    FILE *dstfile = fopen (path2, "rb");
+    if (dstfile != NULL)
+        {
+        fclose (dstfile);
+        error (196, "File exists");
+        }
+    if (0 != rename (path, path2))
+        error (196, "File exists");
+    }
+
+void os_RUN (char *p)
+    {
+	char path[MAX_PATH];
+    strncpy (path, p, MAX_PATH - 1);
+    char *q = memchr (path, 0x0D, MAX_PATH);
+    if (q != NULL) *q = 0;
+    q = path + strlen (path) - 1;
+    if (*q == ';')
+        *q = '&';
+    SystemIO (1);
+    if (0 != system (path))
+        {
+        SystemIO (0);
+        error (254, "Bad command");
+        }
+    SystemIO (0);
+    }
+
+void os_SAVE (char *p)
+    {		// *SAVE filename hexaddr +hexlen
+	char path[MAX_PATH];
+    p = setup (path, p, ".bbc", ' ', NULL);
+    int n = 0;
+    char *q = 0;
+    if (*p != 0x0D)
+        {
+        q = (char *) (size_t) strtoull (p, &p, 16);
+        while (*p == ' ') p++;
+        if (*p == '+')
+            n = strtol (p + 1, &p, 16);
+        else
+            n = (char *) (size_t) strtoull (p, &p, 16) - q;
+        }
+    if (n <= 0)
+        error (254, "Bad command");
+    FILE *dstfile = fopen (path, "wb");
+    if (dstfile == NULL)
+        error (189, "Couldn't create file");
+    if (0 == fwrite(q, 1, n, dstfile))
+        error (189, "Couldn't write file");
+    fclose (dstfile );
+    }
+
+void os_SPOOL (char *p)
+    {
+    if (spchan != NULL)
+        {
+        fclose (spchan);
+        spchan = NULL;
+        }
+    while (*p == ' ') p++;
+    if (*p == 0x0D)
+        return;
+    setup (path, p, ".bbc", ' ', NULL);
+    spchan = fopen (path, "wb");
+    if (spchan == NULL)
+        error (189, "Couldn't create file");
+    }
+
+void os_SPOOLON (char *p)
+    {
+	char path[MAX_PATH];
+    if (spchan != NULL)
+        {
+        fclose (spchan);
+        spchan = NULL;
+        }
+    while (*p == ' ') p++;
+    if (*p == 0x0D)
+        return;
+    setup (path, p, ".bbc", ' ', NULL);
+    spchan = fopen (path, "ab");
+    if (spchan == NULL)
+        error (189, "Couldn't open file");
+    }
+
+void os_TIMER (char *p)
+    {
+    int n = 0;
+    sscanf (p, "%i", &n);
+    if (n == 0)
+        return;
+    StopTimer (UserTimerID);
+    UserTimerID = StartTimer (n) ; 
+    }
+
+void os_TV (char *p)
+    {
+    return ;		// ignored
+    }
+
+void os_TYPE (char *p)
+    {
+	char path[MAX_PATH];
+    int n;
+    setup (path, p, ".bbc", ' ', NULL);
+    FILE *srcfile = fopen (path, "rb");
+    if (srcfile == NULL)
+        error (214, "File or path not found");
+    do
+        {
+        char ch;
+        stdin_handler (NULL, NULL);
+        if (flags & (ESCFLG | KILL))
+            {
+            fclose (srcfile);
+            crlf ();
+            trap ();
+            }
+        n = fread (&ch, 1, 1, srcfile);
+        oswrch (ch);
+        }
+    while (n);
+    fclose (srcfile);
+    crlf () ; // Zero COUNT
+    }
+
+void os_UNLOCK (char *p)
+    {
+	char path[MAX_PATH];
+    setup (path, p, ".bbc", ' ', NULL);
+    if (0 != chmod (path, _S_IREAD | _S_IWRITE))
+        error (254, "Bad command");
+    }
+
+void os_INPUT (char *p)
+    {
+    int n = 0;
+    sscanf (p, "%i", &n);
+    optval = (optval & 0x0F) | (n << 4);
+    }
+
+void os_OUTPUT (char *p)
+    {
+    int n = 0;
+    sscanf (p, "%i", &n);
+    optval = (optval & 0xF0) | (n & 0x0F);
+    }
+
+void os_DUMP (char *p)
+    {
+	char path[MAX_PATH];
+    p = setup (path, p, ".bbc", ' ', NULL);
+    FILE *srcfile = fopen (path, "rb");
+    if (srcfile == NULL)
+        error (214, "File or path not found");
+    int b = 0;
+    int h = 0;
+    if (*p != 0x0D)
+        {
+        unsigned long long s = strtoull (p, &p, 16);
+        if ((s != 0) && (-1 == myfseek (srcfile, s, SEEK_SET)))
+            error (189, "Couldn't seek");
+        while (*p == ' ') p++;
+        if (*p == '+')
+            h = strtol (p + 1, &p, 16);
+        else
+            h = strtoull (p, &p, 16) - s;
+        b = s & 0xFFFFFFFF;
+        }
+    do
+        {
+        int i;
+        unsigned char buff[16];
+        stdin_handler (NULL, NULL);
+        if (flags & (ESCFLG | KILL))
+            {
+            fclose (srcfile);
+            trap ();
+            }
+        int n = fread (buff, 1, 16 - (b & 15), srcfile);
+        if (n <= 0) break;
+        if ((h > 0) && (n > h)) n = h ; 
+        memset (path, ' ', 80);
+        sprintf (path, "%08X  ", b);
+        for (i = 0; i < n; i++)
+            {
+            sprintf (path + 10 + 3 * i, "%02X ", buff[i]);
+            if ((buff[i] >= ' ') && (buff[i] <= '~'))
+                path[59+i] = buff[i];
+            else
+                path[59+i] = '.';
+            }
+        path[10 + 3 * n] = ' ' ; path[75] = 0;
+        text (path);
+        crlf ();
+        b += n;
+        h -= n;
+        }
+    while (h);
+    fclose (srcfile);
+    }
+
+void os_STEREO (char *p)
+    {
+    int b = 0;
+    int n = 0;
+    sscanf (p, "%i,%i", &b, &n);
+    b &= 3;
+    smix[b]     = 0x4000 - (n << 7);
+    smix[b + 4] = 0x4000 + (n << 7);
+    }
+
+void os_TEMPO (char *p)
+    {
+    int n = 0;
+    sscanf (p, "%i", &n);
+    if (((n & 0x3F) <= MAX_TEMPO) && ((n & 0x3F) > 0))
+        tempo = n;
+    }
+
+void os_VOICE (char *p)
+    {
+    int b = 0;
+    int n = 0;
+    sscanf (p, "%i,%i", &b, &n);
+    voices[b & 3] = n & 7;
+    }
+
+void os_null (char *p)
+    {
+    }
+
+int oscli_parse (char *cmd, char **pp)
+    {
+	int b = 0, h = POWR2, n ;
+	char cpy[256] ;
+	char *p, *q, dd ;
+
+	while (*cmd == ' ') cmd++ ;
+
+	if ((*cmd == 0x0D) || (*cmd == '|'))
+		return NCMDS;
+
+#ifdef PICO
+    if ( strncmp (cmd, "*B00", 4) == 0 )
+        {
+        *pp = cmd;
+        return NCMDS + 1;
+        }
+#endif
+    
+	q = memchr (cmd, 0x0D, 256) ;
+	if (q == NULL)
+		error (204, "Bad name") ;
+	memcpy (cpy, cmd, q - cmd) ;
+	cpy[q - cmd] = 0 ;
+	p = cpy ;
+	while ((*p = tolower (*p)) != 0) p++ ;
+
+	do
+	    {
+		if (((b + h) < NCMDS) && ((strcmp (cpy, cmds[b + h])) >= 0))
+			b += h ;
+		h /= 2 ;
+	    }
+	while (h > 0) ;
+
+	n = strchr(cpy, '.') - cpy ;
+	if ((n > 0) && ((b + 1) < NCMDS) &&
+			(n <= strlen (cmds[b + 1])) &&
+			(strncmp (cpy, cmds[b + 1], n) == 0))
+		b++ ;
+
+	p = cpy ;
+	q = cmds[b] ;
+	while (*p && *q && (*p == *q))
+	    {
+		p++ ;
+		q++ ;
+	    }
+
+ 	if (*p == '.')
+		p++ ;
+	else if (*q)
+	    {
+		b = RUN ;
+		p = cpy ;
+		if ((*p == '*') || (*p == '/'))
+			p++ ;
+	    }
+
+	if (n == 0)
+		b = DIRCMD ;
+
+	p += cmd - cpy ;
+	while (*p == ' ') p++ ;		// Skip leading spaces
+    *pp = p;
+    return b;
+    }
+
+void oscli (char *cmd)
+    {
+    static void (*os_funcs[])(char *) =
+        {
+        os_QUIT,         // BYE
+        os_CHDIR,        // CD
+        os_CHDIR,       // CHDIR
+        os_COPY,        // COPY
+        os_DEL,         // DEL
+        os_DEL,         // DELETE
+        os_DIR,         // DIRCMD
+        os_DOWNLOAD,    // DOWNLOAD
+        os_DUMP,        // DUMP
+        os_DEL,         // ERA
+        os_DEL,         // ERASE
+        os_ESC,         // ESC
+        os_EXEC,        // EXEC
+        os_FLOAT,       // FLOAT
+        os_FX,          // FX
+        os_HELP,        // HELP
+        os_HEX,         // HEX
+        os_INPUT,       // INPUT
+        os_KEY,         // KEY
+        os_LIST,        // LIST
+        os_LOAD,        // LOAD
+        os_LOCK,        // LOCK
+        os_LOWERCASE,   // LOWERCASE
+        os_MKDIR,       // MD
+        os_MKDIR,       // MKDIR
+        os_OUTPUT,      // OUTPUT
+        os_QUIT,        // QUIT
+        os_RMDIR,       // RD
+        os_REFRESH,     // REFRESH
+        os_RENAME,      // REN
+        os_RENAME,      // RENAME
+        os_RMDIR,       // RMDIR
+        os_RUN,         // RUN
+        os_SAVE,        // SAVE
+        os_SPOOL,       // SPOOL
+        os_SPOOLON,     // SPOOLON
+        os_STEREO,      // STEREO
+        os_TEMPO,       // TEMPO
+        os_TIMER,       // TIMER
+        os_TV,          // TV
+        os_TYPE,        // TYPE
+        os_UNLOCK,      // UNLOCK
+        os_VOICE,       // VOICE
+        os_null,
+        os_zmodem,
+        };
+    char *p = NULL;
+    int b = oscli_parse (cmd, &p);
+    if ( b < sizeof (os_funcs) / sizeof (os_funcs[0]) )
+        {
+        os_funcs[b](p);
+        return;
+        }
+	error (254, "Bad command") ;
+    }
+
+#else   // Not MIN_STACK
+
 void oscli (char *cmd)
 {
 	int b = 0, h = POWR2, n ;
@@ -597,7 +1338,7 @@ void oscli (char *cmd)
 #ifdef PICO
     if ( strncmp (cmd, "*B00", 4) == 0 )
         {
-        zmodem (cmd);
+        os_zmodem (cmd);
         return;
         }
 #endif
@@ -781,6 +1522,10 @@ void oscli (char *cmd)
 			closedir (d) ;
 			crlf () ;
 			return ;
+
+        case DOWNLOAD:
+            os_DOWNLOAD (p);
+            return;
 
 		case ESC:
 			if (onoff (p))
@@ -1192,3 +1937,5 @@ void oscli (char *cmd)
 
 	error (254, "Bad command") ;
 }
+
+#endif  // Not MIN_STACK
