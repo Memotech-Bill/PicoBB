@@ -581,11 +581,21 @@ static int wild (char *ebx, char *edx)
 
 void os_DOWNLOAD (char *p)
     {
+    int nchr = 0;
+    const char *pend = strchr (p, 0x0D);
+    if ( pend != NULL ) nchr = pend - p;
+    if ( nchr == 0 ) error (4, "No file name");
+    char *pfn = (char *) malloc (nchr + 1);
+    if ( pfn == NULL ) error (19, "No memory for file name");
+    strncpy (pfn, p, nchr);
+    pfn[nchr] = '\0';
+    zsend (pfn);
+    free (pfn);
     }
 
 void os_zmodem (char *p)
     {
-    zmodem (p);
+    zreceive (p);
     }
 
 #ifdef MIN_STACK

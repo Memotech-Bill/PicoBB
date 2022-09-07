@@ -25,10 +25,10 @@ extern int myusleep(useconds_t usec);
 extern unsigned int mysleep(unsigned int seconds);
 extern long myftell(FILE *fp);
 extern int myfseek(FILE *fp, long offset, int whence);
-extern FILE *myfopen(char *pathname, char *mode);
+extern FILE *myfopen(const char *pathname, char *mode);
 extern int myfclose(FILE *fp);
 extern size_t myfread(void *ptr, size_t size, size_t nmemb, FILE *fp);
-extern size_t myfwrite(void *ptr, size_t size, size_t nmemb, FILE *fp);
+extern size_t myfwrite(const void *ptr, size_t size, size_t nmemb, FILE *fp);
 extern DIR *myopendir(const char *name);
 extern struct dirent *myreaddir(DIR *dirp);
 extern int myclosedir(DIR *dirp);
@@ -48,6 +48,8 @@ extern int mount(void);
 #define fopen myfopen
 #define fread myfread
 #define fwrite myfwrite
+#define fseek myfseek
+#define ftell myftell
 #define opendir myopendir
 #define readdir myreaddir
 #define closedir myclosedir

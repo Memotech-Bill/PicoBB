@@ -506,7 +506,7 @@ int myfseek (FILE *fp, long offset, int whence)
     return -1;
     }
 
-FILE *myfopen (char *p, char *mode)
+FILE *myfopen (const char *p, char *mode)
     {
     FILE *fp = (FILE *) malloc (sizeof (multi_file));
     if ( fp == NULL ) return NULL;
@@ -763,7 +763,7 @@ size_t myfread (void *ptr, size_t size, size_t nmemb, FILE *fp)
     return 0;
     }
 
-size_t myfwrite (void *ptr, size_t size, size_t nmemb, FILE *fp)
+size_t myfwrite (const void *ptr, size_t size, size_t nmemb, FILE *fp)
     {
     if (fp == stdout || fp == stderr)
         {

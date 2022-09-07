@@ -10,6 +10,7 @@
 #include "lfswrap.h"
 
 int anykey (unsigned char *key, int tmo);
+void error (int iErr, const char *psMsg);
 
 #define SOH         0x01
 #define EOT         0x04
@@ -49,6 +50,7 @@ int anykey (unsigned char *key, int tmo);
 #define ZHT_COMMAND     18	/* Command from sending program */
 #define ZHT_STDERR      19  /* Output to standard error, data follows */
 #define ZST_NEWHDR      20  /* Read a new header */
+#define ZST_PEEKHDR     21  /* Check for a new header, continue if none */
 
 #define ZFE_CRCE    ( 'h' | 0x100 )	/* 360 CRC next, frame ends, header packet follows */
 #define ZFE_CRCG    ( 'i' | 0x100 )	/* 361 CRC next, frame continues nonstop */
@@ -63,13 +65,20 @@ int anykey (unsigned char *key, int tmo);
 #define ZERR_ORUN   -5      // Overrun buffer
 #define ZERR_FULL   -6      // Storage full (or other write error)
 #define ZERR_NSYNC  -7      // File position out of sync
-#define ZERR_UNIMP  -8      // Command not implemented
+#define ZERR_INFO   -8      // Error generating file information
+#define ZERR_UNIMP  -9      // Command not implemented
 
 #define ZFLG_ESCALL 0x40    // Escape all control characters
 static unsigned char txflg;
 static unsigned char attn[32] = { 0 };
 static FILE *pf = NULL;
 static int nfpos = 0;
+
+#define DIAG_HW 1
+#if DIAG_HW
+#include <hardware/uart.h>
+#include <hardware/gpio.h>
+#endif
 
 void zdiag (const char *psFmt,...)
     {
@@ -79,8 +88,21 @@ void zdiag (const char *psFmt,...)
     va_start (va, psFmt);
     vsprintf (sMsg, psFmt, va);
     va_end (va);
+#if DIAG_HW
+    if ( pfd == NULL )
+        {
+        uart_init (uart1, 115200);
+        uart_set_format (uart1, 8, 1, UART_PARITY_EVEN);
+        gpio_set_function (4, GPIO_FUNC_UART);
+        gpio_set_function (5, GPIO_FUNC_UART);
+        uart_set_hw_flow (uart1, false, false);
+        pfd = (FILE *) 1;
+        }
+    uart_write_blocking (uart1, sMsg, strlen (sMsg));
+#else
     if ( pfd == NULL ) pfd = fopen ("/dev/uart.baud=115200 parity=N data=8 stop=1 tx=4 rx=5", "w");
     fwrite ((void *)sMsg, 1, strlen (sMsg), pfd);
+#endif
     }
 
 static int zrdchr (int timeout)
@@ -89,7 +111,7 @@ static int zrdchr (int timeout)
     unsigned char kb;
     int nCan = 0;
     absolute_time_t twait = make_timeout_time_ms (timeout);
-    while ( get_absolute_time () < twait )
+    do
         {
         if ( anykey (&kb, 100 * timeout) )
             {
@@ -122,7 +144,22 @@ static int zrdchr (int timeout)
                 }
             }
         }
+    while ( get_absolute_time () < twait );
     return ZERR_TOUT;
+    }
+
+static bool zpeekchr (int pchr)
+    {
+    int key;
+    zdiag ("zpeekchr:");
+    do
+        {
+        key = zrdchr (0);
+        zdiag (" %02X", key);
+        }
+    while (( key != pchr ) && ( key != ZERR_TOUT ));
+    zdiag ("\r\n");
+    return ( key == pchr );
     }
 
 static inline void zcrcini (int type, long *pcrc)
@@ -303,6 +340,7 @@ static void zwrhdr (int type, unsigned char *hdr)
     zwrchr (type);
     long chk;
     zcrcini (type, &chk);
+    zdiag ("zwrhdr:");
     for (int i = 0; i < 5; ++i)
         {
         if ( type == ZHDR_HEX )
@@ -314,26 +352,38 @@ static void zwrhdr (int type, unsigned char *hdr)
             zwrchr (hdr[i]);
             }
         zcrcupd (type, &chk, hdr[i]);
+        zdiag (" %02X=%04X", hdr[i], chk);
         }
     if ( type == ZHDR_BIN )
         {
+        long test = chk;
         zcrcupd (type, &chk, 0);
+        zdiag (" 0=%04X", chk);
         zcrcupd (type, &chk, 0);
+        zdiag (" 0=%04X", chk);
         zwrchr (chk >> 8);
+        zcrcupd (type, &test, chk >> 8);
+        zdiag (" c=%04X", test);
         zwrchr (chk & 0xFF);
+        zcrcupd (type, &test, chk & 0xFF);
+        zdiag (" c=%04X\r\n", test);
         }
     else if ( type == ZHDR_HEX )
         {
+        long test = chk;
         zcrcupd (type, &chk, 0);
+        zdiag (" 0=%04X", chk);
         zcrcupd (type, &chk, 0);
+        zdiag (" 0=%04X", chk);
         zwrhex (chk >> 8);
+        zcrcupd (type, &test, chk >> 8);
+        zdiag (" c=%04X", test);
         zwrhex (chk & 0xFF);
+        zcrcupd (type, &test, chk & 0xFF);
+        zdiag (" c=%04X\r\n", test);
         zwrchr (0x0D);
         zwrchr (0x0A);
         long crc = chk;
-        zcrcupd (type, &crc, chk >> 8);
-        zcrcupd (type, &crc, chk & 0xFF);
-        // zdiag (" crcchk = %04X", crc);
         }
     if ( type == ZHDR_B32 )
         {
@@ -488,6 +538,87 @@ static int zsvdata (unsigned char *hdr)
     return zchkcrc (chk, key);
     }
 
+static void zwrdata (int type, const unsigned char *pdata, int ndata, int fend)
+    {
+    long chk;
+    zcrcini (type, &chk);
+    zdiag ("zwrdata:");
+    for (int i = 0; i < ndata; ++i)
+        {
+        zwrchr (*pdata);
+        zcrcupd (type, &chk, *pdata);
+        zdiag (" %02X=%04X", *pdata, chk);
+        ++pdata;
+        }
+    zwrchr (fend);
+    zcrcupd (type, &chk, fend & 0xFF);
+    zdiag (" %02X=%04X", fend & 0xFF, chk);
+    long test = chk;
+    zcrcupd (type, &chk, 0);
+    zdiag (" 0=%04X", chk);
+    zcrcupd (type, &chk, 0);
+    zdiag (" 0=%04X", chk);
+    zwrchr (chk >> 8);
+    zcrcupd (type, &test, chk >> 8);
+    zdiag (" c=%04X", test);
+    zwrchr (chk & 0xFF);
+    zcrcupd (type, &test, chk & 0xFF);
+    zdiag (" c=%04X\r\n", test);
+    }
+
+static int zwrfinfo (int type, const char *pfn)
+    {
+    int nch = strlen (pfn);
+    unsigned char *pinfo = (unsigned char *) malloc (nch + 12);
+    if ( pinfo == NULL ) return ZERR_INFO;
+    strcpy (pinfo, pfn);
+    if ( fseek (pf, 0, SEEK_END) != 0 ) return ZERR_INFO;
+    long nlen = ftell (pf);
+    if ( nlen < 0 ) return ZERR_INFO;
+    if ( fseek (pf, 0, SEEK_SET) != 0 ) return ZERR_INFO;
+    nfpos = 0;
+    sprintf (&pinfo[nch+1], "%d", nlen);
+    nch += strlen (&pinfo[nch+1]) + 2;
+    zwrdata (type, pinfo, nch, ZFE_CRCW);
+    free (pinfo);
+    return ZST_NEWHDR;
+    }
+
+static int zwrfile (int type, unsigned char *hdr)
+    {
+    int state;
+    int fend;
+    unsigned char data[64];
+    int npos = hdrint (hdr);
+    zdiag ("zwrfile: npos = %d nfpos = %d\r\n", npos, nfpos);
+    if ( npos != nfpos )
+        {
+        if ( fseek (pf, npos, SEEK_SET) < 0 )
+            {
+            return ZHT_FERR;
+            }
+        nfpos = npos;
+        }
+    int ndata = fread (data, 1, sizeof (data), pf);
+    nfpos += ndata;
+    zsethdr (hdr, hdr[0], nfpos);
+    if ( ndata == sizeof (data) )
+        {
+        state = ZST_PEEKHDR;
+        fend = ZFE_CRCG;
+        // state = ZST_NEWHDR;
+        // fend = ZFE_CRCQ;
+        }
+    else
+        {
+        zdiag ("zwrfile: ndata = %d nfpos = %d\r\n", ndata, nfpos);
+        state = ZHT_EOF;
+        fend = ZFE_CRCE;
+        }
+    zwrdata (type, data, ndata, fend);
+    return state;
+    }
+
 static void zclose (void)
     {
     zdiag ("zclose\r\n");
@@ -495,24 +626,21 @@ static void zclose (void)
     pf = NULL;
     }
 
-void zmodem (const char *phex)
+void zreceive (const char *pcmd)
     {
-    zdiag ("zmodem\r\n");
+    zdiag ("zreceive\r\n");
     int state = ZHT_RQINIT;
     int curst;
     int ntmo = 0;
     unsigned char hdr[9];
-    if ( phex != NULL )
-        {
-        phex += 2;
-        }
+    if ( pcmd != NULL ) pcmd += 2;
     while (true)
         {
         zdiag ("Top state = %d\r\n", state);
-        if ( phex ) state = ztxthdr (phex, hdr);
+        if ( pcmd ) state = ztxthdr (pcmd, hdr);
         else if ( state == ZST_NEWHDR ) state = zrdhdr (hdr);
+        pcmd = NULL;
         curst = state;
-        phex = NULL;
         zdiag ("Header state = %d\r\n", state);
         switch (state)
             {
@@ -524,7 +652,6 @@ void zmodem (const char *phex)
             case ZHT_RINIT:     /* 1 - Receive init */
                 zclose ();
                 return;
-                break;
             case ZHT_SINIT:     /* 2 - Send init sequence (optional) */
                 txflg = hdr[4];
                 state = zrddata (attn, sizeof (attn));
@@ -581,8 +708,9 @@ void zmodem (const char *phex)
                 state = ZERR_UNIMP;
                 break;
             case ZHT_CAN:       /* 16 - Other end canned session with CAN*5 */
-                state = ZERR_UNIMP;
-                break;
+                zdiag ("Cancelled by remote\r\n");
+                zclose ();
+                return;
             case ZHT_FREECNT:   /* 17 - Request for free bytes on filesystem */
                 zsethdr (hdr, ZHT_ACK, 0);
                 zwrhdr (ZHDR_HEX, hdr);
@@ -671,6 +799,170 @@ void zmodem (const char *phex)
                 }
             zwrhdr (ZHDR_HEX, hdr);
             state = ZST_NEWHDR;
+            }
+        }
+    }
+
+void zsend (const char *pcmd)
+    {
+    zdiag ("zsend (%s)\r\n", pcmd);
+    bool bDone = false;
+    int state = ZHT_RQINIT;
+    int curst;
+    int prvst = 0;
+    int ntmo = 0;
+    int nnak = 0;
+    unsigned char hdr[9];
+    pf = fopen (pcmd, "r");
+    if ( pf == NULL ) error (214, "File not found");
+    state = ZHT_RQINIT;
+    while (true)
+        {
+        zdiag ("Top state = %d\r\n", state);
+        if ( state == ZST_PEEKHDR )
+            {
+            if ( zpeekchr ('*') ) state = ZST_NEWHDR;
+            else state = ZHT_ACK;
+            }
+        if ( state == ZST_NEWHDR ) state = zrdhdr (hdr);
+        curst = state;
+        zdiag ("Header state = %d\r\n", state);
+        switch (state)
+            {
+            case ZHT_RQINIT:    /* 0 - Request receive init */
+                zsethdr (hdr, ZHT_RQINIT, 0);
+                zwrhdr (ZHDR_HEX, hdr);
+                state = ZST_NEWHDR;
+                break;
+            case ZHT_RINIT:     /* 1 - Receive init */
+                zdiag ("ZHT_RINIT: %02X %02X %02X %02X\r\n", hdr[1], hdr[2], hdr[3], hdr[4]);
+                if ( bDone )
+                    {
+                    zsethdr (hdr, ZHT_FIN, 0);
+                    zwrhdr (ZHDR_HEX, hdr);
+                    state = ZST_NEWHDR;
+                    }
+                else
+                    {
+                    zsethdr (hdr, ZHT_FILE, 0);
+                    zwrhdr (ZHDR_BIN, hdr);
+                    state = zwrfinfo (ZHDR_BIN, pcmd);
+                    }
+                break;
+            case ZHT_SINIT:     /* 2 - Send init sequence (optional) */
+                state = ZERR_UNIMP;
+                break;
+            case ZHT_ACK:       /* 3 - ACK to above */
+                zdiag ("ZHT_ACK: hdr = %d nfpos = %d\r\n", hdrint (hdr), nfpos);
+                // zsethdr (hdr, ZHT_DATA, nfpos);
+                // zwrhdr (ZHDR_BIN, hdr);
+                state = zwrfile (ZHDR_BIN, hdr);
+                break;
+            case ZHT_FILE:      /* 4 - File name from sender */
+                state = ZERR_UNIMP;
+                break;
+            case ZHT_SKIP:      /* 5 - To sender: skip this file */
+                zsethdr (hdr, ZHT_FIN, 0);
+                zwrhdr (ZHDR_HEX, hdr);
+                state = ZST_NEWHDR;
+                break;
+            case ZHT_NAK:       /* 6 - Last packet was garbled */
+                if ( ++nnak > 10 )
+                    {
+                    zclose ();
+                    return;
+                    }
+                curst = prvst;
+                state = prvst;
+                break;
+            case ZHT_ABORT:     /* 7 - Abort batch transfers */
+                state = ZERR_UNIMP;
+                break;
+            case ZHT_FIN:       /* 8 - Finish session */
+                zwrchr ('O');
+                zwrchr ('O');
+                zclose ();
+                return;
+                break;
+            case ZHT_RPOS:      /* 9 - Resume data trans at this position */
+                hdr[0] = ZHT_DATA;
+                zwrhdr (ZHDR_BIN, hdr);
+                state = zwrfile (ZHDR_BIN, hdr);
+                break;
+            case ZHT_DATA:      /* 10 - Data packet(s) follow */
+                state = ZERR_UNIMP;
+                break;
+            case ZHT_EOF:       /* 11 - End of file */
+                zsethdr (hdr, ZHT_EOF, nfpos);
+                zwrhdr (ZHDR_HEX, hdr);
+                bDone = true;
+                state = ZST_NEWHDR;
+                break;
+            case ZHT_FERR:      /* 12 - Fatal Read or Write error Detected */
+                zsethdr (hdr, ZHT_FIN, 0);
+                zwrhdr (ZHDR_HEX, hdr);
+                state = ZST_NEWHDR;
+                break;
+            case ZHT_CRC:       /* 13 - Request for file CRC and response */
+                state = ZERR_UNIMP;
+                break;
+            case ZHT_CHALLENGE: /* 14 - Receiver's Challenge */
+                state = ZERR_UNIMP;
+                break;
+            case ZHT_COMPL:     /* 15 - Request is complete */
+                state = ZERR_UNIMP;
+                break;
+            case ZHT_CAN:       /* 16 - Other end canned session with CAN*5 */
+                zdiag ("Cancelled by remote\r\n");
+                zclose ();
+                return;
+            case ZHT_FREECNT:   /* 17 - Request for free bytes on filesystem */
+                zsethdr (hdr, ZHT_ACK, 0);
+                zwrhdr (ZHDR_HEX, hdr);
+                state = ZST_NEWHDR;
+                break;
+            case ZHT_COMMAND:   /* 18 - Command from sending program */
+                state = ZERR_UNIMP;
+                break;
+            case ZHT_STDERR:    /* 19 - Output to standard error, data follows */
+                state = ZERR_UNIMP;
+                break;
+            default:
+                break;
+            }
+        prvst = curst;
+        zdiag ("Exit state = %d\r\n", state);
+        if ( state < 0 )
+            {
+            if ( state == ZERR_TOUT )
+                {
+                zdiag ("ntmo = %d\r\n", ntmo);
+                if ( ++ntmo >= 10 )
+                    {
+                    zclose ();
+                    return;
+                    }
+                state = curst;
+                }
+            else if (( state == ZERR_ABT ) || ( state == ZERR_UNIMP ))
+                {
+                zclose ();
+                return;
+                }
+            else if ( state == ZERR_INFO )
+                {
+                ntmo = 0;
+                zsethdr (hdr, ZHT_FERR, 0);
+                zwrhdr (ZHDR_HEX, hdr);
+                state = ZST_NEWHDR;
+                }
+            else
+                {
+                ntmo = 0;
+                zsethdr (hdr, ZHT_NAK, nfpos);
+                zwrhdr (ZHDR_HEX, hdr);
+                state = ZST_NEWHDR;
+                }
             }
         }
     }
