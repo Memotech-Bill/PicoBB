@@ -8,8 +8,9 @@
 #if ZDIAG
 void zdiag (const char *psFmt,...);
 #endif
-void zreceive (const char *pcmd);
-void zsend (const char *pcmd);
-void ymodem (int mode);
+void yreceive (int mode, const char *pfname);
+void ysend (int mode, const char *pfname);
+void zreceive (const char *pfname, const char *pcmd);
+void zsend (const char *pfname);
 
 #endif

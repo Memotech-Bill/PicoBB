@@ -87,22 +87,26 @@ static short modetab[NUMMODES][5] =
 } ;
 
 enum {
-        BYE, CD, CHDIR, COPY, DEL, DELETE, DIRCMD, DOWNLOAD,
+        BYE, CD, CHDIR, COPY, DEL, DELETE, DIRCMD,
 		DUMP, ERA, ERASE, ESC, EXEC, FLOAT, FX,
 		HELP, HEX, INPUT, KEY, LIST, LOAD, LOCK, LOWERCASE,
 		MD, MKDIR, OUTPUT, QUIT, RD, REFRESH,
 		REN, RENAME, RMDIR, RUN, SAVE, SPOOL, SPOOLON,
-		STEREO, TEMPO, TIMER, TV, TYPE, UNLOCK, VOICE, NCMDS } ;
+		STEREO, TEMPO, TIMER, TV, TYPE, UNLOCK, VOICE,
+        XDOWNLOAD, XUPLOAD, YDOWNLOAD, YUPLOAD, ZDOWNLOAD,
+        ZUPLOAD, NCMDS } ;
 // #define NCMDS 43	// number of OSCLI commands
 #define POWR2 32	// largest power-of-2 less than NCMDS
 
 static char *cmds[NCMDS] = {
-        "bye", "cd", "chdir", "copy", "del", "delete", "dir", "download",
+        "bye", "cd", "chdir", "copy", "del", "delete", "dir",
 		"dump", "era", "erase", "esc", "exec", "float", "fx",
 		"help", "hex", "input", "key", "list", "load", "lock", "lowercase",
 		"md", "mkdir", "output", "quit", "rd", "refresh",
 		"ren", "rename", "rmdir", "run", "save", "spool", "spoolon",
-		"stereo", "tempo", "timer", "tv", "type", "unlock", "voice" } ;
+		"stereo", "tempo", "timer", "tv", "type", "unlock", "voice",
+        "xdownload", "xupload", "ydownload", "yupload", "zdownload",
+        "zupload"} ;
 
 // Change to a new screen mode:
 static void newmode (short wx, short wy, short cx, short cy, short nc, signed char bc) 
@@ -428,7 +432,8 @@ void xeqvdu (int code, int data1, int data2)
 
 // Parse a filespec, return pointer to terminator.
 // Note that source string is CR-terminated
-char *setup (char *dst, char *src, char *ext, char term, unsigned char *pflag)
+// *pFlag: BIT0 - File name, BIT1 - Folder name, BIT7 - Extension
+char *setup (char *dst, const char *src, char *ext, char term, unsigned char *pflag)
 {
 	unsigned char flag = 0 ;
 
@@ -475,7 +480,7 @@ char *setup (char *dst, char *src, char *ext, char term, unsigned char *pflag)
 	if (pflag != NULL)
 		*pflag = flag ;
 	*dst = 0 ;
-	return src - 1 ;
+	return (char *)(src - 1);
 }
 
 // Parse a *KEY string:
@@ -579,23 +584,39 @@ static int wild (char *ebx, char *edx)
 	return 0 ;
 }
 
-void os_DOWNLOAD (char *p)
+void os_XDOWNLOAD (char *p)
     {
-    int nchr = 0;
-    const char *pend = strchr (p, 0x0D);
-    if ( pend != NULL ) nchr = pend - p;
-    if ( nchr == 0 ) error (4, "No file name");
-    char *pfn = (char *) malloc (nchr + 1);
-    if ( pfn == NULL ) error (19, "No memory for file name");
-    strncpy (pfn, p, nchr);
-    pfn[nchr] = '\0';
-    zsend (pfn);
-    free (pfn);
+    ysend (1, p);
+    }
+
+void os_XUPLOAD (char *p)
+    {
+    yreceive (1, p);
+    }
+
+void os_YDOWNLOAD (char *p)
+    {
+    ysend (2, p);
+    }
+
+void os_YUPLOAD (char *p)
+    {
+    yreceive (2, p);
+    }
+
+void os_ZDOWNLOAD (char *p)
+    {
+    zsend (p);
+    }
+
+void os_ZUPLOAD (char *p)
+    {
+    zreceive (p, NULL);
     }
 
 void os_zmodem (char *p)
     {
-    zreceive (p);
+    zreceive ("\r", p);
     }
 
 #ifdef MIN_STACK
@@ -1279,7 +1300,6 @@ void oscli (char *cmd)
         os_DEL,         // DEL
         os_DEL,         // DELETE
         os_DIR,         // DIRCMD
-        os_DOWNLOAD,    // DOWNLOAD
         os_DUMP,        // DUMP
         os_DEL,         // ERA
         os_DEL,         // ERASE
@@ -1315,6 +1335,12 @@ void oscli (char *cmd)
         os_TYPE,        // TYPE
         os_UNLOCK,      // UNLOCK
         os_VOICE,       // VOICE
+        os_XDOWNLOAD,   // XDOWNLOAD
+        os_XUPLOAD,     // XUPLOAD
+        os_YDOWNLOAD,   // YDOWNLOAD
+        os_YUPLOAD,     // YUPLOAD
+        os_ZDOWNLOAD,   // ZDOWNLOAD
+        os_ZUPLOAD,     // ZUPLOAD
         os_null,
         os_zmodem,
         };
@@ -1532,10 +1558,6 @@ void oscli (char *cmd)
 			closedir (d) ;
 			crlf () ;
 			return ;
-
-        case DOWNLOAD:
-            os_DOWNLOAD (p);
-            return;
 
 		case ESC:
 			if (onoff (p))
@@ -1943,6 +1965,30 @@ void oscli (char *cmd)
 			sscanf (p, "%i,%i", &b, &n) ;
 			voices[b & 3] = n & 7 ;
 			return ;
+
+        case XDOWNLOAD:
+            os_XDOWNLOAD (p);
+            return;
+
+        case XUPLOAD:
+            os_XUPLOAD (p);
+            return;
+
+        case YDOWNLOAD:
+            os_YDOWNLOAD (p);
+            return;
+
+        case YUPLOAD:
+            os_YUPLOAD (p);
+            return;
+
+        case ZDOWNLOAD:
+            os_ZDOWNLOAD (p);
+            return;
+
+        case ZUPLOAD:
+            os_ZUPLOAD (p);
+            return;
 		} ;
 
 	error (254, "Bad command") ;

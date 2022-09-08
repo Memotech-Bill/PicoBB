@@ -11,6 +11,8 @@
 
 int anykey (unsigned char *key, int tmo);
 void error (int iErr, const char *psMsg);
+char *setup (char *dst, const char *src, char *ext, char term, unsigned char *pflag);
+#define MAX_PATH    260
 
 #define SOH         0x01
 #define EOT         0x04
@@ -51,6 +53,7 @@ void error (int iErr, const char *psMsg);
 #define ZHT_STDERR      19  /* Output to standard error, data follows */
 #define ZST_NEWHDR      20  /* Read a new header */
 #define ZST_PEEKHDR     21  /* Check for a new header, continue if none */
+#define ZST_QUIT        22  /* Exit */
 
 #define ZFE_CRCE    ( 'h' | 0x100 )	/* 360 CRC next, frame ends, header packet follows */
 #define ZFE_CRCG    ( 'i' | 0x100 )	/* 361 CRC next, frame continues nonstop */
@@ -70,7 +73,6 @@ void error (int iErr, const char *psMsg);
 
 #define ZFLG_ESCALL 0x40    // Escape all control characters
 static unsigned char txflg;
-static unsigned char attn[32] = { 0 };
 static FILE *pf = NULL;
 static int nfpos = 0;
 
@@ -148,13 +150,13 @@ static int zrdchr (int timeout)
     return ZERR_TOUT;
     }
 
-static bool zpeekchr (int pchr)
+static bool zpeekchr (int pchr, int tmo)
     {
     int key;
     zdiag ("zpeekchr:");
     do
         {
-        key = zrdchr (0);
+        key = zrdchr (tmo);
         zdiag (" %02X", key);
         }
     while (( key != pchr ) && ( key != ZERR_TOUT ));
@@ -457,14 +459,36 @@ static int zrddata (void *ptr, int nlen)
     return zchkcrc (chk, key);
     }
 
-static int zrdfinfo (unsigned char *hdr)
+static FILE *pathopen (char *path, const char *pfname)
     {
-    unsigned char *pinfo;
+    char *ps = strrchr (path, '/');
+    if ( ps == NULL ) ps = path;
+    else ++ps;
+    int nch = strlen (pfname) + (ps - path);
+    if ( nch > MAX_PATH ) return NULL;
+    strcpy (ps, pfname);
+    return fopen (path, "w");
+    }
+
+static int zrdfinfo (unsigned char *hdr, char *path)
+    {
+    unsigned char *pinfo = NULL;
     int state = zrddata (&pinfo, -64);
-    if ( state < 0 ) return state;
-    if ( pf != NULL ) fclose (pf);
     zdiag ("\r\nFile = %s\r\n", pinfo);
-    pf = fopen (pinfo, "w");
+    if ( state < 0 )
+        {
+        if ( pinfo != NULL ) free (pinfo);
+        return state;
+        }
+    if ( pf == NULL )
+        {
+        pf = pathopen (path, pinfo);
+        if ( pf == NULL )
+            {
+            free (pinfo);
+            return ZHT_FERR;
+            }
+        }
     nfpos = 0;
     free (pinfo);
     return ZERR_NSYNC; // Force a ZHT_POS response
@@ -568,14 +592,18 @@ static void zwrdata (int type, const unsigned char *pdata, int ndata, int fend)
 
 static int zwrfinfo (int type, const char *pfn)
     {
+    zdiag ("pfn = %s pf = %p\r\n", pfn, pf);
     int nch = strlen (pfn);
     unsigned char *pinfo = (unsigned char *) malloc (nch + 12);
     if ( pinfo == NULL ) return ZERR_INFO;
     strcpy (pinfo, pfn);
+    zdiag ("Seek to file end\r\n");
     if ( fseek (pf, 0, SEEK_END) != 0 ) return ZERR_INFO;
     long nlen = ftell (pf);
+    zdiag ("nlen = %d\r\n", nlen);
     if ( nlen < 0 ) return ZERR_INFO;
     if ( fseek (pf, 0, SEEK_SET) != 0 ) return ZERR_INFO;
+    zdiag ("Rewound file\r\n");
     nfpos = 0;
     sprintf (&pinfo[nch+1], "%d", nlen);
     nch += strlen (&pinfo[nch+1]) + 2;
@@ -619,6 +647,32 @@ static int zwrfile (int type, unsigned char *hdr)
     return state;
     }
 
+static int zwrbreak (unsigned char *hdr, unsigned char *attn)
+    {
+    unsigned char *pa = attn;
+    while ( *pa )
+        {
+        switch (*pa)
+            {
+            case 0xDD:
+                // Should be a break
+                sleep_ms (1000);
+                break;
+            case 0xDE:
+                // A pause
+                sleep_ms (1000);
+                break;
+            default:
+                zdiag (" w%02x", *pa);
+                putchar_raw (*pa);
+                break;
+            }
+        ++pa;
+        }
+    zwrhdr (ZHDR_HEX, hdr);
+    return ZST_NEWHDR;
+    }
+
 static void zclose (void)
     {
     zdiag ("zclose\r\n");
@@ -626,60 +680,65 @@ static void zclose (void)
     pf = NULL;
     }
 
-void zreceive (const char *pcmd)
+void zreceive (const char *pfname, const char *pcmd)
     {
-    zdiag ("zreceive\r\n");
+    unsigned char attn[32] = { 0 };
+	char path[MAX_PATH+1];
+	unsigned char flag;
+    zdiag ("zreceive (%s, %s)\r\n", pfname, pcmd);
+    setup (path, pfname, ".bbc", ' ', &flag);
+    zdiag ("path = %s flag = %02X\r\n", path, flag);
+    if ( flag & 0x01 )
+        {
+        pf = fopen (path, "w");
+        if ( pf == NULL ) error (204, "Cannot create file");
+        }
     int state = ZHT_RQINIT;
     int curst;
-    int ntmo = 0;
+    int ntmo = 10;
+    int nnak = 10;
     unsigned char hdr[9];
-    if ( pcmd != NULL ) pcmd += 2;
-    while (true)
+    if ( pcmd != NULL )
         {
-        zdiag ("Top state = %d\r\n", state);
-        if ( pcmd ) state = ztxthdr (pcmd, hdr);
-        else if ( state == ZST_NEWHDR ) state = zrdhdr (hdr);
-        pcmd = NULL;
-        curst = state;
-        zdiag ("Header state = %d\r\n", state);
+        pcmd += 2;
+        state = ztxthdr (pcmd, hdr);
+        }
+    do
+        {
+        zdiag ("state = %d\r\n", state);
+        if (( state >= 0 ) && ( state < ZST_QUIT )) curst = state;
         switch (state)
             {
+            case ZST_NEWHDR:
+                state = zrdhdr (hdr);
+                break;
             case ZHT_RQINIT:    /* 0 - Request receive init */
                 zsethdr (hdr, ZHT_RINIT, 0);
                 zwrhdr (ZHDR_HEX, hdr);
                 state = ZST_NEWHDR;
                 break;
-            case ZHT_RINIT:     /* 1 - Receive init */
-                zclose ();
-                return;
             case ZHT_SINIT:     /* 2 - Send init sequence (optional) */
                 txflg = hdr[4];
                 state = zrddata (attn, sizeof (attn));
                 break;
-            case ZHT_ACK:       /* 3 - ACK to above */
-                state = ZERR_UNIMP;
-                break;
             case ZHT_FILE:      /* 4 - File name from sender */
-                state = zrdfinfo (hdr);
+                state = zrdfinfo (hdr, path);
                 break;
             case ZHT_SKIP:      /* 5 - To sender: skip this file */
                 state = ZERR_UNIMP;
                 break;
             case ZHT_NAK:       /* 6 - Last packet was garbled */
-                zclose ();
-                return;
-                // state = ZERR_UNIMP;
-                break;
-            case ZHT_ABORT:     /* 7 - Abort batch transfers */
-                state = ZERR_UNIMP;
+                if ( --nnak == 0 ) state = ZST_QUIT;
+                else state = curst;
                 break;
             case ZHT_FIN:       /* 8 - Finish session */
                 zwrhdr (ZHDR_HEX, hdr);
-                zclose ();
-                return;
-                break;
-            case ZHT_RPOS:      /* 9 - Resume data trans at this position */
-                state = ZERR_UNIMP;
+                zdiag ("ZHT_FIN: ");
+                if ( zpeekchr ('O', 1000) )
+                    {
+                    zpeekchr ('O', 1000);
+                    }
+                state = ZST_QUIT;
                 break;
             case ZHT_DATA:      /* 10 - Data packet(s) follow */
                 state = zsvdata (hdr);
@@ -696,139 +755,107 @@ void zreceive (const char *pcmd)
                 state = ZHT_RQINIT;
                 break;
             case ZHT_FERR:      /* 12 - Fatal Read or Write error Detected */
-                state = ZERR_UNIMP;
+                state = ZHT_RQINIT;
                 break;
-            case ZHT_CRC:       /* 13 - Request for file CRC and response */
-                state = ZERR_UNIMP;
-                break;
-            case ZHT_CHALLENGE: /* 14 - Receiver's Challenge */
-                state = ZERR_UNIMP;
-                break;
-            case ZHT_COMPL:     /* 15 - Request is complete */
-                state = ZERR_UNIMP;
-                break;
+            case ZHT_RINIT:     /* 1 - Receive init - Echoed from dead client */
             case ZHT_CAN:       /* 16 - Other end canned session with CAN*5 */
-                zdiag ("Cancelled by remote\r\n");
-                zclose ();
-                return;
+                state = ZST_QUIT;
+                break;
             case ZHT_FREECNT:   /* 17 - Request for free bytes on filesystem */
                 zsethdr (hdr, ZHT_ACK, 0);
                 zwrhdr (ZHDR_HEX, hdr);
                 state = ZST_NEWHDR;
                 break;
+            case ZHT_ACK:       /* 3 - ACK to above */
+            case ZHT_ABORT:     /* 7 - Abort batch transfers */
+            case ZHT_RPOS:      /* 9 - Resume data trans at this position */
+            case ZHT_CRC:       /* 13 - Request for file CRC and response */
+            case ZHT_CHALLENGE: /* 14 - Receiver's Challenge */
+            case ZHT_COMPL:     /* 15 - Request is complete */
             case ZHT_COMMAND:   /* 18 - Command from sending program */
-                state = ZERR_UNIMP;
-                break;
             case ZHT_STDERR:    /* 19 - Output to standard error, data follows */
                 state = ZERR_UNIMP;
                 break;
+            case ZFE_CRCE:      /* CRC next, frame ends, header packet follows */
+                state = ZST_NEWHDR;
+                break;
+            case ZFE_CRCG:       /* CRC next, frame continues nonstop */
+                state = curst;
+                break;
+            case ZFE_CRCQ:      /* CRC next, frame continues, ZACK expected */
+                zsethdr (hdr, ZHT_ACK, nfpos);
+                zwrhdr (ZHDR_HEX, hdr);
+                state = curst;
+                break;
+            case ZFE_CRCW:      /* CRC next, ZACK expected, end of frame */
+                zsethdr (hdr, ZHT_ACK, nfpos);
+                zwrhdr (ZHDR_HEX, hdr);
+                state = ZST_NEWHDR;
+                break;
+            case ZERR_TOUT:
+                zdiag ("ntmo = %d\r\n", ntmo);
+                if ( --ntmo == 10 )
+                    {
+                    state = ZST_QUIT;
+                    }
+                else
+                    {
+                    zsethdr (hdr, ZHT_NAK, 0);
+                    zwrhdr (ZHDR_HEX, hdr);
+                    state = ZST_NEWHDR;
+                    }
+                break;
+            case ZERR_ABT:
+                state = ZST_QUIT;
+                break;
+            case ZERR_FULL:
+                zsethdr (hdr, ZHT_FERR, nfpos);
+                state = zwrbreak (hdr, attn);
+                break;
+            case ZERR_NSYNC:
+                zsethdr (hdr, ZHT_RPOS, nfpos);
+                state = zwrbreak (hdr, attn);
+                break;
             default:
+                zsethdr (hdr, ZHT_NAK, nfpos);
+                state = zwrbreak (hdr, attn);
                 break;
             }
-        zdiag ("Exit state = %d\r\n", state);
-        if ( state == ZFE_CRCE )
-            {
-            /* CRC next, frame ends, header packet follows */
-            state = ZST_NEWHDR;
-            }
-        else if ( state == ZFE_CRCG )
-            {
-            /* CRC next, frame continues nonstop */
-            state = curst;
-            }
-        else if ( state == ZFE_CRCQ )
-            {
-            /* CRC next, frame continues, ZACK expected */
-            zsethdr (hdr, ZHT_ACK, nfpos);
-            zwrhdr (ZHDR_HEX, hdr);
-            state = curst;
-            }
-        else if ( state == ZFE_CRCW )
-            {
-            /* CRC next, ZACK expected, end of frame */
-            zsethdr (hdr, ZHT_ACK, nfpos);
-            zwrhdr (ZHDR_HEX, hdr);
-            state = ZST_NEWHDR;
-            }
-        else if ( state < 0 )
-            {
-            if ( state == ZERR_TOUT )
-                {
-                zdiag ("ntmo = %d\r\n", ntmo);
-                if ( ++ntmo >= 10 )
-                    {
-                    zclose ();
-                    return;
-                    }
-                }
-            else
-                {
-                ntmo = 0;
-                }
-            switch (state)
-                {
-                case ZERR_FULL:
-                    zsethdr (hdr, ZHT_FERR, nfpos);
-                    break;
-                case ZERR_NSYNC:
-                    zsethdr (hdr, ZHT_RPOS, nfpos);
-                    break;
-                default:
-                    zsethdr (hdr, ZHT_NAK, nfpos);
-                    break;
-                }
-            unsigned char *pa = attn;
-            while ( *pa )
-                {
-                switch (*pa)
-                    {
-                    case 0xDD:
-                        // Should be a break
-                        sleep_ms (1000);
-                        break;
-                    case 0xDE:
-                        // A pause
-                        sleep_ms (1000);
-                        break;
-                    default:
-                        zdiag (" w%02x", *pa);
-                        putchar_raw (*pa);
-                        break;
-                    }
-                ++pa;
-                }
-            zwrhdr (ZHDR_HEX, hdr);
-            state = ZST_NEWHDR;
-            }
         }
+    while ( state != ZST_QUIT );
+    zclose ();
     }
 
-void zsend (const char *pcmd)
+void zsend (const char *pfname)
     {
-    zdiag ("zsend (%s)\r\n", pcmd);
+	char path[MAX_PATH+1];
     bool bDone = false;
     int state = ZHT_RQINIT;
     int curst;
     int prvst = 0;
-    int ntmo = 0;
-    int nnak = 0;
+    int ntmo = 10;
+    int nnak = 10;
     unsigned char hdr[9];
-    pf = fopen (pcmd, "r");
-    if ( pf == NULL ) error (214, "File not found");
+	unsigned char flag;
+    zdiag ("zsend\r\n");
+    setup (path, pfname, ".bbc", ' ', &flag);
+    pf = fopen (path, "r");
+    if ( pf == NULL ) error (214, "Cannot open file");
     state = ZHT_RQINIT;
-    while (true)
+    do
         {
-        zdiag ("Top state = %d\r\n", state);
-        if ( state == ZST_PEEKHDR )
-            {
-            if ( zpeekchr ('*') ) state = ZST_NEWHDR;
-            else state = ZHT_ACK;
-            }
-        if ( state == ZST_NEWHDR ) state = zrdhdr (hdr);
-        curst = state;
-        zdiag ("Header state = %d\r\n", state);
+        zdiag ("state = %d\r\n", state);
+        prvst = curst;
+        if (( state >= 0 ) && ( state < ZST_QUIT )) curst = state;
         switch (state)
             {
+            case ZST_PEEKHDR:
+                if ( zpeekchr ('*', 0) ) state = ZST_NEWHDR;
+                else state = ZHT_ACK;
+                break;
+            case ZST_NEWHDR:
+                state = zrdhdr (hdr);
+                break;
             case ZHT_RQINIT:    /* 0 - Request receive init */
                 zsethdr (hdr, ZHT_RQINIT, 0);
                 zwrhdr (ZHDR_HEX, hdr);
@@ -846,11 +873,8 @@ void zsend (const char *pcmd)
                     {
                     zsethdr (hdr, ZHT_FILE, 0);
                     zwrhdr (ZHDR_BIN, hdr);
-                    state = zwrfinfo (ZHDR_BIN, pcmd);
+                    state = zwrfinfo (ZHDR_BIN, path);
                     }
-                break;
-            case ZHT_SINIT:     /* 2 - Send init sequence (optional) */
-                state = ZERR_UNIMP;
                 break;
             case ZHT_ACK:       /* 3 - ACK to above */
                 zdiag ("ZHT_ACK: hdr = %d nfpos = %d\r\n", hdrint (hdr), nfpos);
@@ -858,16 +882,13 @@ void zsend (const char *pcmd)
                 // zwrhdr (ZHDR_BIN, hdr);
                 state = zwrfile (ZHDR_BIN, hdr);
                 break;
-            case ZHT_FILE:      /* 4 - File name from sender */
-                state = ZERR_UNIMP;
-                break;
             case ZHT_SKIP:      /* 5 - To sender: skip this file */
                 zsethdr (hdr, ZHT_FIN, 0);
                 zwrhdr (ZHDR_HEX, hdr);
                 state = ZST_NEWHDR;
                 break;
             case ZHT_NAK:       /* 6 - Last packet was garbled */
-                if ( ++nnak > 10 )
+                if ( --nnak == 0 )
                     {
                     zclose ();
                     return;
@@ -875,22 +896,15 @@ void zsend (const char *pcmd)
                 curst = prvst;
                 state = prvst;
                 break;
-            case ZHT_ABORT:     /* 7 - Abort batch transfers */
-                state = ZERR_UNIMP;
-                break;
             case ZHT_FIN:       /* 8 - Finish session */
                 zwrchr ('O');
                 zwrchr ('O');
-                zclose ();
-                return;
+                state = ZST_QUIT;
                 break;
             case ZHT_RPOS:      /* 9 - Resume data trans at this position */
                 hdr[0] = ZHT_DATA;
                 zwrhdr (ZHDR_BIN, hdr);
                 state = zwrfile (ZHDR_BIN, hdr);
-                break;
-            case ZHT_DATA:      /* 10 - Data packet(s) follow */
-                state = ZERR_UNIMP;
                 break;
             case ZHT_EOF:       /* 11 - End of file */
                 zsethdr (hdr, ZHT_EOF, nfpos);
@@ -903,15 +917,6 @@ void zsend (const char *pcmd)
                 zwrhdr (ZHDR_HEX, hdr);
                 state = ZST_NEWHDR;
                 break;
-            case ZHT_CRC:       /* 13 - Request for file CRC and response */
-                state = ZERR_UNIMP;
-                break;
-            case ZHT_CHALLENGE: /* 14 - Receiver's Challenge */
-                state = ZERR_UNIMP;
-                break;
-            case ZHT_COMPL:     /* 15 - Request is complete */
-                state = ZERR_UNIMP;
-                break;
             case ZHT_CAN:       /* 16 - Other end canned session with CAN*5 */
                 zdiag ("Cancelled by remote\r\n");
                 zclose ();
@@ -921,73 +926,97 @@ void zsend (const char *pcmd)
                 zwrhdr (ZHDR_HEX, hdr);
                 state = ZST_NEWHDR;
                 break;
+            case ZHT_SINIT:     /* 2 - Send init sequence (optional) */
+            case ZHT_FILE:      /* 4 - File name from sender */
+            case ZHT_ABORT:     /* 7 - Abort batch transfers */
+            case ZHT_DATA:      /* 10 - Data packet(s) follow */
+            case ZHT_CRC:       /* 13 - Request for file CRC and response */
+            case ZHT_CHALLENGE: /* 14 - Receiver's Challenge */
+            case ZHT_COMPL:     /* 15 - Request is complete */
             case ZHT_COMMAND:   /* 18 - Command from sending program */
-                state = ZERR_UNIMP;
-                break;
             case ZHT_STDERR:    /* 19 - Output to standard error, data follows */
                 state = ZERR_UNIMP;
                 break;
-            default:
+            case ZERR_ABT:
+                state = ZST_QUIT;
                 break;
-            }
-        prvst = curst;
-        zdiag ("Exit state = %d\r\n", state);
-        if ( state < 0 )
-            {
-            if ( state == ZERR_TOUT )
-                {
+            case ZERR_TOUT:
                 zdiag ("ntmo = %d\r\n", ntmo);
-                if ( ++ntmo >= 10 )
-                    {
-                    zclose ();
-                    return;
-                    }
-                state = curst;
-                }
-            else if (( state == ZERR_ABT ) || ( state == ZERR_UNIMP ))
-                {
-                zclose ();
-                return;
-                }
-            else if ( state == ZERR_INFO )
-                {
-                ntmo = 0;
+                if ( --ntmo == 10 ) state = ZST_QUIT;
+                else state = curst;
+                break;
+            case ZERR_INFO:
                 zsethdr (hdr, ZHT_FERR, 0);
                 zwrhdr (ZHDR_HEX, hdr);
                 state = ZST_NEWHDR;
-                }
-            else
-                {
-                ntmo = 0;
+                break;
+            default:
                 zsethdr (hdr, ZHT_NAK, nfpos);
                 zwrhdr (ZHDR_HEX, hdr);
                 state = ZST_NEWHDR;
-                }
+                break;
             }
         }
+    while ( state != ZST_QUIT );
+    zclose ();
     }
 
 #define ydiag zdiag
 
-void ymodem (int mode)
+static int ychecksum (unsigned char *buffer)
     {
+    int csum = 0;
+    for (int i = 3; i < 131; ++i)
+        {
+        csum += buffer[i];
+        }
+    return csum & 0xFF;
+    }
+
+static int ycrcval (unsigned char *buffer)
+    {
+    int crc = 0;
+    for (int i = 3; i < 131; ++i)
+        {
+        crc = updcrc (buffer[i], crc);
+        }
+    crc = updcrc (0, crc);
+    crc = updcrc (0, crc);
+    return crc & 0xFFFF;
+    }
+
+void yreceive (int mode, const char *pfname)
+    {
+	char path[MAX_PATH+1];
     unsigned char buffer[132];
-    FILE *fp = NULL;
+    pf = NULL;
     int nb = 0;
-    int nlen = 0;
-    int nrtry = 0;
+    int nlen = -1;
+    int ntmo = 10;
     int nblk = 1;
     int lblk = 1;
     unsigned char key;
     bool bHaveByte = true;
-    ydiag ("Entered ymodem\r\n");
-    if ( mode == 1 )
+	unsigned char flag;
+    ydiag ("Entered yreceive\r\n");
+    setup (path, pfname, ".bbc", ' ', &flag);
+    if ( flag & 0x01 )
+        {
+        pf = fopen (path, "w");
+        if ( pf == NULL ) error (204, "Unable to create file");
+        }
+    else if ( mode == 1 )
+        {
+        error (31, "No file name");
+        }
+    if ( mode == 3 )
         {
         buffer[0] = SOH;
         nb = 1;
         }
     else
         {
+        ntmo = 60;
         putchar_raw (NAK);
         nb = 0;
         }
@@ -997,8 +1026,8 @@ void ymodem (int mode)
         while (( nb < 132 ) && bHaveByte )
             {
             absolute_time_t twait;
-            int tmo = 1000;
-            if ( nb == 0 ) tmo = 10000;
+            int tmo = 500;
+            if ( nb == 0 ) tmo = 2000;
             twait = make_timeout_time_ms (tmo);
             bHaveByte = false;
             while ( get_absolute_time () < twait )
@@ -1009,14 +1038,17 @@ void ymodem (int mode)
                     buffer[nb] = key;
                     if (( nb == 0 ) && ( key == EOT ))
                         {
-                        if ( fp != NULL )
+                        if ( pf != NULL )
                             {
-                            fclose (fp);
-                            fp = NULL;
+                            fclose (pf);
+                            pf = NULL;
                             }
                         putchar_raw (ACK);
-                        ydiag ("End of upload\r\nExit ymodem\r\n");
-                        return;
+                        ydiag ("End of upload\r\n");
+                        if ( mode == 1 ) return;
+                        nblk = -1;
+                        lblk = -1;
+                        break;
                         }
                     if (( nb > 0 ) || ( key == SOH ))
                         {
@@ -1030,12 +1062,7 @@ void ymodem (int mode)
         if ( bHaveByte )
             {
             ydiag ("Received block\r\n");
-            int csum = 0;
-            for (int i = 3; i < 131; ++i)
-                {
-                csum += buffer[i];
-                }
-            csum &= 0xFF;
+            int csum = ychecksum (buffer);
             ydiag ("0 = %02X 1 = %02X 2 = %02X 131 = %02X csum = %02X\r\n", buffer[0], buffer[1],
                 buffer[2], buffer[131], csum);
             if (( buffer[0] == SOH ) && ( buffer[2] == 255 - buffer[1] ) && ( buffer[131] == csum ))
@@ -1043,9 +1070,9 @@ void ymodem (int mode)
                 if ( buffer[1] == nblk )
                     {
                     ydiag ("Next data block\r\n");
-                    if ( fp == NULL )
+                    if ( pf == NULL )
                         {
-                        fp = fopen ("xmodem.tmp", "w");
+                        pf = fopen ("xmodem.tmp", "w");
                         nlen = -1;
                         ydiag ("Default file name: xmodem.tmp\r\n");
                         }
@@ -1054,12 +1081,12 @@ void ymodem (int mode)
                     ydiag ("nsave = %d\r\n", nsave);
                     if ( nsave > 0 )
                         {
-                        int nout = fwrite (&buffer[3], 1, nsave, fp);
+                        int nout = fwrite (&buffer[3], 1, nsave, pf);
                         if ( nout < nsave )
                             {
-                            ydiag ("Only wrote %d - FAIL\r\nExit ymodem\r\n", nout);
-                            fclose (fp);
-                            fp = NULL;
+                            ydiag ("Only wrote %d - FAIL\r\nExit yreceive\r\n", nout);
+                            fclose (pf);
+                            pf = NULL;
                             putchar_raw (CAN);
                             putchar_raw (CAN);
                             return;
@@ -1070,34 +1097,36 @@ void ymodem (int mode)
                     putchar_raw (ACK);
                     lblk = nblk;
                     nblk = ( nblk + 1 ) & 0xFF;
-                    nrtry = 0;
+                    ntmo = 10;
                     }
                 else if ( buffer[1] == lblk )
                     {
                     ydiag ("Repeated data block\r\n");
                     putchar_raw (ACK);
                     }
-                else if (( buffer[1] == 0 ) && ( fp == NULL ))
+                else if (( buffer[1] == 0 ) && ( pf == NULL ))
                     {
-                    fp = fopen (&buffer[3], "wb");
-                    ydiag ("%s\r\n", &buffer[3]);
-                    unsigned char *p = buffer + strlen (&buffer[3]) + 4;
-                    nlen = 0;
-                    while ((*p >= '0') && (*p <= '9'))
+                    if ( buffer[3] == 0 )
                         {
-                        nlen = 10 * nlen + *p - '0';
-                        ++p;
+                        ydiag ("End of uploads\r\n");
+                        putchar_raw (ACK);
+                        return;
                         }
-                    if (( fp == NULL ) || ( nlen == 0 ))
+                    pf = pathopen (path, &buffer[3]);
+                    ydiag ("%s\r\n", &buffer[3]);
+                    nlen = atoi (buffer + strlen (&buffer[3]) + 4);
+                    if (( pf == NULL ) || ( nlen == 0 ))
                         {
-                        ydiag ("Failed initial block\r\nExit ymodem\r\n");
+                        ydiag ("Failed initial block\r\nExit yreceive\r\n");
                         putchar_raw (CAN);
                         putchar_raw (CAN);
                         return;
                         }
                     ydiag ("Completed initial block\r\n");
+                    putchar_raw (ACK);
                     nblk = 1;
-                    lblk = 1;
+                    lblk = 0;
+                    ntmo = 10;
                     }
                 else
                     {
@@ -1108,13 +1137,13 @@ void ymodem (int mode)
             }
         else
             {
-            if ( ++nrtry >= 10 )
+            if ( --ntmo == 0 )
                 {
-                ydiag ("Too many retries\r\nExit ymodem\r\n");
-                if ( fp != NULL )
+                ydiag ("Too many retries\r\nExit yreceive\r\n");
+                if ( pf != NULL )
                     {
-                    fclose (fp);
-                    fp = NULL;
+                    fclose (pf);
+                    pf = NULL;
                     }
                 putchar_raw (CAN);
                 putchar_raw (CAN);
@@ -1125,4 +1154,176 @@ void ymodem (int mode)
             }
         nb = 0;
         }
+    }
+
+static int yzeroblk (unsigned char *buffer, const char *path)
+    {
+    const char *ps = strrchr (path, '/');
+    if ( ps == NULL ) ps = path;
+    else ++ps;
+    memset (&buffer[1], 0, 130);
+    buffer[2] = 255;
+    strncpy (&buffer[3], path, 116);
+    if ( fseek (pf, 0, SEEK_END) != 0 ) return -1;
+    long nlen = ftell (pf);
+    ydiag ("nlen = %d\r\n", nlen);
+    if ( fseek (pf, 0, SEEK_SET) != 0 ) return -1;
+    sprintf (&buffer[strlen (&buffer[3]) + 4], "%d", nlen);
+    buffer[131] = ychecksum (buffer);
+    return nlen;
+    }
+
+static void ysetcrc (unsigned char *buffer)
+    {
+    int crc = ycrcval (buffer);
+    buffer[131] = crc >> 8;
+    buffer[132] = crc & 0xFF;
+    }
+
+static int ydatablk (unsigned char *buffer, int nblk, bool bCrc)
+    {
+    buffer[1] = nblk & 0xFF;
+    buffer[2] = 255 - buffer[1];
+    memset (&buffer[3], 0, 128);
+    int nread = fread (&buffer[3], 1, 128, pf);
+    if ( bCrc ) ysetcrc (buffer);
+    else buffer[131] = ychecksum (buffer);
+    return nread;
+    }
+
+static unsigned char ygetchr (int tmo)
+    {
+    unsigned char key = 0;
+    bool bCan = false;
+    absolute_time_t twait = make_timeout_time_ms (tmo);
+    do
+        {
+        absolute_time_t t1 = get_absolute_time ();
+        if ( anykey (&key, 100 * tmo) )
+            {
+            absolute_time_t t2 = get_absolute_time ();
+            ydiag (" %02X-%dms", key, (int) absolute_time_diff_us (t1, t2) / 1000);
+            if (( key == 'C' ) || ( key == ACK ) || ( key == NAK )) return key;
+            else if ( key == CAN )
+                {
+                if ( bCan ) return key;
+                else bCan = true;
+                }
+            else bCan = false;
+            }
+        }
+    while ( get_absolute_time () < twait );
+    ydiag (" timeout");
+    return 0;
+    }
+
+static void ysendblk (unsigned char *buffer, bool bCrc)
+    {
+    ydiag ("Send block %d\r\n", buffer[1]);
+    for (int i = 0; i < 132; ++i)
+        {
+        putchar_raw (buffer[i]);
+        ydiag (" %02X", buffer[i]);
+        }
+    if ( bCrc )
+        {
+        putchar_raw (buffer[132]);
+        ydiag (" %02X", buffer[132]);
+        }
+    ydiag ("\r\n");
+    }
+
+void ysend (int mode, const char *pfname)
+    {
+    char path[MAX_PATH+1];
+    unsigned char buffer[132];
+    unsigned char flag;
+    int ntmo = 60;
+    int tmo = 4000;
+    bool bCrc = false;
+    ydiag ("ysend\r\n");
+    buffer[0] = SOH;
+    setup (path, pfname, ".bbc", ' ', &flag);
+    pf = fopen (path, "r");
+    if ( pf == NULL ) error (214, "Cannot open file");
+    int nblk = 0;
+    int ndata;
+    if ( mode == 1 )
+        {
+        nblk = 1;
+        ndata = ydatablk (buffer, nblk, bCrc);
+        if ( ndata == 0 ) error (255, "Empty file");
+        }
+    else
+        {
+        ndata = yzeroblk (buffer, path);
+        if ( ndata == 0  ) error (255, "Empty file");
+        else if ( ndata < 0 ) error (255, "File seek error");
+        }
+    while (true)
+        {
+        unsigned char key = ygetchr (tmo);
+        unsigned char key2 = 0;
+        if ((nblk == 0 ) && (key == ACK)) key2 = ygetchr (5);
+        ydiag ("\r\nnblk = %d:", nblk);
+        if (( key == 'C' ) || ( key2 == 'C' ))
+            {
+            ydiag ("16-bit CRC requested\r\n");
+            bCrc = true;
+            int crc = ycrcval (buffer);
+            buffer[131] = crc >> 8;
+            buffer[132] = crc & 0xFF;
+            }
+        else if (( key == 0 ) || ( key == 'C' ) || ( key == NAK )) --ntmo;
+        if (( key == CAN ) || ( ntmo == 0 ))
+            {
+            ydiag ("Cancelled by remote\r\n");
+            fclose (pf);
+            return;
+            }
+        if ( key == ACK )
+            {
+            ++nblk;
+            ndata = ydatablk (buffer, nblk, bCrc);
+            ydiag ("Block %d: length = %d\r\n", nblk, ndata);
+            if ( ndata == 0 ) break;
+            ntmo = 10;
+            }
+        ysendblk (buffer, bCrc);
+        }
+    ydiag ("End of file\r\n");
+    unsigned char key;
+    for (int i = 0; i < 5; ++i)
+        {
+        ydiag ("EOT:");
+        putchar_raw (EOT);
+        key = ygetchr (2000);
+        if ( key == ACK ) break;
+        ydiag ("\r\n");
+        }
+    if ( key == ACK )
+        {
+        ydiag ("\r\n");
+        memset (&buffer[1], 0, 130);
+        buffer[2] = 255;
+        buffer[131] = ychecksum (buffer);
+        while (true)
+            {
+            key = ygetchr (2000);
+            if ( key == ACK ) break;
+            if ( key == 'C' )
+                {
+                bCrc = true;
+                ysetcrc (buffer);
+                }
+            ysendblk (buffer, bCrc);
+            }
+        }
+    else
+        {
+        putchar_raw (CAN);
+        putchar_raw (CAN);
+        }
+    ydiag ("\r\nQuit\r\n");
+    fclose (pf);
     }

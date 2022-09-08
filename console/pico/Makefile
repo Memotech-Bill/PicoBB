@@ -4,7 +4,7 @@ STDIO=USB+UART
 LFS=Y
 FAT=N
 SOUND=SDL
-MIN_STACK=N
+MIN_STACK=Y
 SERIAL_DEV=1
 
 include ../../src/pico/Makefile

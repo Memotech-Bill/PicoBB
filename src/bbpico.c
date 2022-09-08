@@ -27,6 +27,7 @@
 #include <time.h>
 #include <math.h>
 #include "bbccon.h"
+#include "zmodem.h"
 
 // Attempt to check consistancy of build
 
@@ -1097,7 +1098,7 @@ void osline (char *buffer)
 		unsigned char key;
 
 		key = osrdch ();
-        if (( key == 0x01 ) && bUpload && ( *buffer == 0x0D )) ymodem (1);
+        if (( key == 0x01 ) && bUpload && ( *buffer == 0x0D )) yreceive (3, "\r");
 		switch (key)
 		    {
 			case 0x0A:
