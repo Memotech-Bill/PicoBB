@@ -122,8 +122,8 @@
 
 typedef __attribute__((aligned(1))) int unaligned_int;
 
-#define ILOAD(p)    *((unaligned_int*)(p))
-#define ISTORE(p,i) *((unaligned_int*)(p)) = i
+static inline int ILOAD(void* p){ return (intptr_t)p&3 ? *((unaligned_int*)p) : *((int*)p); }
+static inline void ISTORE(void* p, int i){ if ((intptr_t)p&3) *((unaligned_int*)p) = i; else *((int *)p) = i; }
 
 #define ESCTIME 200  // Milliseconds to wait for escape sequence
 #define QRYTIME 1000 // Milliseconds to wait for cursor query response
@@ -167,6 +167,58 @@ extern char __StackLimit;
 #else
 #define PLATFORM "Pico"
 #endif
+extern void *sysvar;
+#define NCFGVAL     5   // Number of bytes in @picocfg&(
+static const struct
+    {
+    unsigned char   ndim;
+    int             dim;
+    unsigned char   val[NCFGVAL];
+    } __attribute__((packed))
+    cfgdata =
+        {
+        1,
+        NCFGVAL,
+            {
+            0x00
+#ifdef PICO_GUI
+            | 0x04
+#endif
+#ifdef STDIO_UART
+            | 0x02
+#endif
+#ifdef STDIO_USB
+            | 0x01
+#endif
+            , 0x00
+#ifdef HAVE_LFS
+            | 0x01
+#endif
+#ifdef HAVE_FAT
+            | 0x02
+#endif
+#if SERIAL_DEV
+            | 0x04
+#endif
+            , PICO_SOUND,
+            SERIAL_DEV,
+            HAVE_CYW43
+            }
+        };
+    
+static struct
+    {
+    long        next;
+    char        name[10];
+    const void  *addr;
+    } __attribute__((packed))
+    cfgvar =
+        {
+        0,
+        "picocfg&(",
+        &cfgdata
+        };
+    
 # else
 #define HISTORY 100  // Number of items in command history
 #include <termios.h>
@@ -2288,6 +2340,8 @@ void *main_init (int argc, char *argv[])
 #endif
 #endif
 	mount ();
+    cfgvar.next = (intptr_t)sysvar + (intptr_t)(&sysvar) - (intptr_t)(&cfgvar);
+    ISTORE (&sysvar, (intptr_t)(&cfgvar) - (intptr_t)(&sysvar));
 #endif
     int i;
     char *env, *p, *q;
