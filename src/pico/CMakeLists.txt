@@ -42,9 +42,8 @@ if (TARGET tinyusb_device)
     ../../src/lfswrap.c 
     ../../src/fault.c
     ../../src/pico/sympico.c
-    ../../src/pico/${SYM_NAME}_stub.c
+    ${CMAKE_BINARY_DIR}/pico_stub.c
     ../../src/pico/crctab.c
-    ../../src/pico/zmodem.c
     )
   if (${MIN_STACK})
     message(STATUS "Expression evaluation revised to reduce stack usage")
@@ -115,6 +114,7 @@ if (TARGET tinyusb_device)
     ../../include
     ${BBC_SRC}/include
     ../../m0FaultDispatch
+    ${CMAKE_BINARY_DIR}
     )
 
   if( DEFINED CYW43 )
@@ -265,6 +265,7 @@ if (TARGET tinyusb_device)
       )
   elseif ( "${STDIO}" STREQUAL "USB+UART" )
     message(STATUS "BBC Basic console I/O will be on USB or UART")
+    target_sources(bbcbasic PRIVATE ../../src/pico/zmodem.c)
     target_link_libraries(bbcbasic
       pico_stdio_usb
       )
@@ -274,11 +275,13 @@ if (TARGET tinyusb_device)
     target_compile_definitions(bbcbasic PUBLIC PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1)
   elseif ( "${STDIO}" STREQUAL "UART" )
     message(STATUS "BBC Basic console I/O will be on UART")
+    target_sources(bbcbasic PRIVATE ../../src/pico/zmodem.c)
     pico_enable_stdio_usb(bbcbasic 0)
     pico_enable_stdio_uart(bbcbasic 1)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_UART)
   else()
     message(STATUS "BBC Basic console I/O will be on USB")
+    target_sources(bbcbasic PRIVATE ../../src/pico/zmodem.c)
     target_link_libraries(bbcbasic
       pico_stdio_usb
       )

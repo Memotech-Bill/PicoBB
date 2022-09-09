@@ -14,7 +14,10 @@
 #include <string.h>
 #ifdef PICO
 #include "lfswrap.h"
+#ifndef PICO_GUI
+#define HAVE_MODEM  1
 #include "zmodem.h"
+#endif
 #include <hardware/watchdog.h>
 extern char *szLoadDir ;  // @dir$
 extern int dirlen;
@@ -93,9 +96,10 @@ enum {
 		MD, MKDIR, OUTPUT, QUIT, RD, REFRESH,
 		REN, RENAME, RMDIR, RUN, SAVE, SPOOL, SPOOLON,
 		STEREO, TEMPO, TIMER, TV, TYPE, UNLOCK, VOICE,
-        XDOWNLOAD, XUPLOAD, YDOWNLOAD, YUPLOAD, ZDOWNLOAD,
-        ZUPLOAD, NCMDS } ;
-// #define NCMDS 43	// number of OSCLI commands
+#if HAVE_MODEM
+        XDOWNLOAD, XUPLOAD, YDOWNLOAD, YUPLOAD, ZDOWNLOAD, ZUPLOAD,
+#endif
+        NCMDS } ;
 #define POWR2 32	// largest power-of-2 less than NCMDS
 
 static char *cmds[NCMDS] = {
@@ -105,8 +109,10 @@ static char *cmds[NCMDS] = {
 		"md", "mkdir", "output", "quit", "rd", "refresh",
 		"ren", "rename", "rmdir", "run", "save", "spool", "spoolon",
 		"stereo", "tempo", "timer", "tv", "type", "unlock", "voice",
-        "xdownload", "xupload", "ydownload", "yupload", "zdownload",
-        "zupload"} ;
+#if HAVE_MODEM
+        "xdownload", "xupload", "ydownload", "yupload", "zdownload", "zupload"
+#endif
+        } ;
 
 // Change to a new screen mode:
 static void newmode (short wx, short wy, short cx, short cy, short nc, signed char bc) 
@@ -584,6 +590,7 @@ static int wild (char *ebx, char *edx)
 	return 0 ;
 }
 
+#if HAVE_MODEM
 void os_XDOWNLOAD (char *p)
     {
     ysend (1, p);
@@ -618,6 +625,7 @@ void os_zmodem (char *p)
     {
     zreceive ("\r", p);
     }
+#endif  // HAVE_MODEM
 
 #ifdef MIN_STACK
 
@@ -1230,13 +1238,13 @@ int oscli_parse (char *cmd, char **pp)
 	while (*cmd == ' ') cmd++ ;
 
 	if ((*cmd == 0x0D) || (*cmd == '|'))
-		return NCMDS;
+		return -1;
 
 #ifdef PICO
     if ( strncmp (cmd, "*B00", 4) == 0 )
         {
         *pp = cmd;
-        return NCMDS + 1;
+        return NCMDS;
         }
 #endif
     
@@ -1293,6 +1301,7 @@ void oscli (char *cmd)
     {
     static void (*os_funcs[])(char *) =
         {
+        os_null,
         os_QUIT,         // BYE
         os_CHDIR,        // CD
         os_CHDIR,       // CHDIR
@@ -1335,20 +1344,21 @@ void oscli (char *cmd)
         os_TYPE,        // TYPE
         os_UNLOCK,      // UNLOCK
         os_VOICE,       // VOICE
+#if HAVE_MODEM
         os_XDOWNLOAD,   // XDOWNLOAD
         os_XUPLOAD,     // XUPLOAD
         os_YDOWNLOAD,   // YDOWNLOAD
         os_YUPLOAD,     // YUPLOAD
         os_ZDOWNLOAD,   // ZDOWNLOAD
         os_ZUPLOAD,     // ZUPLOAD
-        os_null,
         os_zmodem,
+#endif
         };
     char *p = NULL;
     int b = oscli_parse (cmd, &p);
     if ( b < sizeof (os_funcs) / sizeof (os_funcs[0]) )
         {
-        os_funcs[b](p);
+        os_funcs[b+1](p);
         return;
         }
 	error (254, "Bad command") ;
@@ -1371,7 +1381,7 @@ void oscli (char *cmd)
 	if ((*cmd == 0x0D) || (*cmd == '|'))
 		return ;
 
-#ifdef PICO
+#if HAVE_MODEM
     if ( strncmp (cmd, "*B00", 4) == 0 )
         {
         os_zmodem (cmd);
@@ -1966,6 +1976,7 @@ void oscli (char *cmd)
 			voices[b & 3] = n & 7 ;
 			return ;
 
+#if HAVE_MODEM
         case XDOWNLOAD:
             os_XDOWNLOAD (p);
             return;
@@ -1989,6 +2000,7 @@ void oscli (char *cmd)
         case ZUPLOAD:
             os_ZUPLOAD (p);
             return;
+#endif
 		} ;
 
 	error (254, "Bad command") ;

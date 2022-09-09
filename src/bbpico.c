@@ -27,7 +27,6 @@
 #include <time.h>
 #include <math.h>
 #include "bbccon.h"
-#include "zmodem.h"
 
 // Attempt to check consistancy of build
 
@@ -48,6 +47,8 @@
 #if ( ! defined(STDIO_USB) ) && ( ! defined(STDIO_UART) )
 #error No Console connection defined
 #endif
+#define HAVE_MODEM  1
+#include "zmodem.h"
 #endif
 
 #ifdef STDIO_UART
@@ -162,7 +163,7 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #define WM_TIMER 275
 #include "lfswrap.h"
 extern char __StackLimit;
-#if HAVE_CYW43
+#if HAVE_CYW43 > 1
 #define PLATFORM "Pico W"
 #else
 #define PLATFORM "Pico"
@@ -201,7 +202,11 @@ static const struct
             | 0x04
 #endif
             , PICO_SOUND,
+#if SERIAL_DEV
             SERIAL_DEV,
+#else
+            0,
+#endif
             HAVE_CYW43
             }
         };
@@ -455,7 +460,7 @@ static int getinp (unsigned char *pinp)
 	    }
 	return 0;
     }
-#endif
+#endif  // KBD_STDIN
 
 #ifdef _WIN32
 #define RTLD_DEFAULT (void *)(-1)
@@ -608,6 +613,7 @@ int getkey (unsigned char *pkey)
 	return 0;
     }
 
+#if KBD_STDIN
 // Get a character from any input queue
 int anykey (unsigned char *pkey, int tmo)
     {
@@ -618,6 +624,7 @@ int anykey (unsigned char *pkey, int tmo)
     *pkey = c;
     return 1;
     }
+#endif
 
 // Get millisecond tick count:
 unsigned int GetTicks (void)
@@ -661,7 +668,7 @@ static int kwait (unsigned int timeout)
 		usleep (1);
 	return ready;
     }
-#endif
+#endif  // KBD_STDIN
 
 // Returns 1 if the cursor position was read successfully or 0 if it was aborted
 // (in which case *px and *py will be unchanged) or if px and py are both NULL.
@@ -742,7 +749,7 @@ int stdin_handler (int *px, int *py)
 		    }
 	    }
 	while (wait || (p != report));
-#endif
+#endif  // KBD_STDIN
 	return 0;
     }
 
@@ -1142,7 +1149,9 @@ void osline (char *buffer)
 	char *eol = buffer;
 	char *p = buffer;
 	*buffer = 0x0D;
+#if HAVE_MODEM
     bool bUpload = (exchan == 0) && ((optval >> 4) == 0) && (keyptr == 0);
+#endif
 	int n;
 
 	while (1)
@@ -1150,7 +1159,9 @@ void osline (char *buffer)
 		unsigned char key;
 
 		key = osrdch ();
+#if HAVE_MODEM
         if (( key == 0x01 ) && bUpload && ( *buffer == 0x0D )) yreceive (3, "\r");
+#endif
 		switch (key)
 		    {
 			case 0x0A:
