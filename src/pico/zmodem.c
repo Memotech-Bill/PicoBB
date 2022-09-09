@@ -9,6 +9,20 @@
 #include "crctab.h"
 #include "lfswrap.h"
 
+#define YDEBUG  0       // Diagnostics for XModem & YModem
+#define ZDEBUG  0       // Diagnostics for ZModem
+
+#if YDEBUG
+#define YDIAG(...)  zdiag (__VA_ARGS__)
+#else
+#define YDIAG(...)
+#endif
+#if ZDEBUG
+#define ZDIAG(...)  zdiag (__VA_ARGS__)
+#else
+#define ZDIAG(...)
+#endif
+
 int anykey (unsigned char *key, int tmo);
 void error (int iErr, const char *psMsg);
 char *setup (char *dst, const char *src, char *ext, char term, unsigned char *pflag);
@@ -76,6 +90,7 @@ static unsigned char txflg;
 static FILE *pf = NULL;
 static int nfpos = 0;
 
+#if YDEBUG || ZDEBUG
 #define DIAG_HW 1
 #if DIAG_HW
 #include <hardware/uart.h>
@@ -106,6 +121,7 @@ void zdiag (const char *psFmt,...)
     fwrite ((void *)sMsg, 1, strlen (sMsg), pfd);
 #endif
     }
+#endif
 
 static int zrdchr (int timeout)
     {
@@ -118,9 +134,6 @@ static int zrdchr (int timeout)
         if ( anykey (&kb, 100 * timeout) )
             {
             key = kb;
-            // if ((key >= 0x20) && (key <0x7F)) zdiag ("%c", key);
-            // else zdiag (" %02X", key);
-            // zdiag (" r%02X", key);
             switch (key)
                 {
                 case CAN:
@@ -153,14 +166,14 @@ static int zrdchr (int timeout)
 static bool zpeekchr (int pchr, int tmo)
     {
     int key;
-    zdiag ("zpeekchr:");
+    ZDIAG ("zpeekchr:");
     do
         {
         key = zrdchr (tmo);
-        zdiag (" %02X", key);
+        ZDIAG (" %02X", key);
         }
     while (( key != pchr ) && ( key != ZERR_TOUT ));
-    zdiag ("\r\n");
+    ZDIAG ("\r\n");
     return ( key == pchr );
     }
 
@@ -281,7 +294,6 @@ static void zwrchr (int chr)
     static bool bAt = false;
     if ( chr >= 0x100 )
         {
-        // zdiag (" CAN");
         putchar_raw (CAN);
         chr = ( chr & 0xFF ) | 0x40;
         }
@@ -289,7 +301,6 @@ static void zwrchr (int chr)
         {
         if ( txflg & ZFLG_ESCALL )
             {
-            // zdiag (" CAN");
             putchar_raw (CAN);
             chr |= 0x40;
             }
@@ -301,14 +312,12 @@ static void zwrchr (int chr)
                 case XON:
                 case XOFF:
                 case CAN:
-                    // zdiag (" CAN");
                     putchar_raw (CAN);
                     chr |= 0x40;
                     break;
                 case CR:
                     if ( bAt )
                         {
-                        // zdiag (" CAN");
                         putchar_raw (CAN);
                         chr |= 0x40;
                         }
@@ -318,7 +327,6 @@ static void zwrchr (int chr)
                 }
             }
         }
-    // zdiag (" w%02x", chr);
     putchar_raw (chr);
     bAt = (chr == '@');
     }
@@ -342,7 +350,7 @@ static void zwrhdr (int type, unsigned char *hdr)
     zwrchr (type);
     long chk;
     zcrcini (type, &chk);
-    zdiag ("zwrhdr:");
+    ZDIAG ("zwrhdr:");
     for (int i = 0; i < 5; ++i)
         {
         if ( type == ZHDR_HEX )
@@ -354,35 +362,35 @@ static void zwrhdr (int type, unsigned char *hdr)
             zwrchr (hdr[i]);
             }
         zcrcupd (type, &chk, hdr[i]);
-        zdiag (" %02X=%04X", hdr[i], chk);
+        ZDIAG (" %02X=%04X", hdr[i], chk);
         }
     if ( type == ZHDR_BIN )
         {
         long test = chk;
         zcrcupd (type, &chk, 0);
-        zdiag (" 0=%04X", chk);
+        ZDIAG (" 0=%04X", chk);
         zcrcupd (type, &chk, 0);
-        zdiag (" 0=%04X", chk);
+        ZDIAG (" 0=%04X", chk);
         zwrchr (chk >> 8);
         zcrcupd (type, &test, chk >> 8);
-        zdiag (" c=%04X", test);
+        ZDIAG (" c=%04X", test);
         zwrchr (chk & 0xFF);
         zcrcupd (type, &test, chk & 0xFF);
-        zdiag (" c=%04X\r\n", test);
+        ZDIAG (" c=%04X\r\n", test);
         }
     else if ( type == ZHDR_HEX )
         {
         long test = chk;
         zcrcupd (type, &chk, 0);
-        zdiag (" 0=%04X", chk);
+        ZDIAG (" 0=%04X", chk);
         zcrcupd (type, &chk, 0);
-        zdiag (" 0=%04X", chk);
+        ZDIAG (" 0=%04X", chk);
         zwrhex (chk >> 8);
         zcrcupd (type, &test, chk >> 8);
-        zdiag (" c=%04X", test);
+        ZDIAG (" c=%04X", test);
         zwrhex (chk & 0xFF);
         zcrcupd (type, &test, chk & 0xFF);
-        zdiag (" c=%04X\r\n", test);
+        ZDIAG (" c=%04X\r\n", test);
         zwrchr (0x0D);
         zwrchr (0x0A);
         long crc = chk;
@@ -474,7 +482,7 @@ static int zrdfinfo (unsigned char *hdr, char *path)
     {
     unsigned char *pinfo = NULL;
     int state = zrddata (&pinfo, -64);
-    zdiag ("\r\nFile = %s\r\n", pinfo);
+    ZDIAG ("\r\nFile = %s\r\n", pinfo);
     if ( state < 0 )
         {
         if ( pinfo != NULL ) free (pinfo);
@@ -515,15 +523,15 @@ static bool zsvbuff (int npos, int ndata, const unsigned char *data)
     {
     int nfst = nfpos - npos;
     int nwrt = ndata - nfst;
-    zdiag ("npos = %d ndata = %d nfst = %d nwrt = %d", npos, ndata, nfst, nwrt);
+    ZDIAG ("npos = %d ndata = %d nfst = %d nwrt = %d", npos, ndata, nfst, nwrt);
     if ( nwrt > 0 )
         {
         int nsave = fwrite ((void *)&data[nfst], 1, nwrt, pf);
         nfpos += nsave;
-        zdiag (" nwrt = %d, nsave = %d, nfpos = %d", nwrt, nsave, nfpos);
+        ZDIAG (" nwrt = %d, nsave = %d, nfpos = %d", nwrt, nsave, nfpos);
         if ( nsave < ndata ) return false;
         }
-    zdiag ("\r\n");
+    ZDIAG ("\r\n");
     return true;
     }
 
@@ -534,7 +542,7 @@ static int zsvdata (unsigned char *hdr)
     unsigned char data[64];
     int ndata = 0;
     int npos = hdrint (hdr);
-    zdiag ("zsvdata: nfpos = %d, hdr = %d\r\n", nfpos, npos);
+    ZDIAG ("zsvdata: nfpos = %d, hdr = %d\r\n", nfpos, npos);
     if ( npos > nfpos ) return ZERR_NSYNC;
     zcrcini (ZCRC_16, &chk);
     while (true)
@@ -566,44 +574,44 @@ static void zwrdata (int type, const unsigned char *pdata, int ndata, int fend)
     {
     long chk;
     zcrcini (type, &chk);
-    zdiag ("zwrdata:");
+    ZDIAG ("zwrdata:");
     for (int i = 0; i < ndata; ++i)
         {
         zwrchr (*pdata);
         zcrcupd (type, &chk, *pdata);
-        zdiag (" %02X=%04X", *pdata, chk);
+        ZDIAG (" %02X=%04X", *pdata, chk);
         ++pdata;
         }
     zwrchr (fend);
     zcrcupd (type, &chk, fend & 0xFF);
-    zdiag (" %02X=%04X", fend & 0xFF, chk);
+    ZDIAG (" %02X=%04X", fend & 0xFF, chk);
     long test = chk;
     zcrcupd (type, &chk, 0);
-    zdiag (" 0=%04X", chk);
+    ZDIAG (" 0=%04X", chk);
     zcrcupd (type, &chk, 0);
-    zdiag (" 0=%04X", chk);
+    ZDIAG (" 0=%04X", chk);
     zwrchr (chk >> 8);
     zcrcupd (type, &test, chk >> 8);
-    zdiag (" c=%04X", test);
+    ZDIAG (" c=%04X", test);
     zwrchr (chk & 0xFF);
     zcrcupd (type, &test, chk & 0xFF);
-    zdiag (" c=%04X\r\n", test);
+    ZDIAG (" c=%04X\r\n", test);
     }
 
 static int zwrfinfo (int type, const char *pfn)
     {
-    zdiag ("pfn = %s pf = %p\r\n", pfn, pf);
+    ZDIAG ("pfn = %s pf = %p\r\n", pfn, pf);
     int nch = strlen (pfn);
     unsigned char *pinfo = (unsigned char *) malloc (nch + 12);
     if ( pinfo == NULL ) return ZERR_INFO;
     strcpy (pinfo, pfn);
-    zdiag ("Seek to file end\r\n");
+    ZDIAG ("Seek to file end\r\n");
     if ( fseek (pf, 0, SEEK_END) != 0 ) return ZERR_INFO;
     long nlen = ftell (pf);
-    zdiag ("nlen = %d\r\n", nlen);
+    ZDIAG ("nlen = %d\r\n", nlen);
     if ( nlen < 0 ) return ZERR_INFO;
     if ( fseek (pf, 0, SEEK_SET) != 0 ) return ZERR_INFO;
-    zdiag ("Rewound file\r\n");
+    ZDIAG ("Rewound file\r\n");
     nfpos = 0;
     sprintf (&pinfo[nch+1], "%d", nlen);
     nch += strlen (&pinfo[nch+1]) + 2;
@@ -618,7 +626,7 @@ static int zwrfile (int type, unsigned char *hdr)
     int fend;
     unsigned char data[64];
     int npos = hdrint (hdr);
-    zdiag ("zwrfile: npos = %d nfpos = %d\r\n", npos, nfpos);
+    ZDIAG ("zwrfile: npos = %d nfpos = %d\r\n", npos, nfpos);
     if ( npos != nfpos )
         {
         if ( fseek (pf, npos, SEEK_SET) < 0 )
@@ -639,7 +647,7 @@ static int zwrfile (int type, unsigned char *hdr)
         }
     else
         {
-        zdiag ("zwrfile: ndata = %d nfpos = %d\r\n", ndata, nfpos);
+        ZDIAG ("zwrfile: ndata = %d nfpos = %d\r\n", ndata, nfpos);
         state = ZHT_EOF;
         fend = ZFE_CRCE;
         }
@@ -650,6 +658,7 @@ static int zwrfile (int type, unsigned char *hdr)
 static int zwrbreak (unsigned char *hdr, unsigned char *attn)
     {
     unsigned char *pa = attn;
+    ZDIAG ("ATTN\r\n");
     while ( *pa )
         {
         switch (*pa)
@@ -663,7 +672,6 @@ static int zwrbreak (unsigned char *hdr, unsigned char *attn)
                 sleep_ms (1000);
                 break;
             default:
-                zdiag (" w%02x", *pa);
                 putchar_raw (*pa);
                 break;
             }
@@ -675,7 +683,7 @@ static int zwrbreak (unsigned char *hdr, unsigned char *attn)
 
 static void zclose (void)
     {
-    zdiag ("zclose\r\n");
+    ZDIAG ("zclose\r\n");
     if ( pf != NULL ) fclose (pf);
     pf = NULL;
     }
@@ -685,9 +693,9 @@ void zreceive (const char *pfname, const char *pcmd)
     unsigned char attn[32] = { 0 };
 	char path[MAX_PATH+1];
 	unsigned char flag;
-    zdiag ("zreceive (%s, %s)\r\n", pfname, pcmd);
+    ZDIAG ("zreceive (%s, %s)\r\n", pfname, pcmd);
     setup (path, pfname, ".bbc", ' ', &flag);
-    zdiag ("path = %s flag = %02X\r\n", path, flag);
+    ZDIAG ("path = %s flag = %02X\r\n", path, flag);
     if ( flag & 0x01 )
         {
         pf = fopen (path, "w");
@@ -705,7 +713,7 @@ void zreceive (const char *pfname, const char *pcmd)
         }
     do
         {
-        zdiag ("state = %d\r\n", state);
+        ZDIAG ("state = %d\r\n", state);
         if (( state >= 0 ) && ( state < ZST_QUIT )) curst = state;
         switch (state)
             {
@@ -733,7 +741,7 @@ void zreceive (const char *pfname, const char *pcmd)
                 break;
             case ZHT_FIN:       /* 8 - Finish session */
                 zwrhdr (ZHDR_HEX, hdr);
-                zdiag ("ZHT_FIN: ");
+                ZDIAG ("ZHT_FIN: ");
                 if ( zpeekchr ('O', 1000) )
                     {
                     zpeekchr ('O', 1000);
@@ -744,7 +752,7 @@ void zreceive (const char *pfname, const char *pcmd)
                 state = zsvdata (hdr);
                 break;
             case ZHT_EOF:       /* 11 - End of file */
-                zdiag ("EOF: nfpos = %d, hdr = %d\r\n", nfpos, hdrint (hdr));
+                ZDIAG ("EOF: nfpos = %d, hdr = %d\r\n", nfpos, hdrint (hdr));
                 if ( hdrint (hdr) != nfpos ) state = ZERR_NSYNC;
                 if ( pf != NULL )
                     {
@@ -793,7 +801,7 @@ void zreceive (const char *pfname, const char *pcmd)
                 state = ZST_NEWHDR;
                 break;
             case ZERR_TOUT:
-                zdiag ("ntmo = %d\r\n", ntmo);
+                ZDIAG ("ntmo = %d\r\n", ntmo);
                 if ( --ntmo == 10 )
                     {
                     state = ZST_QUIT;
@@ -837,14 +845,14 @@ void zsend (const char *pfname)
     int nnak = 10;
     unsigned char hdr[9];
 	unsigned char flag;
-    zdiag ("zsend\r\n");
+    ZDIAG ("zsend\r\n");
     setup (path, pfname, ".bbc", ' ', &flag);
     pf = fopen (path, "r");
     if ( pf == NULL ) error (214, "Cannot open file");
     state = ZHT_RQINIT;
     do
         {
-        zdiag ("state = %d\r\n", state);
+        ZDIAG ("state = %d\r\n", state);
         prvst = curst;
         if (( state >= 0 ) && ( state < ZST_QUIT )) curst = state;
         switch (state)
@@ -862,7 +870,7 @@ void zsend (const char *pfname)
                 state = ZST_NEWHDR;
                 break;
             case ZHT_RINIT:     /* 1 - Receive init */
-                zdiag ("ZHT_RINIT: %02X %02X %02X %02X\r\n", hdr[1], hdr[2], hdr[3], hdr[4]);
+                ZDIAG ("ZHT_RINIT: %02X %02X %02X %02X\r\n", hdr[1], hdr[2], hdr[3], hdr[4]);
                 if ( bDone )
                     {
                     zsethdr (hdr, ZHT_FIN, 0);
@@ -877,9 +885,7 @@ void zsend (const char *pfname)
                     }
                 break;
             case ZHT_ACK:       /* 3 - ACK to above */
-                zdiag ("ZHT_ACK: hdr = %d nfpos = %d\r\n", hdrint (hdr), nfpos);
-                // zsethdr (hdr, ZHT_DATA, nfpos);
-                // zwrhdr (ZHDR_BIN, hdr);
+                ZDIAG ("ZHT_ACK: hdr = %d nfpos = %d\r\n", hdrint (hdr), nfpos);
                 state = zwrfile (ZHDR_BIN, hdr);
                 break;
             case ZHT_SKIP:      /* 5 - To sender: skip this file */
@@ -918,7 +924,7 @@ void zsend (const char *pfname)
                 state = ZST_NEWHDR;
                 break;
             case ZHT_CAN:       /* 16 - Other end canned session with CAN*5 */
-                zdiag ("Cancelled by remote\r\n");
+                ZDIAG ("Cancelled by remote\r\n");
                 zclose ();
                 return;
             case ZHT_FREECNT:   /* 17 - Request for free bytes on filesystem */
@@ -941,7 +947,7 @@ void zsend (const char *pfname)
                 state = ZST_QUIT;
                 break;
             case ZERR_TOUT:
-                zdiag ("ntmo = %d\r\n", ntmo);
+                ZDIAG ("ntmo = %d\r\n", ntmo);
                 if ( --ntmo == 10 ) state = ZST_QUIT;
                 else state = curst;
                 break;
@@ -960,8 +966,6 @@ void zsend (const char *pfname)
     while ( state != ZST_QUIT );
     zclose ();
     }
-
-#define ydiag zdiag
 
 static int ychecksum (unsigned char *buffer)
     {
@@ -998,7 +1002,7 @@ void yreceive (int mode, const char *pfname)
     unsigned char key;
     bool bHaveByte = true;
 	unsigned char flag;
-    ydiag ("Entered yreceive\r\n");
+    YDIAG ("yreceive (%d, %s)\r\n", mode, pfname);
     setup (path, pfname, ".bbc", ' ', &flag);
     if ( flag & 0x01 )
         {
@@ -1034,7 +1038,7 @@ void yreceive (int mode, const char *pfname)
                 {
                 if ( anykey (&key, 100 * tmo) )
                     {
-                    ydiag (" %d=%02X", nb, key);
+                    YDIAG (" %d=%02X", nb, key);
                     buffer[nb] = key;
                     if (( nb == 0 ) && ( key == EOT ))
                         {
@@ -1044,7 +1048,7 @@ void yreceive (int mode, const char *pfname)
                             pf = NULL;
                             }
                         putchar_raw (ACK);
-                        ydiag ("End of upload\r\n");
+                        YDIAG ("End of upload\r\n");
                         if ( mode == 1 ) return;
                         nblk = -1;
                         lblk = -1;
@@ -1061,30 +1065,30 @@ void yreceive (int mode, const char *pfname)
             }
         if ( bHaveByte )
             {
-            ydiag ("Received block\r\n");
+            YDIAG ("Received block\r\n");
             int csum = ychecksum (buffer);
-            ydiag ("0 = %02X 1 = %02X 2 = %02X 131 = %02X csum = %02X\r\n", buffer[0], buffer[1],
+            YDIAG ("0 = %02X 1 = %02X 2 = %02X 131 = %02X csum = %02X\r\n", buffer[0], buffer[1],
                 buffer[2], buffer[131], csum);
             if (( buffer[0] == SOH ) && ( buffer[2] == 255 - buffer[1] ) && ( buffer[131] == csum ))
                 {
                 if ( buffer[1] == nblk )
                     {
-                    ydiag ("Next data block\r\n");
+                    YDIAG ("Next data block\r\n");
                     if ( pf == NULL )
                         {
                         pf = fopen ("xmodem.tmp", "w");
                         nlen = -1;
-                        ydiag ("Default file name: xmodem.tmp\r\n");
+                        YDIAG ("Default file name: xmodem.tmp\r\n");
                         }
                     int nsave = 128;
                     if (( nlen >= 0 ) && ( nlen < nsave )) nsave = nlen;
-                    ydiag ("nsave = %d\r\n", nsave);
+                    YDIAG ("nsave = %d\r\n", nsave);
                     if ( nsave > 0 )
                         {
                         int nout = fwrite (&buffer[3], 1, nsave, pf);
                         if ( nout < nsave )
                             {
-                            ydiag ("Only wrote %d - FAIL\r\nExit yreceive\r\n", nout);
+                            YDIAG ("Only wrote %d - FAIL\r\nExit yreceive\r\n", nout);
                             fclose (pf);
                             pf = NULL;
                             putchar_raw (CAN);
@@ -1093,7 +1097,7 @@ void yreceive (int mode, const char *pfname)
                             }
                         nlen -= nsave;
                         }
-                    ydiag ("Completed block\r\n");
+                    YDIAG ("Completed block\r\n");
                     putchar_raw (ACK);
                     lblk = nblk;
                     nblk = ( nblk + 1 ) & 0xFF;
@@ -1101,28 +1105,28 @@ void yreceive (int mode, const char *pfname)
                     }
                 else if ( buffer[1] == lblk )
                     {
-                    ydiag ("Repeated data block\r\n");
+                    YDIAG ("Repeated data block\r\n");
                     putchar_raw (ACK);
                     }
                 else if (( buffer[1] == 0 ) && ( pf == NULL ))
                     {
                     if ( buffer[3] == 0 )
                         {
-                        ydiag ("End of uploads\r\n");
+                        YDIAG ("End of uploads\r\n");
                         putchar_raw (ACK);
                         return;
                         }
                     pf = pathopen (path, &buffer[3]);
-                    ydiag ("%s\r\n", &buffer[3]);
+                    YDIAG ("%s\r\n", &buffer[3]);
                     nlen = atoi (buffer + strlen (&buffer[3]) + 4);
                     if (( pf == NULL ) || ( nlen == 0 ))
                         {
-                        ydiag ("Failed initial block\r\nExit yreceive\r\n");
+                        YDIAG ("Failed initial block\r\nExit yreceive\r\n");
                         putchar_raw (CAN);
                         putchar_raw (CAN);
                         return;
                         }
-                    ydiag ("Completed initial block\r\n");
+                    YDIAG ("Completed initial block\r\n");
                     putchar_raw (ACK);
                     nblk = 1;
                     lblk = 0;
@@ -1130,7 +1134,7 @@ void yreceive (int mode, const char *pfname)
                     }
                 else
                     {
-                    ydiag ("Block out of order\r\n");
+                    YDIAG ("Block out of order\r\n");
                     putchar_raw (NAK);
                     }
                 }
@@ -1139,7 +1143,7 @@ void yreceive (int mode, const char *pfname)
             {
             if ( --ntmo == 0 )
                 {
-                ydiag ("Too many retries\r\nExit yreceive\r\n");
+                YDIAG ("Too many retries\r\nExit yreceive\r\n");
                 if ( pf != NULL )
                     {
                     fclose (pf);
@@ -1149,7 +1153,7 @@ void yreceive (int mode, const char *pfname)
                 putchar_raw (CAN);
                 return;
                 }
-            ydiag ("Timeout\r\n");
+            YDIAG ("Timeout\r\n");
             putchar_raw (NAK);
             }
         nb = 0;
@@ -1166,7 +1170,7 @@ static int yzeroblk (unsigned char *buffer, const char *path)
     strncpy (&buffer[3], path, 116);
     if ( fseek (pf, 0, SEEK_END) != 0 ) return -1;
     long nlen = ftell (pf);
-    ydiag ("nlen = %d\r\n", nlen);
+    YDIAG ("nlen = %d\r\n", nlen);
     if ( fseek (pf, 0, SEEK_SET) != 0 ) return -1;
     sprintf (&buffer[strlen (&buffer[3]) + 4], "%d", nlen);
     buffer[131] = ychecksum (buffer);
@@ -1198,11 +1202,15 @@ static unsigned char ygetchr (int tmo)
     absolute_time_t twait = make_timeout_time_ms (tmo);
     do
         {
+#if YDEBUG
         absolute_time_t t1 = get_absolute_time ();
+#endif
         if ( anykey (&key, 100 * tmo) )
             {
+#if YDEBUG
             absolute_time_t t2 = get_absolute_time ();
-            ydiag (" %02X-%dms", key, (int) absolute_time_diff_us (t1, t2) / 1000);
+            YDIAG (" %02X-%dms", key, (int) absolute_time_diff_us (t1, t2) / 1000);
+#endif
             if (( key == 'C' ) || ( key == ACK ) || ( key == NAK )) return key;
             else if ( key == CAN )
                 {
@@ -1213,24 +1221,24 @@ static unsigned char ygetchr (int tmo)
             }
         }
     while ( get_absolute_time () < twait );
-    ydiag (" timeout");
+    YDIAG (" timeout");
     return 0;
     }
 
 static void ysendblk (unsigned char *buffer, bool bCrc)
     {
-    ydiag ("Send block %d\r\n", buffer[1]);
+    YDIAG ("Send block %d\r\n", buffer[1]);
     for (int i = 0; i < 132; ++i)
         {
         putchar_raw (buffer[i]);
-        ydiag (" %02X", buffer[i]);
+        YDIAG (" %02X", buffer[i]);
         }
     if ( bCrc )
         {
         putchar_raw (buffer[132]);
-        ydiag (" %02X", buffer[132]);
+        YDIAG (" %02X", buffer[132]);
         }
-    ydiag ("\r\n");
+    YDIAG ("\r\n");
     }
 
 void ysend (int mode, const char *pfname)
@@ -1241,7 +1249,7 @@ void ysend (int mode, const char *pfname)
     int ntmo = 60;
     int tmo = 4000;
     bool bCrc = false;
-    ydiag ("ysend\r\n");
+    YDIAG ("ysend\r\n");
     buffer[0] = SOH;
     setup (path, pfname, ".bbc", ' ', &flag);
     pf = fopen (path, "r");
@@ -1265,10 +1273,10 @@ void ysend (int mode, const char *pfname)
         unsigned char key = ygetchr (tmo);
         unsigned char key2 = 0;
         if ((nblk == 0 ) && (key == ACK)) key2 = ygetchr (5);
-        ydiag ("\r\nnblk = %d:", nblk);
+        YDIAG ("\r\nnblk = %d:", nblk);
         if (( key == 'C' ) || ( key2 == 'C' ))
             {
-            ydiag ("16-bit CRC requested\r\n");
+            YDIAG ("16-bit CRC requested\r\n");
             bCrc = true;
             int crc = ycrcval (buffer);
             buffer[131] = crc >> 8;
@@ -1277,7 +1285,7 @@ void ysend (int mode, const char *pfname)
         else if (( key == 0 ) || ( key == 'C' ) || ( key == NAK )) --ntmo;
         if (( key == CAN ) || ( ntmo == 0 ))
             {
-            ydiag ("Cancelled by remote\r\n");
+            YDIAG ("Cancelled by remote\r\n");
             fclose (pf);
             return;
             }
@@ -1285,32 +1293,32 @@ void ysend (int mode, const char *pfname)
             {
             ++nblk;
             ndata = ydatablk (buffer, nblk, bCrc);
-            ydiag ("Block %d: length = %d\r\n", nblk, ndata);
+            YDIAG ("Block %d: length = %d\r\n", nblk, ndata);
             if ( ndata == 0 ) break;
             ntmo = 10;
             }
         ysendblk (buffer, bCrc);
         }
-    ydiag ("End of file\r\n");
+    YDIAG ("End of file\r\n");
     unsigned char key;
     for (int i = 0; i < 5; ++i)
         {
-        ydiag ("EOT:");
+        YDIAG ("EOT:");
         putchar_raw (EOT);
         key = ygetchr (2000);
         if ( key == ACK ) break;
-        ydiag ("\r\n");
+        YDIAG ("\r\n");
         }
-    if ( key == ACK )
+    if (( key == ACK ) && ( mode > 1 ))
         {
-        ydiag ("\r\n");
+        YDIAG ("\r\n");
         memset (&buffer[1], 0, 130);
         buffer[2] = 255;
         buffer[131] = ychecksum (buffer);
-        while (true)
+        for (int i = 0; i < 5; ++i)
             {
             key = ygetchr (2000);
-            if ( key == ACK ) break;
+            if (( key == ACK ) || ( key == CAN )) break;
             if ( key == 'C' )
                 {
                 bCrc = true;
@@ -1321,9 +1329,10 @@ void ysend (int mode, const char *pfname)
         }
     else
         {
+        YDIAG ("\r\nCancel");
         putchar_raw (CAN);
         putchar_raw (CAN);
         }
-    ydiag ("\r\nQuit\r\n");
+    YDIAG ("\r\nQuit\r\n");
     fclose (pf);
     }
