@@ -29,6 +29,97 @@
 #include "bbccon.h"
 #include "bbcptr.h"
 
+// Attempt to check consistancy of build
+
+#ifdef PICO
+#include <pico.h>
+#include <hardware/adc.h>
+#ifndef HAVE_CYW43
+#define HAVE_CYW43  0
+#endif
+#if HAVE_CYW43
+#include <pico/cyw43_arch.h>
+#endif
+#ifdef PICO_GUI
+#if ( ! defined(PICO_SCANVIDEO_COLOR_PIN_BASE) ) || ( ! defined(PICO_SCANVIDEO_SYNC_PIN_BASE) )
+#error SCANVIDEO pins not defined for VGA display
+#endif
+#else
+#if ( ! defined(STDIO_USB) ) && ( ! defined(STDIO_UART) )
+#error No Console connection defined
+#endif
+#define HAVE_MODEM  1
+#include "zmodem.h"
+#endif
+
+#ifdef STDIO_UART
+#if ( ! defined(PICO_DEFAULT_UART_RX_PIN) ) || ( ! defined(PICO_DEFAULT_UART_TX_PIN) )
+#error No default UART defined
+#endif
+#endif
+
+#ifdef HAVE_FAT
+#if defined(STDIO_UART) || defined (HAVE_PRINTER) || ( SERIAL_DEV == -1 ) || ( SERIAL_DEV == 2 )
+#if PICO_SD_DAT_PIN_INCREMENT > 0
+#define SD_DAT_MIN  PICO_SD_DAT0_PIN
+#define SD_DAT_MAX  ( PICO_SD_DAT0_PIN + (PICO_SD_DAT_PIN_COUNT - 1) * PICO_SD_DAT_PIN_INCREMENT )
+#else
+#define SD_DAT_MIN  ( PICO_SD_DAT0_PIN + (PICO_SD_DAT_PIN_COUNT - 1) * PICO_SD_DAT_PIN_INCREMENT )
+#define SD_DAT_MAX  PICO_SD_DAT0_PIN
+#endif
+#if (( PICO_DEFAULT_UART_TX_PIN >= SD_DAT_MIN ) && ( PICO_DEFAULT_UART_TX_PIN <= SD_DAT_MAX )) \
+    || (( PICO_DEFAULT_UART_RX_PIN >= SD_DAT_MIN ) && ( PICO_DEFAULT_UART_RX_PIN <= SD_DAT_MAX )) \
+    || ( PICO_DEFAULT_UART_TX_PIN == PICO_SD_CLK_PIN ) || ( PICO_DEFAULT_UART_TX_PIN == PICO_SD_CMD_PIN ) \
+    || ( PICO_DEFAULT_UART_RX_PIN == PICO_SD_CLK_PIN ) || ( PICO_DEFAULT_UART_RX_PIN == PICO_SD_CMD_PIN )
+#error Default UART clashes with SD card
+#endif
+#endif
+#endif
+
+#if PICO_SOUND == 1
+#if ( ! defined(PICO_AUDIO_I2S_DATA_PIN) ) || ( ! defined(PICO_AUDIO_I2S_CLOCK_PIN_BASE) )
+#error I2S audio pins not defined for sound
+#endif
+#elif PICO_SOUND == 2
+#if ( ! defined(PICO_AUDIO_PWM_L_PIN)
+#error PWM audio pins not defined for sound
+#endif
+#elif PICO_SOUND == 3
+/*
+#if ( ! defined(PICO_AUDIO_PWM_L_PIN) ) || ( ! defined(PICO_AUDIO_PWM_R_PIN) )
+#error PWM audio pins not defined for SDL sound
+#endif
+*/
+#endif
+
+#if defined(PICO_GUI) && defined(HAVE_PRINTER)
+#if ! defined(PICO_DEFAULT_UART_TX_PIN)
+#error No default UART defined for Printer
+#endif
+#endif
+
+#if SERIAL_DEV == -1
+#if ! defined(PICO_GUI)
+#error STDIO used for both console and /dev/serial
+#endif
+#if ( ! defined(PICO_DEFAULT_UART_TX_PIN) ) || ( ! defined(PICO_DEFAULT_UART_RX_PIN) )
+#error No default UART defined for /dev/serial
+#endif
+#elif SERIAL_DEV == 1
+#if ! defined(PICO_DEFAULT_UART)
+#error No default UART defined for SERIAL_DEV=1
+#endif
+#elif SERIAL_DEV == 2
+#if defined(STDIO_UART)
+#error UART PICO_DEFAULT_UART used for both console and serial device
+#endif
+#if defined(HAVE_PRINTER)
+#error UART PICO_DEFAULT_UART used for both VDU printer and serial device
+#endif
+#endif
+
+#endif
+
 #define ESCTIME 200  // Milliseconds to wait for escape sequence
 #define QRYTIME 1000 // Milliseconds to wait for cursor query response
 #define QSIZE 16     // Twice longest expected escape sequence
@@ -56,6 +147,7 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #include <pico/bootrom.h>
 #include <pico/stdlib.h>
 #include <pico/time.h>
+#include <pico/binary_info.h>
 #if PICO_STACK_CHECK & 0x04
 #include <hardware/structs/mpu.h>
 #endif
@@ -65,7 +157,67 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #define WM_TIMER 275
 #include "lfswrap.h"
 extern char __StackLimit;
-# define PLATFORM "Pico"
+#if HAVE_CYW43 > 1
+#define PLATFORM "Pico W"
+#else
+#define PLATFORM "Pico"
+#endif
+extern void *sysvar;
+#define NCFGVAL     5   // Number of bytes in @picocfg&(
+static const struct
+    {
+    unsigned char   ndim;
+    int             dim;
+    unsigned char   val[NCFGVAL];
+    } __attribute__((packed))
+    cfgdata =
+        {
+        1,
+        NCFGVAL,
+            {
+            0x00
+#ifdef PICO_GUI
+            | 0x04
+#endif
+#ifdef STDIO_UART
+            | 0x02
+#endif
+#ifdef STDIO_USB
+            | 0x01
+#endif
+            , 0x00
+#ifdef HAVE_LFS
+            | 0x01
+#endif
+#ifdef HAVE_FAT
+            | 0x02
+#endif
+#if SERIAL_DEV
+            | 0x04
+#endif
+            , PICO_SOUND,
+#if SERIAL_DEV
+            SERIAL_DEV,
+#else
+            0,
+#endif
+            HAVE_CYW43
+            }
+        };
+    
+static struct
+    {
+    long        next;
+    char        name[10];
+    const void  *addr;
+    } __attribute__((packed))
+    cfgvar =
+        {
+        0,
+        "picocfg&(",
+        &cfgdata
+        };
+    
 # else
 #define HISTORY 100  // Number of items in command history
 #include <termios.h>
@@ -112,6 +264,11 @@ void *userRAM = NULL;
 void *progRAM = NULL;
 void *userTOP = NULL;
 const int bLowercase = 0;    // Dummy
+bi_decl (bi_program_description (szVersion));
+#ifdef PICO_GUI
+bi_decl (bi_program_feature ("VGA display"));
+bi_decl (bi_program_feature ("USB host for keyboard"));
+#endif
 const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef PICO_GUI
     " GUI "VERSION
@@ -131,13 +288,29 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef HAVE_FAT
     ", SD Filesystem"
 #endif
-#ifdef HAVE_DEV
-    ", Serial devices"
+#if HAVE_CYW43 == 1
+    ", cyw43=gpio"
+#elif HAVE_CYW43 == 2
+    ", cyw43=poll"
+#elif HAVE_CYW43 == 3
+    ", cyw43=background"
 #endif
 #if PICO_SOUND == 1
     ", I2S Sound"
 #elif PICO_SOUND == 2
     ", PWM Sound"
+#elif PICO_SOUND == 3
+    ", SDL Sound"
+#endif
+#if defined(PICO_GUI) && defined(HAVE_PRINTER)
+    ", Printer"
+#endif
+#if SERIAL_DEV == -1
+    ", /dev/serial"
+#elif SERIAL_DEV == 1
+    ", /dev/uart"
+#elif SERIAL_DEV == 2
+    ", /dev/uart0, /dev/uart1"
 #endif
 #ifdef MIN_STACK
     ", Min Stack"
@@ -178,6 +351,12 @@ static const unsigned char xkey[64] = {
     0, 150, 151, 152, 153, 154,   0, 155, 156,   0,   0,   0,   0,   0,   0,   0 };
 #endif
 
+#if HAVE_CYW43
+#define PICO_DEFAULT_LED_PIN    25
+#define PICO_ERROR_NO_CYW43     -257        // No support
+int iCyw = PICO_ERROR_NO_CYW43;
+#endif
+
 // Declared in bbcans.c:
 void oscli (char *);
 void xeqvdu (int, int, int);
@@ -201,6 +380,9 @@ int testkey (int);
 #endif
 
 #ifdef PICO_SOUND
+#if PICO_SOUND == 3
+#include <hardware/uart.h>
+#endif
 // Defined in snd_pico.c
 void snd_setup (void);
 // Defined in sn76489.c
@@ -275,7 +457,7 @@ static int getinp (unsigned char *pinp)
 	    }
 	return 0;
     }
-#endif
+#endif  // KBD_STDIN
 
 #ifdef _WIN32
 #define RTLD_DEFAULT (void *)(-1)
@@ -428,6 +610,19 @@ int getkey (unsigned char *pkey)
 	return 0;
     }
 
+#if KBD_STDIN
+// Get a character from any input queue
+int anykey (unsigned char *pkey, int tmo)
+    {
+    if ( kbdqr != kbdqw ) return getkey (pkey);
+    if ( inpqr != inpqw ) return getinp (pkey);
+    int c = getchar_timeout_us (tmo);
+    if ( c == PICO_ERROR_TIMEOUT ) return 0;
+    *pkey = c;
+    return 1;
+    }
+#endif
+
 // Get millisecond tick count:
 unsigned int GetTicks (void)
     {
@@ -470,7 +665,7 @@ static int kwait (unsigned int timeout)
 		usleep (1);
 	return ready;
     }
-#endif
+#endif  // KBD_STDIN
 
 // Returns 1 if the cursor position was read successfully or 0 if it was aborted
 // (in which case *px and *py will be unchanged) or if px and py are both NULL.
@@ -551,7 +746,7 @@ int stdin_handler (int *px, int *py)
 		    }
 	    }
 	while (wait || (p != report));
-#endif
+#endif  // KBD_STDIN
 	return 0;
     }
 
@@ -951,6 +1146,9 @@ void osline (char *buffer)
 	char *eol = buffer;
 	char *p = buffer;
 	*buffer = 0x0D;
+#if HAVE_MODEM
+    bool bUpload = (exchan == 0) && ((optval >> 4) == 0) && (keyptr == 0);
+#endif
 	int n;
 
 	while (1)
@@ -958,6 +1156,9 @@ void osline (char *buffer)
 		unsigned char key;
 
 		key = osrdch ();
+#if HAVE_MODEM
+        if (( key == 0x01 ) && bUpload && ( *buffer == 0x0D )) yreceive (3, "\r");
+#endif
 		switch (key)
 		    {
 			case 0x0A:
@@ -1696,6 +1897,10 @@ int entry (void *immediate)
 	keybdq = (char*) keystr + 0x100;	// Keyboard queue
 	eventq = (void*) keybdq + 0x100;	// Event queue
 	filbuf[0] = (eventq + 0x200 / 4);	// File buffers n.b. pointer arithmetic!!
+#if PICO_SOUND == 3
+	envels = (signed char*) (filbuf[0] + 0x800);	// Envelopes
+	waves = (short*) (envels + 0x100);	// Sound wave buffer
+#endif
 #endif
 
 	farray = 1;				// @hfile%() number of dimensions
@@ -1720,6 +1925,19 @@ int entry (void *immediate)
 		crlf ();
 		text (szNotice);
 		crlf ();
+#if HAVE_CYW43
+        if ( iCyw == PICO_ERROR_NO_CYW43 )
+            {
+            text ("No cyw43 support");
+            }
+        else
+            {
+            text ("cyw43 initialisation ");
+            if ( iCyw == 0 ) text ("succeded");
+            else text ("failed");
+            }
+        crlf ();
+#endif
 	    }
 
     oshwm (userTOP, 0);
@@ -1914,19 +2132,40 @@ void sigbus(void){
 	for(;;);
     }
 
+void led_init (void)
+    {
+#if HAVE_CYW43
+    if ( iCyw != 0 )
+        {
+#endif
+        gpio_init(PICO_DEFAULT_LED_PIN);
+        gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+#if HAVE_CYW43
+        }
+#endif
+    }
+
+void led_state (int iLED)
+    {
+#if HAVE_CYW43
+    if ( iCyw == 0 )
+        cyw43_arch_gpio_put (CYW43_WL_GPIO_LED_PIN, iLED);
+    else
+#endif
+	    gpio_put(PICO_DEFAULT_LED_PIN, iLED);
+    }
+
 static int waitdone=0;
 void waitconsole(void){
 	if(waitdone) return;
 #ifndef PICO_GUI
 	printf("Waiting for connection\r\n");
-	const uint LED_PIN = PICO_DEFAULT_LED_PIN;
-	gpio_init(LED_PIN);
-	gpio_set_dir(LED_PIN, GPIO_OUT);
+    led_init ();
     int iLED = 0;
 	while (true)
         {
         iLED ^= 1;
-	    gpio_put(LED_PIN, iLED);
+        led_state (iLED);
 #ifdef STDIO_USB
         if ( tud_cdc_connected() ) break;
 #endif
@@ -1940,7 +2179,7 @@ void waitconsole(void){
 		sleep_ms(1000);
         }
     printf ("\r\n");
-    gpio_put(LED_PIN, 0);
+    led_state (0);
 #if defined (STDIO_USB) && defined (STDIO_UART)
     if ( tud_cdc_connected() ) stdio_filter_driver (&stdio_usb);
     else stdio_filter_driver (&stdio_uart);
@@ -2006,21 +2245,82 @@ void main_term (int exitcode)
 	exit (exitcode);
     }
 
+#ifdef PICO
+int is_pico_w (void)
+    {
+    adc_init ();
+    adc_select_input (3);
+    if ( ( 3.3 / ( 1 << 12 ) ) * adc_read () < 0.25 ) return HAVE_CYW43 + 1;
+    else return 0;
+    }
+
+// Work around bug in cyw43_arch_deinit()
+#if HAVE_CYW43
+static bool is_cyw43_init = false;
+    
+int cyw43_arch_init_safe (void)
+    {
+    int iErr = 0;
+    if ( ! is_cyw43_init )
+        {
+        iErr = cyw43_arch_init ();
+        if ( iErr == 0 ) is_cyw43_init = true;
+        }
+    return iErr;
+    }
+
+int cyw43_arch_init_with_country_safe (uint32_t country)
+    {
+    int iErr = 0;
+    if (( is_cyw43_init ) && ( cyw43_arch_get_country_code () != country ))
+        {
+        cyw43_arch_deinit ();
+        is_cyw43_init = false;
+        }
+    if ( ! is_cyw43_init )
+        {
+        iErr = cyw43_arch_init_with_country (country);
+        if ( iErr == 0 ) is_cyw43_init = true;
+        }
+    return iErr;
+    }
+
+void cyw43_arch_deinit_safe (void)
+    {
+    if ( is_cyw43_init )
+        {
+        cyw43_arch_deinit ();
+        is_cyw43_init = false;
+        }
+    }
+#endif
+#endif
+
 void *main_init (int argc, char *argv[])
     {
 #ifdef PICO
     stdio_init_all();
 	// Wait for UART connection
-	const uint LED_PIN = PICO_DEFAULT_LED_PIN;
-	gpio_init(LED_PIN);
-	gpio_set_dir(LED_PIN, GPIO_OUT);
+#if HAVE_CYW43
+    if ( is_pico_w () > 1 )
+        {
+        iCyw = cyw43_arch_init_safe ();
+        }
+    else
+        {
+        iCyw = PICO_ERROR_NO_CYW43;
+#endif
+        led_init ();
+#if HAVE_CYW43
+        }
+#endif
 	for (int i = 3; i > 0; --i )
 	    {
 	    // printf ("%d seconds to start\n", i);
-	    gpio_put(LED_PIN, 1);
-	    sleep_ms(500);
-	    gpio_put(LED_PIN, 0);
-	    sleep_ms(500);
+        led_state (1);
+	    sleep_ms (500);
+        led_state (0);
+	    sleep_ms (500);
 	    }
     // waitconsole();
     // printf ("BBC Basic main build " __DATE__ " " __TIME__ "\n");
@@ -2041,10 +2341,15 @@ void *main_init (int argc, char *argv[])
     setup_keyboard ();
     waitdone = 1;
 #endif
-	mount ();
 #ifdef PICO_SOUND
     snd_setup ();
+#if PICO_SOUND == 3
+    uart_set_baudrate (uart_default, PICO_DEFAULT_UART_BAUD_RATE);
 #endif
+#endif
+	mount ();
+    cfgvar.next = (intptr_t)sysvar + (intptr_t)(&sysvar) - (intptr_t)(&cfgvar);
+    ISTORE (&sysvar, (intptr_t)(&cfgvar) - (intptr_t)(&sysvar));
 #endif
     int i;
     char *env, *p, *q;
@@ -2114,7 +2419,7 @@ void *main_init (int argc, char *argv[])
 #endif
 
 #ifdef PICO
-	platform = 6;
+	platform = 6 + ( is_pico_w () << 8 );
 	MaximumRAM = MINIMUM_RAM;
 	userRAM = &__StackLimit;
 	if (userRAM + MaximumRAM > (void *)0x20040000) userRAM = 0;

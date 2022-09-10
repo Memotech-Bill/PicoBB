@@ -8,6 +8,6 @@
 bool uopen (int uid, SERIAL_CONFIG *sc);
 void uclose (int uid);
 int uread (char *ptr, int size, int nmemb, int uid);
-int uwrite (char *ptr, int size, int nmemb, int uid);
+int uwrite (const char *ptr, int size, int nmemb, int uid);
 
 #endif

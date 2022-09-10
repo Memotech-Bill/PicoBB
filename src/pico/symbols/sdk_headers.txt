@@ -1,0 +1,55 @@
+# Header files for the majority of the SDK functions
+%global NDEBUG
+%function is_pico_w
+${PICO_SDK_PATH}/src/common/pico_base/include/pico/config.h
+${PICO_SDK_PATH}/src/common/pico_base/include/pico/error.h
+${PICO_SDK_PATH}/src/common/pico_base/include/pico.h
+${PICO_SDK_PATH}/src/common/pico_base/include/pico/types.h
+${PICO_SDK_PATH}/src/common/pico_bit_ops/include/pico/bit_ops.h
+${PICO_SDK_PATH}/src/common/pico_divider/include/pico/divider.h
+${PICO_SDK_PATH}/src/common/pico_stdlib/include/pico/stdlib.h
+${PICO_SDK_PATH}/src/common/pico_sync/include/pico/critical_section.h
+${PICO_SDK_PATH}/src/common/pico_sync/include/pico/lock_core.h
+${PICO_SDK_PATH}/src/common/pico_sync/include/pico/mutex.h
+${PICO_SDK_PATH}/src/common/pico_sync/include/pico/sem.h
+${PICO_SDK_PATH}/src/common/pico_sync/include/pico/sync.h
+${PICO_SDK_PATH}/src/common/pico_time/include/pico/time.h
+%define "!PICO_TIME_DEFAULT_ALARM_POOL_DISABLED"   1
+${PICO_SDK_PATH}/src/common/pico_util/include/pico/util/datetime.h
+${PICO_SDK_PATH}/src/common/pico_util/include/pico/util/pheap.h
+${PICO_SDK_PATH}/src/common/pico_util/include/pico/util/queue.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_adc/include/hardware/adc.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_base/include/hardware/address_mapped.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_claim/include/hardware/claim.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_clocks/include/hardware/clocks.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_divider/include/hardware/divider.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_dma/include/hardware/dma.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_exception/include/hardware/exception.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_flash/include/hardware/flash.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_gpio/include/hardware/gpio.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_i2c/include/hardware/i2c.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_interp/include/hardware/interp.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_irq/include/hardware/irq.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_pio/include/hardware/pio.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_pll/include/hardware/pll.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_pwm/include/hardware/pwm.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_resets/include/hardware/resets.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_rtc/include/hardware/rtc.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_spi/include/hardware/spi.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_sync/include/hardware/sync.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_timer/include/hardware/timer.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_uart/include/hardware/uart.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_vreg/include/hardware/vreg.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_watchdog/include/hardware/watchdog.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_xosc/include/hardware/xosc.h
+${PICO_SDK_PATH}/src/rp2_common/pico_double/include/pico/double.h
+${PICO_SDK_PATH}/src/rp2_common/pico_float/include/pico/float.h
+${PICO_SDK_PATH}/src/rp2_common/pico_int64_ops/include/pico/int64_ops.h
+${PICO_SDK_PATH}/src/rp2_common/pico_malloc/include/pico/malloc.h
+${PICO_SDK_PATH}/src/rp2_common/pico_mem_ops/include/pico/mem_ops.h
+${PICO_SDK_PATH}/src/rp2_common/pico_multicore/include/pico/multicore.h
+${PICO_SDK_PATH}/src/rp2_common/pico_printf/include/pico/printf.h
+${PICO_SDK_PATH}/src/rp2_common/pico_stdio/include/pico/stdio.h
+${PICO_SDK_PATH}/src/rp2_common/pico_stdio_uart/include/pico/stdio_uart.h
+${PICO_SDK_PATH}/src/rp2_common/pico_unique_id/include/pico/unique_id.h

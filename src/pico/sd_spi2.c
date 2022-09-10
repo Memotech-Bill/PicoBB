@@ -1,23 +1,40 @@
 /*  sd_spi.c - Routines for accessing SD card using SPI routines */
 
+#include "pico.h"
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/dma.h"
 #include "sd_spi.pio.h"
 #include "sd_spi.h"
-#include "boards/vgaboard.h"
+#include "pico/binary_info.h"
 
 // #define DEBUG
 #ifdef DEBUG
 #include <stdio.h>
 #endif
 
+#if ( !defined(PICO_SD_CLK_PIN)) ||  ( !defined(PICO_SD_CMD_PIN)) || ( !defined(PICO_SD_DAT0_PIN))
+#error SD Card connections not defined. Specify a board including SD card.
+#else
+
 #define SD_CS_PIN       ( PICO_SD_DAT0_PIN + 3 )
 #define SD_CLK_PIN      PICO_SD_CLK_PIN
 #define SD_MOSI_PIN     PICO_SD_CMD_PIN
 // #define SD_MOSI_PIN     PICO_SD_DAT0_PIN
 #define SD_MISO_PIN     PICO_SD_DAT0_PIN
+
+bi_decl (bi_1pin_with_name (SD_CS_PIN, "SD card data 3 (chip select)"));
+bi_decl (bi_1pin_with_name (SD_CLK_PIN, "SD card clock"));
+bi_decl (bi_1pin_with_name (SD_MOSI_PIN, "SD card command (data in)"));
+bi_decl (bi_1pin_with_name (SD_MISO_PIN, "SD card data 0 (data out)"));
+
+#if PICO_SD_DAT_PIN_COUNT > 1
+#define PICO_SD_DAT1_PIN    ( PICO_SD_DAT0_PIN + PICO_SD_DAT_PIN_INCREMENT )
+#define PICO_SD_DAT2_PIN    ( PICO_SD_DAT0_PIN + 2 * PICO_SD_DAT_PIN_INCREMENT )
+bi_decl (bi_1pin_with_name (PICO_SD_DAT1_PIN, "SD card data 1 (unused)"));
+bi_decl (bi_1pin_with_name (PICO_SD_DAT2_PIN, "SD card data 2 (unused)"));
+#endif
 
 static PIO pio_sd = pio1;
 static int sd_sm = -1;
@@ -34,6 +51,13 @@ bool sd_spi_load (void)
     gpio_set_dir (SD_CS_PIN, GPIO_OUT);
     gpio_pull_up (SD_MISO_PIN);
     gpio_put (SD_CS_PIN, 1);
+#if ( PICO_SD_DAT_PIN_COUNT > 1 )
+    // Set the DAT1 and DAT2 pins to input so they don't affect SD card operation
+    gpio_init (PICO_SD_DAT1_PIN);
+    gpio_init (PICO_SD_DAT2_PIN);
+    gpio_pull_up (PICO_SD_DAT1_PIN);
+    gpio_pull_up (PICO_SD_DAT2_PIN);
+#endif
     uint offset = pio_add_program (pio_sd, &sd_spi_program);
     sd_sm = pio_claim_unused_sm (pio_sd, true);
     pio_sm_config c = sd_spi_program_get_default_config (offset);
@@ -480,3 +504,5 @@ bool sd_spi_write (uint lba, const uint8_t *buff)
 #endif
     return bResp;
     }
+
+#endif // End of check that SD Card connections are specified.

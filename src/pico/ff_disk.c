@@ -152,17 +152,34 @@ DSTATUS disk_initialize (BYTE pdrv)
         lba_base = 0;
         if ( disk_read (0, mbr, 0u, 1) == RES_OK )
             {
-            if (( mbr[510] == 0x55 ) && ( mbr[511] == 0xAA ))
+            if (( mbr[0x1FE] == 0x55 ) && ( mbr[0x1FF] == 0xAA ))
                 {
-                lba_base = ( mbr[457] << 24 ) | ( mbr[456] << 16 ) | ( mbr[455] << 8 ) | mbr[454];
 #ifdef DEBUG
-                printf ("Found partition table: First partition at %d\n", lba_base);
+                printf ("Found partition table\n");
+#endif
+                for (int iPar = 0; iPar < 4; ++iPar)
+                    {
+                    int iPTA = 0x1BE + ( iPar << 4 );
+                    int iType = mbr[iPTA + 0x04];
+#ifdef DEBUG
+                    printf ("Partition %d type = 0x%02X\n", iPar, iType);
+#endif
+                    if (( iType == 0x0C ) && ( lba_base == 0 ))
+                        {
+                        lba_base = ( mbr[iPTA + 0x0B] << 24 ) | ( mbr[iPTA + 0x0A] << 16 )
+                            | ( mbr[iPTA + 0x09] << 8 ) | mbr[iPTA + 0x08];
+#ifdef DEBUG
+                        printf ("   Mounting this partition: LBA = 0x%X", lba_base);
+#endif
+                        }
+                    }
                 }
+#ifdef DEBUG
             else
                 {
                 printf ("No partition table - Assuming super-floppy\n");
-#endif
                 }
+#endif
             }
         else
             {

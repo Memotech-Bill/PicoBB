@@ -93,7 +93,7 @@ int uread (char *ptr, int size, int nmemb, int uid)
     return nread;
     }
 
-int uwrite (char *ptr, int size, int nmemb, int uid)
+int uwrite (const char *ptr, int size, int nmemb, int uid)
     {
     UDATA *pud = &udata[uid];
     uart_write_blocking (pud->uart, ptr, size * nmemb);

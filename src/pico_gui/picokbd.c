@@ -432,7 +432,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t __attribute__((unused)
         }
     }
 
-#elif PICO_SDK_VERSION_MINOR == 3
+#elif (PICO_SDK_VERSION_MINOR == 3) || (PICO_SDK_VERSION_MINOR == 4)
 void hid_task (void)
     {
     }

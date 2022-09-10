@@ -1,0 +1,2 @@
+# Header for USB STDIO functions - Not GUI mode as USB is used for keyboard
+${PICO_SDK_PATH}/src/rp2_common/pico_stdio_usb/include/pico/stdio_usb.h

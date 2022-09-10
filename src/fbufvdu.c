@@ -103,6 +103,8 @@ extern int sizey;                       // Total height of client area
 extern int charx;                       // Average character width
 extern int chary;                       // Average character height
 
+// Local variables
+
 int xcsr;                               // Text cursor horizontal position
 int ycsr;                               // Text cursor vertical position
 int tvt;                                // Top of text viewport
@@ -119,7 +121,11 @@ CLRDEF *cdef;                           // Colour definitions
 static int fg;                          // Text foreground colour
 static int bg;                          // Text backgound colour
 static uint8_t bgfill;                  // Pixel fill for background colour
+#ifdef HAVE_PRINTER
 static bool bPrint = false;             // Enable output to printer (UART)
+#else
+#define bPrint  false
+#endif
 static int gfg;                         // Graphics foreground colour & mode
 static int gbg;                         // Graphics background colour & mode
 static int xshift;                      // Shift to convert X graphics units to pixels
@@ -2546,14 +2552,18 @@ static void vdu_1 (int code, int data1, int data2)
 // 0x02 - PRINTER ON
 static void vdu_2 (int code, int data1, int data2)
     {
+#ifdef HAVE_PRINTER
     bPrint = true;
+#endif
     return;
     }
 
 // 0x03 - PRINTER OFF
 static void vdu_3 (int code, int data1, int data2)
     {
+#ifdef HAVE_PRINTER
     bPrint = false;
+#endif
     return;
     }
 

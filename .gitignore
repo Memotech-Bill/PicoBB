@@ -47,7 +47,7 @@ build*/
 
 # Editor files
 *~
-#*
+\#*
 .#*
 
 # Misc
@@ -55,4 +55,9 @@ build*/
 *.lfs
 mklfsimage
 uf2conv
+uf2merge
 tree
+sympico.h
+sym_*.txt
+*_stub.c
+test/
