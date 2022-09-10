@@ -133,6 +133,7 @@ or resize the terminal window for the different MODE settings in BBC Basic.
 To use (once the Pico has been programmed), assuming a Pico on a VGA Demo board:
 
 * Power should be applied to the micro-USB socket on the demo board.
+* Display output is via the VGA connector.
 * The keyboard should be connected to the USB socket on the Pico itself.
 A USB to micro-USB adaptor will be required. The Pico is somewhat selective
 as to which keyboards work, cheap keyboards may be better.
