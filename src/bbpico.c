@@ -839,6 +839,7 @@ void osword (int al, void *xy)
     }
 
 // ADVAL(n)
+static bool init_adc = false;
 int adval (int n)
     {
 	if (n == -1)
@@ -846,7 +847,21 @@ int adval (int n)
 #ifdef PICO_SOUND
     if ((n >= -8) && (n <= -5)) return snd_free (-5 - n);
 #endif
-	error (255, "Sorry, ADVAL not implemented");
+    if (( n >= 0 ) && ( n <= 5 ))
+        {
+        if ( ! init_adc )
+            {
+            adc_init ();
+            adc_set_round_robin (0);
+            adc_run (false);
+            init_adc = true;
+            }
+        if ( n <= 4 ) adc_gpio_init (n + 25);
+        else adc_set_temp_sensor_enabled (true);;
+        adc_select_input (n - 1);
+        return adc_read ();
+        }
+	error (255, "Sorry, ADVAL mode not implemented");
 	return -1;
     }
 
