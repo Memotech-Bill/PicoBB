@@ -7,6 +7,28 @@
 #include "class/hid/hid.h"
 #include <stdio.h>
 
+#if PICO_SDK_VERSION_MAJOR == 1
+#if PICO_SDK_VERSION_MINOR < 2
+#define KBD_VERSION     1
+#elif PICO_SDK_VERSION_MINOR == 2
+#define KBD_VERSION     2
+#elif PICO_SDK_VERSION_MINOR == 3
+#define KBD_VERSION     3
+#endif  // PICO_SDK_VERSION_MINOR
+#endif  // PICO_SDK_VERSION_MAJOR
+#ifndef KBD_VERSION
+#if TUSB_VERSION_MAJOR == 0
+#if TUSB_VERSION_MINOR == 12
+#define KBD_VERSION     3
+#elif TUSB_VERSION_MINOR == 14
+#define KBD_VERSION     4
+#endif  // TUSB_VERSION_MINOR
+#endif  // TUSB_VERSION_MAJOR
+#endif  // KBD_VERSION
+#ifndef KBD_VERSION
+#error Unknown USB Version for keyboard
+#endif  // KBD_VERSION
+
 #define DEBUG   0
 
 // Defined in bbccon.c
@@ -32,7 +54,17 @@ void set_leds (uint8_t leds)
         .wLength = sizeof (led_flags)
         };
     
-    tuh_control_xfer (addr, &ledreq, &led_flags, NULL);
+#if KBD_VERSION == 3
+    bool bRes = tuh_control_xfer (addr, &ledreq, &led_flags, NULL);
+#elif KBD_VERSION == 4
+    tuh_xfer_t ledxfer = {
+        .daddr = addr,
+        .setup = &ledreq,
+        .buffer = &led_flags,
+        .complete_cb = NULL
+        };
+    bool bRes = tuh_control_xfer (&ledxfer);
+#endif
     }
 
 typedef struct
@@ -283,8 +315,7 @@ static inline void process_kbd_report(hid_keyboard_report_t const *p_new_report)
     prev_report = *p_new_report;
     }
 
-#if PICO_SDK_VERSION_MAJOR == 1
-#if PICO_SDK_VERSION_MINOR < 2
+#if KBD_VERSION == 1
 CFG_TUSB_MEM_SECTION static hid_keyboard_report_t usb_keyboard_report;
 
 void hid_task(void)
@@ -325,7 +356,7 @@ void tuh_hid_keyboard_isr(uint8_t dev_addr, xfer_result_t event)
     (void) event;
     }
 
-#elif PICO_SDK_VERSION_MINOR == 2
+#elif KBD_VERSION == 2
 void hid_task (void)
     {
     }
@@ -432,7 +463,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t __attribute__((unused)
         }
     }
 
-#elif (PICO_SDK_VERSION_MINOR == 3) || (PICO_SDK_VERSION_MINOR == 4)
+#elif (KBD_VERSION == 3) || (KBD_VERSION == 4)
 void hid_task (void)
     {
     }
@@ -517,9 +548,8 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
         }
     }
 #else
-#error Unknown SDK Version
-#endif  // PICO_SDK_VERSION_MINOR
-#endif  // PICO_SDK_VERSION_MAJOR
+#error Unknown TinyUSB Version
+#endif  // KBD_VERSION
 
 static struct repeating_timer s_kbd_timer;
 static bool keyboard_periodic (struct repeating_timer *prt)
