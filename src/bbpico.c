@@ -80,7 +80,7 @@
 #error I2S audio pins not defined for sound
 #endif
 #elif PICO_SOUND == 2
-#if ( ! defined(PICO_AUDIO_PWM_L_PIN)
+#if ( ! defined(PICO_AUDIO_PWM_L_PIN) )
 #error PWM audio pins not defined for sound
 #endif
 #elif PICO_SOUND == 3
@@ -375,6 +375,7 @@ unsigned int rnd (void);	// Return a pseudo-random number
 
 #ifdef PICO_GUI
 // Declared in picovdu.c
+#include <hardware/dma.h>
 void setup_vdu (void);
 int vgetc (int x, int y);
 // Declared in picovdu.c
@@ -1557,10 +1558,7 @@ static void install_stack_guard (void *stack_bottom)
 // Request memory allocation above HIMEM:
 heapptr oshwm (void *addr, int settop)
     {
-#if PICO_STACK_CHECK & 0x04
-    // printf ("oshwm (%p, %d)\n", addr, settop);
-    install_stack_guard (addr);
-#endif
+    char dummy;
 #ifdef _WIN32
 	if ((addr < userRAM) ||
 	    (addr > (userRAM + MaximumRAM)) ||
@@ -1568,10 +1566,10 @@ heapptr oshwm (void *addr, int settop)
                 MEM_COMMIT, PAGE_EXECUTE_READWRITE)))
 		return 0;
 #else
-	if ((addr < userRAM) ||
-	    (addr > (userRAM + MaximumRAM)))
+	if ((addr < userRAM) || (addr > (userRAM + MaximumRAM)) || ( addr >= &dummy ))
         {
         // printf ("Above MaximumRAM = %p\n", userRAM + MaximumRAM);
+        error (0, NULL); // 'No room'
 		return 0;
         }
 #endif
@@ -1579,6 +1577,10 @@ heapptr oshwm (void *addr, int settop)
 	    {
 		if (settop && (addr > userTOP))
 			userTOP = addr;
+#if PICO_STACK_CHECK & 0x04
+        // printf ("oshwm (%p, %d)\n", addr, settop);
+        install_stack_guard (addr);
+#endif
 		return (size_t) addr;
 	    }
     }
@@ -2317,6 +2319,9 @@ void cyw43_arch_deinit_safe (void)
 void *main_init (int argc, char *argv[])
     {
 #ifdef PICO
+#ifdef PICO_GUI
+    dma_channel_claim (0);  // Reserve DMA channel for video
+#endif
     stdio_init_all();
 	// Wait for UART connection
 #if HAVE_CYW43
@@ -2355,6 +2360,7 @@ void *main_init (int argc, char *argv[])
 	char *cmdline[]={"/autorun.bbc",0};
 	argc=1; argv=cmdline;
 #ifdef PICO_GUI
+    dma_channel_unclaim (0);  // Free DMA channel for video
     setup_vdu ();
     setup_keyboard ();
     waitdone = 1;
@@ -2438,9 +2444,13 @@ void *main_init (int argc, char *argv[])
 
 #ifdef PICO
 	platform = 6 + ( is_pico_w () << 8 );
+    /*
 	MaximumRAM = MINIMUM_RAM;
 	userRAM = &__StackLimit;
 	if (userRAM + MaximumRAM > (void *)0x20040000) userRAM = 0;
+    */
+	userRAM = &__StackLimit;
+    MaximumRAM = (void *)0x20040000 - userRAM;
 /*
   The address 0x20040000 is 8K less than total RAM on the Pico to
   leave space for the current stack when zeroing.  This only works

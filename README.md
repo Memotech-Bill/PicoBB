@@ -29,7 +29,7 @@ There are currently four standard builds:
 ### Console version with WiFi: bbcbasic_pwc in folder console/pico_w
 
 * As per the console version but with support for networking over the built in WiFi on a Pico W.
-* Has 198KB of RAM available, shared between BASIC and the machine stack.
+* Has 190KB of RAM available, shared between BASIC and the machine stack.
 
 ### GUI version: bbcbasic_pkg in folder bin/pico
 
@@ -41,7 +41,7 @@ There are currently four standard builds:
   or the commercial version
   [Pimoroni Pico VGA Demo Base](https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base).
 * Includes program and data storage either in Pico flash and SD card on the VGA demo board.
-* Sound is low quality (as per BBC Micro) available via the I2S output.
+* Sound is low quality (as per BBC Micro) available via the PWM output.
 * Has 174KB of RAM available, shared between BASIC and the machine stack.
 
 ### GUI version with WiFi: bbcbasic_pwg in folder bin/pico_w
@@ -139,8 +139,8 @@ A USB to micro-USB adaptor will be required. The Pico is somewhat selective
 as to which keyboards work, cheap keyboards may be better.
 * An SD or SDHC card may be used, It should be formatted as FAT.
 * If required an amplified speaker or amplified headphones should be connected
-  to the socket on the VGA demo board. If using I2S sound (the default) then use
-  the socket labelled DAC. If using PWM sound then use the PWM socket.
+  to the socket on the VGA demo board. If using PWM sound (the default) then use
+  the PWM socket. If using I2S sound then use the socket labelled DAC.
 
 ### File system
 
@@ -457,7 +457,7 @@ by adding parameters to `make` command.
   requires specifying a board which defines pins to use for the SD card.
 * SOUND=... to specify sound output. Enabling sound requires specifying a board which
   defines pins to use for sound output.
-  * SOUND=N (default) No sound.
+  * SOUND=N No sound.
   * SOUND=I2S to enable emulation of an SN76489 chip with sound via I2S.
   * SOUND=PWM to enable emulation of an SN76489 chip with sound via PWM.
   * SOUND=SDL to enable enhanced sound similar to other versions of BBCSDL, running on
@@ -540,6 +540,60 @@ Note: In a non-default build, if bit 2 of the STACK_CHECK option is not set then
 and other non-commercial products.  If you wish to create a commercial version of the
 program contained here, please add -DFREE to the CMakeLists.txt file.
 
+### Standard builds
+
+The configurations for the standard builds are:
+
+Pico Console:
+
+    BOARD=pico_w
+    CYW43=GPIO
+    STDIO=USB+UART
+    LFS=Y
+    FAT=N
+    SOUND=SDL
+    SERIAL_DEV=1
+    MIN_STACK=Y
+    SUFFIX=_pkc
+
+Pico W Console:
+
+    BOARD=pico_w
+    CYW43=BACKGROUND
+    STDIO=USB+UART
+    LFS=Y
+    FAT=N
+    SOUND=SDL
+    SERIAL_DEV=1
+    MIN_STACK=Y
+    SUFFIX=_pwc
+
+Pico GUI:
+
+    BOARD=vgaboard_sd_w
+    CYW43=GPIO
+    STDIO=PICO
+    LFS=Y
+    FAT=Y
+    SOUND=PWM
+    SERIAL_DEV=0
+    PRINTER=N
+    MIN_STACK=Y
+    SUFFIX=_pkg
+
+Pico W GUI
+
+    BOARD=vgaboard_sd_w
+    CYW43=BACKGROUND
+    STDIO=PICO
+    LFS=Y
+    FAT=Y
+    SOUND=PWM
+    SERIAL_DEV=0
+    PRINTER=N
+    MIN_STACK=Y
+    SUFFIX=_pwg
+
 ### Board definition
 
 The GUI version has been designed to run on a Pico attached to a VGA demonstration board as per
@@ -559,7 +613,7 @@ As supplied from Pimoroni, with no soldering, the Pico on the VGA board may be u
 * VGA display
 * USB port
 * Sound via either I2S or PWM
-* SD card in 14-bit, 1-bit or SPI modes.
+* SD card in 4-bit, 1-bit or SPI modes.
 
 However there is no UART serial connection. This configuration is described by the
 vgaboard_sd configuration file.

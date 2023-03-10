@@ -137,23 +137,24 @@ if (TARGET tinyusb_device)
     elseif( CYW43 )
       message(STATUS "Pico W CYW43 background support")
       # The SDK version of cyw43_arch_threadsafe_background.c contains bugs.
-      #target_link_libraries(bbcbasic
-      #  pico_cyw43_arch_lwip_threadsafe_background
-      #  )
+      target_sources(bbcbasic PRIVATE ../../src/pico/network_cyw43.c)
+      target_link_libraries(bbcbasic
+        pico_cyw43_arch_lwip_threadsafe_background
+        pico_lwip
+        pico_lwip_nosys)
       # Use our own copy
       # Note: All the cyw43_arch_*.c files are always included but #ifdef statements
       # turn the inappropriate files into (almost) empty files.
-      target_sources(bbcbasic PRIVATE ../../src/pico/network_cyw43.c)
-      target_link_libraries(bbcbasic
-        pico_cyw43_arch
-        pico_lwip
-        pico_lwip_nosys)
-      target_compile_definitions(bbcbasic PUBLIC
-        CYW43_LWIP=1
-        PICO_CYW43_ARCH_THREADSAFE_BACKGROUND_FIXED=1
-        PICO_CYW43_ARCH_HEADER=pico/cyw43_arch/arch_threadsafe_background.h
-        )
-      target_sources(bbcbasic PRIVATE ../../src/pico/cyw43_arch_threadsafe_background.c)
+      # target_link_libraries(bbcbasic
+      #   pico_cyw43_arch
+      #   pico_lwip
+      #   pico_lwip_nosys)
+      # target_compile_definitions(bbcbasic PUBLIC
+      #   CYW43_LWIP=1
+      #   PICO_CYW43_ARCH_THREADSAFE_BACKGROUND_FIXED=1
+      #   PICO_CYW43_ARCH_HEADER=pico/cyw43_arch/arch_threadsafe_background.h
+      #   )
+      # target_sources(bbcbasic PRIVATE ../../src/pico/cyw43_arch_threadsafe_background.c)
       #
       target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=3)
       set(CYW43_LINK 1)

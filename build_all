@@ -1,0 +1,13 @@
+#!/usr/bin/bash
+#Build the four standard configurations
+
+ROOT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+cd $ROOT_DIR/console/pico
+make
+cd $ROOT_DIR/console/pico_w
+make
+cd $ROOT_DIR/bin/pico
+make
+cd $ROOT_DIR/bin/pico_w
+make
+cd $ROOT_DIR
