@@ -16,7 +16,7 @@ It includes work by:
 
 Apologies to anyone else I omitted.
 
-There are currently four standard builds:
+There are currently four standard builds, see Releases for pre-built UF2 files:
 
 ### Console version: bbcbasic_pkc in folder console/pico
 
