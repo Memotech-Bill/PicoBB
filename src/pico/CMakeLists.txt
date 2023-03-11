@@ -108,6 +108,7 @@ if (TARGET tinyusb_device)
     )
   target_compile_definitions(bbcbasic PUBLIC
     PICO
+    PICO_RTC
     PICO_STACK_CHECK=${STACK_CHECK}
     )
   target_include_directories(bbcbasic PRIVATE

@@ -168,6 +168,9 @@ extern char __StackLimit;
 #else
 #define PLATFORM "Pico"
 #endif
+#ifdef PICO_RTC
+#include <hardware/rtc.h>
+#endif
 extern void *sysvar;
 #define NCFGVAL     5   // Number of bytes in @picocfg&(
 static const struct
@@ -325,6 +328,9 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #define MVL(x) SFY(x)
 #if PICO_STACK_CHECK > 0
     ", Stack Check " MVL(PICO_STACK_CHECK)
+#endif
+#ifdef PICO_RTC
+    ", RTC"
 #endif
     ;
 const char szNotice[] = "(C) Copyright R. T. Russell, "YEAR;
@@ -1376,8 +1382,36 @@ int getime (void)
 	return n / 10 + timoff;
     }
 
+#ifdef PICO_RTC
+static char *psDWeek[] = {"Err", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+static char *psMon[] = {"Err", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+static int iDMon[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+
+#endif
+
+void vldtim (datetime_t *pdt)
+    {
+    if (( pdt->year < 0 ) || ( pdt->year > 9999 )) pdt->year = 0;
+    if (( pdt->month < 1 ) || ( pdt->month > 12 )) pdt->month = 0;
+    if (( pdt->day < 1 ) || ( pdt->day > 31 )) pdt->day = 0;
+    if (( pdt->dotw < 0 ) || ( pdt->dotw > 6 )) pdt->dotw = -1;
+    if (( pdt->hour < 0 ) || ( pdt->hour > 24 )) pdt->hour = 0;
+    if (( pdt->min < 0 ) || ( pdt->min > 59 )) pdt->min = 0;
+    if (( pdt->sec < 0 ) || ( pdt->sec > 59 )) pdt->sec = 0;
+    }
+
 int getims (void)
     {
+#ifdef PICO_RTC
+    datetime_t  dt;
+    rtc_get_datetime (&dt);
+    vldtim (&dt);
+    sprintf (accs, "%s.%02d %s %04d,%02d:%02d:%02d",
+        psDWeek[dt.dotw+1], dt.day, psMon[dt.month], dt.year,
+        dt.hour, dt.min, dt.sec);
+    return 24;
+#else
 	char *at;
 	time_t tt;
 
@@ -1392,6 +1426,7 @@ int getims (void)
 	accs[3] = '.';
 	accs[15] = ',';
 	return 24;
+#endif
     }
 
 // Put TIME
@@ -1400,6 +1435,52 @@ void putime (int n)
 	lastick = GetTicks ();
 	timoff = n - lastick / 10;
     }
+
+#ifdef PICO_RTC
+void putims (const char *psTime)
+    {
+    datetime_t  dt;
+    rtc_get_datetime (&dt);
+    const char *ps = psTime;
+    if ( ps[3] == '.' ) ps += 4;
+    if ( ps[2] != ':' )
+        {
+        dt.day = 10 * ( ps[0] - '0' ) + ps[1] - '0';
+        ps += 3;
+        for (int i = 1; i <= 12; ++i)
+            {
+            if ( strncasecmp (ps, psMon[i], 3) == 0 )
+                {
+                dt.month = i;
+                break;
+                }
+            }
+        ps += 4;
+        dt.year = 1000 * ( ps[0] - '0' ) + 100 * ( ps[1] - '0' ) + 10 * ( ps[2] - '0' ) + ps[3] - '0';
+        int iDay = dt.year + dt.year / 4 - dt.year / 100 + dt.year / 400 + iDMon[dt.month-1] + dt.day - 1;
+        if (( dt.month < 3 ) && ( dt.year % 4 == 0 ) && (( dt.year % 100 != 0 ) || ( dt.year % 400 == 0 ))) --iDay;
+        dt.dotw = iDay % 7;
+        ps += 5;
+        }
+    if ( ps[2] == ':' )
+        {
+        dt.hour = 10 * ( ps[0] - '0' ) + ps[1] - '0';
+        ps += 3;
+        dt.min = 10 * ( ps[0] - '0' ) + ps[1] - '0';
+        if ( ps[2] == ':' )
+            {
+            ps += 3;
+            dt.sec = 10 * ( ps[0] - '0' ) + ps[1] - '0';
+            }
+        else
+            {
+            dt.sec = 0;
+            }
+        }
+    vldtim (&dt);
+    rtc_set_datetime (&dt);
+    }
+#endif
 
 // Wait for a specified number of centiseconds:
 // On some platforms specifying a negative value causes a task switch
@@ -2628,6 +2709,10 @@ void *main_init (int argc, char *argv[])
 
 #ifdef __APPLE__
 	timerqueue = dispatch_queue_create ("timerQueue", 0);
+#endif
+#ifdef PICO_RTC
+    rtc_init ();
+    putims ("01 Jan 2000,00:00:00");
 #endif
 
 	UserTimerID = StartTimer (250);
