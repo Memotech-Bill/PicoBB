@@ -3260,7 +3260,7 @@ static void xeq_TTIMEL (void)
         ++esi;
         equals ();
         VAR v = exprs ();
-        putims (v.s.p);
+        putims (v.s.p + zero);
         }
     else
 #endif

@@ -1647,7 +1647,7 @@ heapptr oshwm (void *addr, int settop)
                 MEM_COMMIT, PAGE_EXECUTE_READWRITE)))
 		return 0;
 #else
-	if ((addr < userRAM) || (addr > (userRAM + MaximumRAM)) || ( addr >= &dummy ))
+	if ((addr < userRAM) || (addr > (userRAM + MaximumRAM)) || ( addr >= (void *) &dummy ))
         {
         // printf ("Above MaximumRAM = %p\n", userRAM + MaximumRAM);
         error (0, NULL); // 'No room'
