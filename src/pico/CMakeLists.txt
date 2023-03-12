@@ -14,7 +14,8 @@ endif()
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
-if ( "${STDIO}" STREQUAL "PICO" )
+if (( "${STDIO}" STREQUAL "PICO" ) OR ( ${GRAPH} ))
+  message(STATUS "Include PICO-EXTRAS")
   include($ENV{PICO_EXTRAS_PATH}/external/pico_extras_import.cmake)
 endif()
 
@@ -23,11 +24,11 @@ set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/../../boards)
 project(bbcbasic C CXX ASM)
 pico_sdk_init()
 
-if ( NOT STDIO )
+if ( NOT DEFINED STDIO )
   set(STDIO "USB+UART")
 endif()
 
-if ( NOT BBC_SRC )
+if ( NOT DEFINED BBC_SRC )
   set(BBC_SRC "../../BBCSDL")
 endif()
 message(STATUS "BBC BASIC Upstream source from ${BBC_SRC}")
@@ -292,12 +293,33 @@ if (TARGET tinyusb_device)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB)
     target_compile_definitions(bbcbasic PUBLIC PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1)
   endif()
+
+  if( (${GRAPH}) AND (NOT ("${STDIO}" STREQUAL "PICO")))
+    message(STATUS "Framebuffer Graphics Support")
+    target_sources(bbcbasic PRIVATE
+      ../../src/fbufvdu.c
+      ../../src/pico_gui/picofbuf.c
+      ../../src/pico_gui/framebuffer.S
+      )
+    target_include_directories(bbcbasic PRIVATE
+      ../../include/pico
+      )
+    target_compile_definitions(bbcbasic PUBLIC -DPICO_GRAPH)
+    target_compile_definitions(bbcbasic PUBLIC
+      -DPICO_SCANVIDEO_MAX_SCANLINE_BUFFER_WORDS=402
+      -DPICO_SCANVIDEO_SCANLINE_BUFFER_COUNT=8
+      )
+    target_link_libraries(bbcbasic
+      pico_scanvideo_dpi
+      hardware_interp
+      )
+  endif()
   
-  if ( "${STDIO}" STREQUAL "PICO" )
+  if (( "${STDIO}" STREQUAL "PICO" ) OR ( ${GRAPH} ))
     if ( "${SOUND}" STREQUAL "SDL")
       message(FATAL_ERROR "Can not use core 1 for both sound and video")
     endif()
-    if( CYW43_LINK )
+    if( ${CYW43_LINK} )
       message(STATUS "Link with space for VGA video and CYW43 driver")
       target_compile_definitions(bbcbasic PUBLIC
         PICO_STACK_SIZE=0x21800
@@ -313,7 +335,7 @@ if (TARGET tinyusb_device)
       pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico.ld)
     endif()
   else()
-    if( CYW43_LINK )
+    if( ${CYW43_LINK} )
       message(STATUS "Link with space for CYW43 driver")
       target_compile_definitions(bbcbasic PUBLIC
         PICO_STACK_SIZE=0x31800

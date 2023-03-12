@@ -355,7 +355,7 @@ Mode | Colours |   Text  | Graphics  | Letterbox
   10 |    16   | 20 x 30 | 160 x 480 |
   11 |     2   | 80 x 25 | 640 x 450 |
   12 |     2   | 40 x 30 | 320 x 480 |
-  13 |     4   | 20 x 30 | 120 x 480 |
+  13 |     4   | 20 x 30 | 160 x 480 |
   14 |     2   | 40 x 25 | 320 x 450 |
   15 |    16   | 40 x 30 | 320 x 240 |
 
@@ -482,6 +482,7 @@ by adding parameters to `make` command.
 * MIN_STACK=Y to use restructured code to minimise stack utilisation. This appears to work
   but has not been as extensively validated as the original BBC Basic code. Use -DMIN_STACK=N
   to use the original coding.
+* GRAPH=Y (Experimental) Add VGA output to console build.
 
 Note: the Makefile runs Python scripts to automaticly generate C files "sympico.h" and "pico_stub.c"
 needed to implement the SYS interface to the Pico SDK functions before running CMake. Therefore
@@ -533,6 +534,7 @@ The options supported by the CMake script are similar to those for `make`:
     available to BASIC.
   * -DCYW43=BACKGROUND for network support with automatic (background) polling. This option reduces
     the memory available to BASIC.
+* -DGRAPH=Y (Experimental) Add VGA output to console build.
 * Other cmake options if required.
 
 Note: In a non-default build, if bit 2 of the STACK_CHECK option is not set then

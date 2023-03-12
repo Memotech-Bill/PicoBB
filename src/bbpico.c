@@ -185,6 +185,9 @@ static const struct
         NCFGVAL,
             {
             0x00
+#ifdef PICO_GRAPH
+            | 0x08
+#endif
 #ifdef PICO_GUI
             | 0x04
 #endif
@@ -204,7 +207,11 @@ static const struct
 #if SERIAL_DEV
             | 0x04
 #endif
+#ifdef PICO_SOUND
             , PICO_SOUND,
+#else
+            , 0,
+#endif
 #if SERIAL_DEV
             SERIAL_DEV,
 #else
@@ -278,6 +285,9 @@ bi_decl (bi_program_description (szVersion));
 bi_decl (bi_program_feature ("VGA display"));
 bi_decl (bi_program_feature ("USB host for keyboard"));
 #endif
+#ifdef PICO_GRAPH
+bi_decl (bi_program_feature ("VGA display"));
+#endif
 const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef PICO_GUI
     " GUI "VERSION
@@ -290,6 +300,9 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #endif
 #ifdef STDIO_UART
     ", UART Console"
+#endif
+#ifdef PICO_GRAPH
+    ", VGA Display"
 #endif
 #ifdef HAVE_LFS
     ", Flash Filesystem"
@@ -387,6 +400,15 @@ int vgetc (int x, int y);
 // Declared in picovdu.c
 void setup_keyboard (void);
 int testkey (int);
+#endif
+#ifdef PICO_GRAPH
+#include <hardware/dma.h>
+void setup_vdu (void);
+void getcsrfb(int *px, int *py);
+int vpointfb (int xp, int yp);
+int vtintfb (int xp, int yp);
+int vgetcfb (int x, int y);
+int widthsfb (unsigned char *s, int l);
 #endif
 
 #ifdef PICO_SOUND
@@ -783,16 +805,26 @@ void quiet (void)
 // Get text cursor (caret) coordinates:
 void getcsr(int *px, int *py)
     {
-	if (!stdin_handler (px, py))
-	    {
-		if (px != NULL) *px = -1; // Flag unable to read
-		if (py != NULL) *py = -1;
-	    }
+#ifdef PICO_GRAPH
+    if ( (optval & 0x0F) == 14 )
+        {
+        getcsrfb (px, py);
+        }
+	else
+#endif
+        if (!stdin_handler (px, py))
+            {
+            if (px != NULL) *px = -1; // Flag unable to read
+            if (py != NULL) *py = -1;
+            }
     }
 
 // Get pixel RGB colour:
 int vtint (int x, int y)
     {
+#ifdef PICO_GRAPH
+    if ( (optval & 0x0F) >= 14 ) return vtintfb (x, y);
+#endif
 	error (255, "Sorry, TINT not implemented");
 	return -1;
     }
@@ -800,12 +832,18 @@ int vtint (int x, int y)
 // Get nearest palette index:
 int vpoint (int x, int y)
     {
+#ifdef PICO_GRAPH
+    if ( (optval & 0x0F) >= 14 ) return vpointfb (x, y);
+#endif
 	error (255, "Sorry, POINT not implemented");
 	return -1;
     }
 
 int vgetc (int x, int y)
     {
+#ifdef PICO_GRAPH
+    if ( (optval & 0x0F) >= 14 ) return vgetcfb (x, y);
+#endif
 	error (255, "Sorry, GETXY not implemented");
 	return -1;
     }
@@ -813,6 +851,9 @@ int vgetc (int x, int y)
 // Get string width in graphics units:
 int widths (unsigned char *s, int l)
     {
+#ifdef PICO_GRAPH
+    if ( (optval & 0x0F) >= 14 ) return widthsfb (s, l);
+#endif
 	error (255, "Sorry, WIDTH not implemented");
 	return -1;
     }
@@ -1078,7 +1119,7 @@ void oswrch (unsigned char vdu)
     {
 	unsigned char *pqueue = vduq;
 
-	if (optval & 0x0F)
+	if (((optval & 0x0F) > 0) && ((optval & 0x0F) < 14))
 	    {
 		osbput ((void *)(size_t)(optval & 0x0F), vdu);
 		return;
@@ -2268,7 +2309,7 @@ void waitconsole(void){
         iLED ^= 1;
         led_state (iLED);
 #ifdef STDIO_USB
-        if ( tud_cdc_connected() ) break;
+        if ( stdio_usb_connected() ) break;
 #endif
 #ifdef STDIO_UART       
         unsigned char ch;
@@ -2282,7 +2323,7 @@ void waitconsole(void){
     printf ("\r\n");
     led_state (0);
 #if defined (STDIO_USB) && defined (STDIO_UART)
-    if ( tud_cdc_connected() ) stdio_filter_driver (&stdio_usb);
+    if ( stdio_usb_connected() ) stdio_filter_driver (&stdio_usb);
     else stdio_filter_driver (&stdio_uart);
 #endif
 #endif
@@ -2400,7 +2441,7 @@ void cyw43_arch_deinit_safe (void)
 void *main_init (int argc, char *argv[])
     {
 #ifdef PICO
-#ifdef PICO_GUI
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
     dma_channel_claim (0);  // Reserve DMA channel for video
 #endif
     stdio_init_all();
@@ -2445,6 +2486,10 @@ void *main_init (int argc, char *argv[])
     setup_vdu ();
     setup_keyboard ();
     waitdone = 1;
+#endif
+#ifdef PICO_GRAPH
+    dma_channel_unclaim (0);  // Free DMA channel for video
+    setup_vdu ();
 #endif
 #ifdef PICO_SOUND
     snd_setup ();

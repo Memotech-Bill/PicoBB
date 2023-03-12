@@ -35,6 +35,15 @@
 #define NPLT        3           // Length of plot history
 #define BBC_FONT    1           // Use BBC font
 
+#ifdef PICO_GRAPH
+#define xeqvdu fbufvdu
+#define getcsr getcsrfb
+#define vpoint vpointfb
+#define vtint vtintfb
+#define vgetc vgetcfb
+#define widths widthsfb
+#endif
+
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>

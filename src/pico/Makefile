@@ -165,7 +165,7 @@ build/Makefile: build build/sympico.h build/pico_stub.c
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
 			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
-			-DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) --no-warn-unused-cli -S ../../../src/pico -B .
+			-DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) -DGRAPH=$(GRAPH) --no-warn-unused-cli -S ../../../src/pico -B .
 
 ifeq ($(BBC_SRC), ../../BBCSDL)
 $(BBC_SRC)/include/version.h:

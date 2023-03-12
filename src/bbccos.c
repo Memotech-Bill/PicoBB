@@ -50,7 +50,6 @@ typedef dispatch_source_t timer_t ;
 #define _S_IWRITE 0x0080
 #define _S_IREAD 0x0100
 #define MAX_PATH 260
-#define NUMMODES 10
 
 // External routines:
 void trap (void) ;
@@ -70,10 +69,36 @@ int getkey (unsigned char *) ;
 #ifdef PICO_GUI
 void refresh (const char *p);
 #endif
+#ifdef PICO_GRAPH
+void fbufvdu (int code, int data1, int data2);
+#endif
 
 // Global variables:
 extern timer_t UserTimerID ;
 
+#ifdef PICO_GRAPH
+#define NUMMODES 16
+static short modetab[NUMMODES][5] =
+    {
+    {640, 256, 8,  8,  2},  // MODE 0
+    {320, 256, 8,  8,  4},  // MODE 1
+    {160, 256, 8,  8, 16},  // MODE 2
+    {640, 225, 8,  9,  2},  // MODE 3
+    {320, 256, 8,  8,  2},  // MODE 4
+    {160, 256, 8,  8,  4},  // MODE 5
+    {320, 225, 8,  9,  2},  // MODE 6
+    {320, 225, 8,  9,  8},  // MODE 7
+    {640, 480, 8, 16,  2},  // MODE 8
+    {320, 480, 8, 16,  4},  // MODE 9
+    {160, 480, 8, 16, 16},  // MODE 10
+    {640, 450, 8, 18,  2},  // MODE 11
+    {320, 480, 8, 16,  2},  // MODE 12
+    {160, 480, 8, 16,  4},  // MODE 13
+    {320, 450, 8, 18,  2},  // MODE 14
+    {320, 240, 8,  8, 16}   // MODE 15
+    };
+#else
+#define NUMMODES 10
 static short modetab[NUMMODES][5] =
 {
         {640,512,8,16,2},      // MODE 0
@@ -88,6 +113,7 @@ static short modetab[NUMMODES][5] =
         {640,512,8,16,16},     // MODE 8
         {640,512,16,16,16}     // MODE 9
 } ;
+#endif
 
 enum {
         BYE, CD, CHDIR, COPY, DEL, DELETE, DIRCMD,
@@ -218,7 +244,11 @@ static void newline (int *px, int *py)
 //          n  v
 
 void xeqvdu (int code, int data1, int data2)
-{
+    {
+#ifdef PICO_GRAPH
+    if ((optval & 0x0F) >= 14) fbufvdu (code, data1, data2);
+    if ((optval & 0x0F) == 14) return;
+#endif
 	int vdu = code >> 8 ;
 	static int col = 0, row = 0 ;
 	static int rhs = 999 ;
@@ -227,15 +257,15 @@ void xeqvdu (int code, int data1, int data2)
 	if (!_isatty (_fileno (stdin)) || !_isatty (_fileno (stdout)))
 #else
 # ifdef PICO
-    if (0)
+        if (0)
 # else
-	if (!isatty (STDIN_FILENO) || !isatty (STDOUT_FILENO))
+            if (!isatty (STDIN_FILENO) || !isatty (STDOUT_FILENO))
 # endif
 #endif
-	    {
-		fwrite (&vdu, 1, 1, stdout) ;
-		return ;
-	    }
+                {
+                fwrite (&vdu, 1, 1, stdout) ;
+                return ;
+                }
 
 	if ((vflags & VDUDIS) && (vdu != 6))
 		return ;
@@ -433,7 +463,7 @@ void xeqvdu (int code, int data1, int data2)
 			    }
 	    }
 	fflush (stdout) ;
-}
+    }
 #endif  // PICO_GUI
 
 // Parse a filespec, return pointer to terminator.
