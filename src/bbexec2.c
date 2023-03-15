@@ -219,9 +219,10 @@ void storen (VAR v, void *ptr, unsigned char type)
 			if (v.i.t == 0)
 				v.f = v.i.n;
 			v.d.d = v.f;
-			// *(int *)ptr = (int) v.s.p;
-			// *(int *)((char *)ptr + 4) = v.s.l;
-			memcpy (ptr, &v.s.p, 8); // may be unaligned
+			if ((v.s.l == 0x7FF00000) || (v.s.l == 0xFFF00000))
+				error (20, NULL) ; // 'Number too big'
+			USTORE(ptr, v.s.p) ;
+			USTORE((char *)ptr + 4, v.s.l) ;
 			}
 			break;
 
@@ -3362,7 +3363,7 @@ static void xeq_TSYS (void)
     PARM parm;
     void *ptr = NULL;
     unsigned char type = 0;
-    parm.f[0] = 0.0;
+    parm.f[0] = -1.7e308 ;
     parm.i[0] = 0;
 
     if (v.s.t == -1)
@@ -3557,9 +3558,10 @@ static void xeq_TDIM (void)
         // Build structure descriptor:
         if ((type == STYPE) && (*esi != '.'))
             {
-            edx += 4; // room for structure size
-            ebx = structure ((void **)&edx); 
-            ISTORE(pfree + zero, ebx); // structure size
+            volatile char *edi = pfree + (char *) zero ; // Emscripten
+            edx += 4 ; // room for structure size
+            ebx = structure ((void **)&edx) ; 
+            ISTORE(edi, ebx) ; // structure size
             }
 
         // Build array descriptor above structure descriptor:
