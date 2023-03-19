@@ -12,8 +12,8 @@ SUFFIX=_pkg
 # Required for GUI build
 STDIO=PICO
 
-# Select files loaded into LFS
-LFS_FILES=../../bin/pico/examples/*
-LFS_EXTRA=../../bin/pico/examples
+# BASIC examples selection
+DEVICE = -d all -d pico
+BUILD = -b all -b gui
 
 include ../../src/pico/Makefile

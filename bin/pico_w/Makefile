@@ -12,8 +12,8 @@ SUFFIX=_pwg
 # Required for GUI build
 STDIO=PICO
 
-# Select files loaded into LFS
-LFS_FILES=../../bin/pico/examples/* ../../console/pico_w/examples/* ../../console/pico_w/examples/lib/*
-LFS_EXTRA=../../bin/pico/examples ../../console/pico_w/examples
+# BASIC examples selection
+DEVICE = -d all -d pico_w
+BUILD = -b all -b gui
 
 include ../../src/pico/Makefile

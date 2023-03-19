@@ -11,4 +11,8 @@ PRINTER=N
 MIN_STACK=Y
 SUFFIX=_pkv
 
+# BASIC examples selection
+DEVICE = -d all -d pico
+BUILD = -b all -b gui
+
 include ../../src/pico/Makefile

@@ -9,4 +9,8 @@ SERIAL_DEV=1
 MIN_STACK=Y
 SUFFIX=_pkc
 
+# BASIC examples selection
+DEVICE = -d all -d pico
+BUILD = -b all -b console
+
 include ../../src/pico/Makefile

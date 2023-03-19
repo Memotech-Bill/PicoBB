@@ -9,8 +9,8 @@ SERIAL_DEV=1
 MIN_STACK=Y
 SUFFIX=_pwc
 
-# Select files loaded into LFS
-LFS_FILES=../../console/pico_w/examples/* ../../console/pico_w/examples/lib/*
-LFS_EXTRA=../../console/pico_w/examples
+# BASIC examples selection
+DEVICE = -d all -d pico_w
+BUILD = -b all -b console
 
 include ../../src/pico/Makefile

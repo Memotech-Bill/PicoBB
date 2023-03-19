@@ -139,6 +139,12 @@ SOURCES= \
 	$(DEV_SOURCES) \
 	$(NET_SOURCES)
 
+ifneq ("$(wildcard ../../BBCSDL/pico_examples.cfg)", "")
+BASIC_EXAMPLES = ../../pico_examples.cfg ../../BBCSDL/pico_examples.cfg
+else
+BASIC_EXAMPLES = ../../pico_examples.cfg 
+endif
+
 .PHONY: all
 ifeq ($(LFS), Y)
 all: bbcbasic filesystem
@@ -184,19 +190,33 @@ bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) build/Makefile
 	cp build/bbcbasic.elf bbcbasic$(SUFFIX).elf
 
 ifeq ($(LFS), Y)
-../../src/lfsutil/uf2merge: ../../src/lfsutil/uf2merge.c
-	cd ../../src/lfsutil && make uf2merge
-
 bbcbasic+filesystem$(SUFFIX).uf2: bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2 ../../src/lfsutil/uf2merge
 	../../src/lfsutil/uf2merge bbcbasic+filesystem$(SUFFIX).uf2 bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2
 
-filesystem$(SUFFIX).uf2: ../../BBCSDL/lib/*.bbc \
-		$(SDL_EXAMPLES) \
-		$(LFS_FILES)
-	cd ../../src/lfsutil && make clean
-	cd ../../src/lfsutil && make SDL_EXAMPLES="$(SDL_EXAMPLES)" LFS_FILES="$(LFS_FILES)" \
-		EXTRA="$(LFS_EXTRA)" FILESYS=$(FILESYS)
-	cp ../../src/lfsutil/filesystem.uf2 filesystem$(SUFFIX).uf2
+../../src/lfsutil/uf2merge: ../../src/lfsutil/uf2merge.c
+	cd ../../src/lfsutil && make uf2merge
+
+filesystem$(SUFFIX).uf2: filesystem$(SUFFIX).lfs ../../src/lfsutil/uf2conv
+	../../src/lfsutil/uf2conv filesystem$(SUFFIX).lfs filesystem$(SUFFIX).uf2 0x10100000
+
+../../src/lfsutil/uf2conv: ../../src/lfsutil/uf2conv.c
+	cd ../../src/lfsutil && make uf2conv
+
+#filesystem.elf: filesystem.lfs
+#	arm-none-eabi-objcopy --change-addresses 0x10100000 --input-target=binary --output-target=elf32-little filesystem.lfs filesystem.elf
+
+ifdef FILESYS
+filesystem$(SUFFIX).lfs: $(FILESYS) ../../src/lfsutil/mklfsimage
+	rm -f filesystem.lfs
+	./mklfsimage -o filesystem$(SUFFIX).lfs $(FILESYS)
+else
+filesystem$(SUFFIX).lfs: $(BASIC_EXAMPLES) ../../src/lfsutil/pico_examples.py ../../src/lfsutil/mklfsimage
+	rm -rf build/tree
+	../../src/lfsutil/pico_examples.py -o filesystem$(SUFFIX).lfs -t build/tree $(DEVICE) $(BUILD) $(BASIC_EXAMPLES)
+endif
+
+../../src/lfsutil/mklfsimage: ../../src/lfsutil/mklfsimage.c
+	cd ../../src/lfsutil && make mklfsimage
 endif
 
 clean:
