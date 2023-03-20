@@ -43,8 +43,9 @@ if (TARGET tinyusb_device)
     ../../src/lfswrap.c 
     ../../src/fault.c
     ../../src/pico/sympico.c
-    ${CMAKE_BINARY_DIR}/pico_stub.c
     ../../src/pico/crctab.c
+    ../../src/pico/pico_boot.c
+    ${CMAKE_BINARY_DIR}/pico_stub.c
     )
   if (${MIN_STACK})
     message(STATUS "Expression evaluation revised to reduce stack usage")
@@ -111,6 +112,7 @@ if (TARGET tinyusb_device)
     PICO
     PICO_RTC
     PICO_STACK_CHECK=${STACK_CHECK}
+    PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=0
     )
   target_include_directories(bbcbasic PRIVATE
     ../../include
