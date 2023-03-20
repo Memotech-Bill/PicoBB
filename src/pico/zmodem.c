@@ -1040,7 +1040,7 @@ void yreceive (int mode, const char *pfname)
                     {
                     YDIAG (" %d=%02X", nb, key);
                     buffer[nb] = key;
-                    if (( nb == 0 ) && ( key == EOT ))
+                    if (( nb == 0 ) && (( key == EOT ) || ( key == CAN )))
                         {
                         if ( pf != NULL )
                             {
@@ -1049,7 +1049,7 @@ void yreceive (int mode, const char *pfname)
                             }
                         putchar_raw (ACK);
                         YDIAG ("End of upload\r\n");
-                        if ( mode == 1 ) return;
+                        if (( mode == 1 ) || ( key == CAN )) return;
                         nblk = -1;
                         lblk = -1;
                         break;
