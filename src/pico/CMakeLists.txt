@@ -44,7 +44,6 @@ if (TARGET tinyusb_device)
     ../../src/fault.c
     ../../src/pico/sympico.c
     ../../src/pico/crctab.c
-    ../../src/pico/pico_boot.c
     ${CMAKE_BINARY_DIR}/pico_stub.c
     )
   if (${MIN_STACK})
@@ -112,7 +111,6 @@ if (TARGET tinyusb_device)
     PICO
     PICO_RTC
     PICO_STACK_CHECK=${STACK_CHECK}
-    PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=0
     )
   target_include_directories(bbcbasic PRIVATE
     ../../include
@@ -270,14 +268,20 @@ if (TARGET tinyusb_device)
       )
   elseif ( "${STDIO}" STREQUAL "USB+UART" )
     message(STATUS "BBC Basic console I/O will be on USB or UART")
-    target_sources(bbcbasic PRIVATE ../../src/pico/zmodem.c)
+    target_sources(bbcbasic PRIVATE
+      ../../src/pico/zmodem.c
+      ../../src/pico/pico_boot.c
+      )
     target_link_libraries(bbcbasic
       pico_stdio_usb
       )
     pico_enable_stdio_usb(bbcbasic 1)
     pico_enable_stdio_uart(bbcbasic 1)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB -DSTDIO_UART)
-    target_compile_definitions(bbcbasic PUBLIC PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1)
+    target_compile_definitions(bbcbasic PUBLIC
+      PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
+      PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=0
+      )
   elseif ( "${STDIO}" STREQUAL "UART" )
     message(STATUS "BBC Basic console I/O will be on UART")
     target_sources(bbcbasic PRIVATE ../../src/pico/zmodem.c)
@@ -286,14 +290,20 @@ if (TARGET tinyusb_device)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_UART)
   else()
     message(STATUS "BBC Basic console I/O will be on USB")
-    target_sources(bbcbasic PRIVATE ../../src/pico/zmodem.c)
+    target_sources(bbcbasic PRIVATE
+      ../../src/pico/zmodem.c
+      ../../src/pico/pico_boot.c
+      )
     target_link_libraries(bbcbasic
       pico_stdio_usb
       )
     pico_enable_stdio_usb(bbcbasic 1)
     pico_enable_stdio_uart(bbcbasic 0)
     target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB)
-    target_compile_definitions(bbcbasic PUBLIC PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1)
+    target_compile_definitions(bbcbasic PUBLIC
+      PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
+      PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=0
+      )
   endif()
 
   if( (${GRAPH}) AND (NOT ("${STDIO}" STREQUAL "PICO")))
