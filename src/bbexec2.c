@@ -2099,7 +2099,7 @@ static void xeq_TREAD (void)
         unsigned char type;
         void *ptr;
         signed char *edx = datptr + (signed char *) zero;
-        if (edx == NULL)
+        if ((int) datptr == NULL - (void *) zero)
             error (42, NULL); // 'Out of DATA'
         while (1)
             {

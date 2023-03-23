@@ -1642,6 +1642,7 @@ static VAR item_TPI (void)
 static VAR item_TSIN (void)
     {
     VAR v = itemf ();
+    errno = 0;
     v.f = sinl (v.f);
     if (isinf(v.f) || isnan(v.f) || (v.i.t == -1) || errno)
         error (20, NULL); // 'Number too big'
@@ -1655,6 +1656,7 @@ static VAR item_TSIN (void)
 static VAR item_TCOS (void)
     {
     VAR v = itemf ();
+    errno = 0;
     v.f = cosl (v.f);
     if (isinf(v.f) || isnan(v.f) || (v.i.t == -1) || errno)
         error (20, NULL); // 'Number too big'
@@ -1668,6 +1670,7 @@ static VAR item_TCOS (void)
 static VAR item_TTAN (void)
     {
     VAR v = itemf ();
+    errno = 0;
     v.f = tanl (v.f);
     if (isinf(v.f) || isnan(v.f) || (v.i.t == -1) || errno)
         error (20, NULL); // 'Number too big'
@@ -1681,6 +1684,7 @@ static VAR item_TTAN (void)
 static VAR item_TASN (void)
     {
     VAR v = itemf ();
+    errno = 0;
     v.f = asinl (v.f);
     if (isinf(v.f) || isnan(v.f) || (v.i.t == -1) || errno)
         error (20, NULL); // 'Number too big'
@@ -1694,6 +1698,7 @@ static VAR item_TASN (void)
 static VAR item_TACS (void)
     {
     VAR v = itemf ();
+    errno = 0;
     v.f = acosl (v.f);
     if (isinf(v.f) || isnan(v.f) || (v.i.t == -1) || errno)
         error (20, NULL); // 'Number too big'
@@ -1707,6 +1712,7 @@ static VAR item_TACS (void)
 static VAR item_TATN (void)
     {
     VAR v = itemf ();
+    errno = 0;
     v.f = atanl (v.f);
     if (isinf(v.f) || isnan(v.f) || (v.i.t == -1) || errno)
         error (20, NULL); // 'Number too big'
@@ -1750,6 +1756,7 @@ static VAR item_TRAD (void)
 static VAR item_TEXP (void)
     {
     VAR v = itemf ();
+    errno = 0;
     v.f = expl (v.f);
     if (isinf (v.f))
         error (24, NULL); // 'Exponent range'
@@ -1763,6 +1770,7 @@ static VAR item_TEXP (void)
 static VAR item_TLN (void)
     {
     VAR v = itemf ();
+    errno = 0;
     v.f = logl (v.f);
     if (isnan (v.f) || isinf (v.f))
         error (22, NULL); // 'Logarithm range'
@@ -1795,6 +1803,7 @@ static VAR item_TLOG (void)
 static VAR item_TSQR (void)
     {
     VAR v = itemf ();
+    errno = 0;
     v.f = sqrtl (v.f);
     if (isinf(v.f) || isnan(v.f) || (v.i.t == -1) || errno)
         error (21, NULL); // 'Negative root'
