@@ -660,6 +660,7 @@ static VAR math_multiply (VAR x, VAR y) // '*'
 static VAR math_divide (VAR x, VAR y) // '/'
     {
     float2 (&x, &y);
+    if ( y.f == 0.0 ) error (18, NULL); // 'Division by zero'
     x.f /= y.f;
 
     if (isinf(x.f) || isnan(x.f) || (x.i.t == -1) || errno)
