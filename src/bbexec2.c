@@ -70,8 +70,8 @@ void oswrch (unsigned char);	// Output a byte
 void oswait (int);		// Pause for a specified time
 void osline (char *);		// Get a line of console input
 void putime (int);		// Store centisecond ticks
-#ifdef PICO_RTC
-void putims (const char *);
+#ifdef CAN_SET_RTC
+void putims (const char *, unsigned int);
 #endif
 void mouse (int*, int*, int*);	// Get mouse state
 void mouseon (int);		// Set mouse cursor (pointer)
@@ -3255,13 +3255,13 @@ static void xeq_TCASE (void)
 
 static void xeq_TTIMEL (void)
     {
-#ifdef PICO_RTC
+#ifdef CAN_SET_RTC
     if ( *esi == '$' )
         {
         ++esi;
         equals ();
         VAR v = exprs ();
-        putims (v.s.p + zero);
+        putims (v.s.p + zero, v.s.l);
         }
     else
 #endif

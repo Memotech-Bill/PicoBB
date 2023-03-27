@@ -168,7 +168,7 @@ extern char __StackLimit;
 #else
 #define PLATFORM "Pico"
 #endif
-#ifdef PICO_RTC
+#ifdef CAN_SET_RTC
 #include <hardware/rtc.h>
 #endif
 extern void *sysvar;
@@ -342,7 +342,7 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #if PICO_STACK_CHECK > 0
     ", Stack Check " MVL(PICO_STACK_CHECK)
 #endif
-#ifdef PICO_RTC
+#ifdef CAN_SET_RTC
     ", RTC"
 #endif
     ;
@@ -1423,7 +1423,7 @@ int getime (void)
 	return n / 10 + timoff;
     }
 
-#ifdef PICO_RTC
+#ifdef CAN_SET_RTC
 static char *psDWeek[] = {"Err", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 static char *psMon[] = {"Err", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -1444,7 +1444,7 @@ void vldtim (datetime_t *pdt)
 
 int getims (void)
     {
-#ifdef PICO_RTC
+#ifdef CAN_SET_RTC
     datetime_t  dt;
     rtc_get_datetime (&dt);
     vldtim (&dt);
@@ -1477,14 +1477,20 @@ void putime (int n)
 	timoff = n - lastick / 10;
     }
 
-#ifdef PICO_RTC
-void putims (const char *psTime)
+#ifdef CAN_SET_RTC
+void putims (const char *psTime, unsigned int ulen)
     {
+    if (( psTime == NULL ) || ( ulen < 5 )) return;
+    int len = ulen;
     datetime_t  dt;
     rtc_get_datetime (&dt);
     const char *ps = psTime;
-    if ( ps[3] == '.' ) ps += 4;
-    if ( ps[2] != ':' )
+    if ( ps[3] == '.' )
+        {
+        ps += 4;
+        len -= 4;
+        }
+    if (( ps[2] != ':' ) && ( len >= 11 ))
         {
         dt.day = 10 * ( ps[0] - '0' ) + ps[1] - '0';
         ps += 3;
@@ -1502,13 +1508,14 @@ void putims (const char *psTime)
         if (( dt.month < 3 ) && ( dt.year % 4 == 0 ) && (( dt.year % 100 != 0 ) || ( dt.year % 400 == 0 ))) --iDay;
         dt.dotw = iDay % 7;
         ps += 5;
+        len -= 12;
         }
-    if ( ps[2] == ':' )
+    if (( ps[2] == ':' ) && ( len >= 5 ))
         {
         dt.hour = 10 * ( ps[0] - '0' ) + ps[1] - '0';
         ps += 3;
         dt.min = 10 * ( ps[0] - '0' ) + ps[1] - '0';
-        if ( ps[2] == ':' )
+        if (( ps[2] == ':' ) && ( len >= 8 ))
             {
             ps += 3;
             dt.sec = 10 * ( ps[0] - '0' ) + ps[1] - '0';
@@ -2755,9 +2762,9 @@ void *main_init (int argc, char *argv[])
 #ifdef __APPLE__
 	timerqueue = dispatch_queue_create ("timerQueue", 0);
 #endif
-#ifdef PICO_RTC
+#ifdef CAN_SET_RTC
     rtc_init ();
-    putims ("01 Jan 2000,00:00:00");
+    putims ("01 Jan 2000,00:00:00", 20);
 #endif
 
 	UserTimerID = StartTimer (250);
