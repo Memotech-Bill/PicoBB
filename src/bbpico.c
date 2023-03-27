@@ -334,7 +334,9 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #elif SERIAL_DEV == 2
     ", /dev/uart0, /dev/uart1"
 #endif
-#ifdef MIN_STACK
+#if MIN_STACK == 2
+    ", Min Stack X"
+#elif MIN_STACK
     ", Min Stack"
 #endif
 #define SFY(x) #x

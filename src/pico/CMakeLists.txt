@@ -46,14 +46,24 @@ if (TARGET tinyusb_device)
     ../../src/pico/crctab.c
     ${CMAKE_BINARY_DIR}/pico_stub.c
     )
-  if (${MIN_STACK})
+  if (${MIN_STACK} STREQUAL "X")
     message(STATUS "Expression evaluation revised to reduce stack usage")
+    target_compile_definitions(bbcbasic PUBLIC -DMIN_STACK=2)
     target_sources(bbcbasic PRIVATE
       ../../src/bbexec2.c
       ../../src/bbeval2.c
       )
   else()
-    message(STATUS "Using upstream expression evaluation code")
+    if (${MIN_STACK})
+      message(STATUS "Using upstream expression evaluation code with REDUCE_STACK_SIZE")
+      target_compile_definitions(bbcbasic PUBLIC
+        -DREDUCE_STACK_SIZE
+        -DMIN_STACK=1
+        )
+    else()
+      message(STATUS "Using upstream expression evaluation code")
+      target_compile_definitions(bbcbasic PUBLIC -DMIN_STACK=0)
+    endif()
     target_sources(bbcbasic PRIVATE
       ${BBC_SRC}/src/bbexec.c
       ${BBC_SRC}/src/bbeval.c
