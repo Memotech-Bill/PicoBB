@@ -479,9 +479,10 @@ by adding parameters to `make` command.
     available to BASIC.
   * CYW43=BACKGROUND for network support with automatic (background) polling. This option reduces
     the memory available to BASIC.
-* MIN_STACK=Y to use restructured code to minimise stack utilisation. This appears to work
-  but has not been as extensively validated as the original BBC Basic code. Use -DMIN_STACK=N
-  to use the original coding.
+* MIN_STACK=Y to use revised code in expression evaluation to minimise stack utilisation. This
+  appears to work but has not been as extensively validated as the original BBCSDL code. Use
+  MIN_STACK=N to use coding identical to BBCSDL. MIN_STACK=X provides further reduction in
+  stack usage at some cost in execution speed (this option is not suppoerted by Richard Russell).
 * GRAPH=Y (Experimental) Add VGA output to console build.
 
 Note: the Makefile runs Python scripts to automaticly generate C files "sympico.h" and "pico_stub.c"
@@ -525,9 +526,10 @@ The options supported by the CMake script are similar to those for `make`:
   * Bit 1 - Check in expression evaluator.
   * Bit 2 - Check using a memory barrier. Enables `stack_check()` as the "hard fault" handler
     which will print register values and then return to BASIC with error code 255.
-* -DMIN_STACK=Y to use restructured code to minimise stack utilisation. This appears to work
-  but has not been as extensively validated as the original BBC Basic code. Use -DMIN_STACK=N
-  to use the original coding.
+* -DMIN_STACK=Y to use revised code in expression evaluation to minimise stack utilisation. This
+  appears to work but has not been as extensively validated as the original BBCSDL code. Use
+  -DMIN_STACK=N to use coding identical to BBCSDL. -DMIN_STACK=X provides further reduction in
+  stack usage at some cost in execution speed (this option is not suppoerted by Richard Russell).
 * -DCYW43=... For Pico W builds (Note: A board using a Pico W must be specified):
   * -DCYW43=GPIO for support of Pico W GPIOs only (including onboard LED).
   * -DCYW43=POLL for network support requiring periodic polling. This option reduces the memory
