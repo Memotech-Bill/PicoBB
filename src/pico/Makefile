@@ -175,11 +175,11 @@ build/Makefile: build build/sympico.h build/pico_stub.c
 
 ifeq ($(BBC_SRC), ../../BBCSDL)
 $(BBC_SRC)/include/version.h:
-	git submodule update --remote
+	git submodule update --remote --recursive
 endif
 
 ../../littlefs/lfs.c:
-	git submodule update --remote
+	git submodule update --remote --recursive
 
 bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) build/Makefile
 	cd build && make

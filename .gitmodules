@@ -1,6 +1,7 @@
 [submodule "BBCSDL"]
 	path = BBCSDL
 	url = https://github.com/rtrussell/BBCSDL.git
+	branch = master
 [submodule "littlefs"]
 	path = littlefs
 	url = https://github.com/littlefs-project/littlefs.git
