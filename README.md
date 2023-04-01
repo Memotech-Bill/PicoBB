@@ -131,8 +131,8 @@ or resize the terminal window for the different MODE settings in BBC Basic.
 If connected to the Pico via USB then the Pico can be restarted by changing the USB Baud rate
 to special values:
 
-1200 - Resets the Pico to BOOTSEL mode, allowing you to load a new UF2 file.
-2400 - Restarts to BBC BASIC, killing any BASIC program previously running.
+* 1200 - Resets the Pico to BOOTSEL mode, allowing you to load a new UF2 file.
+* 2400 - Restarts to BBC BASIC, killing any BASIC program previously running.
 
 ### Connecting to the GUI versions
 
@@ -353,11 +353,11 @@ feature make either the Pico or Pico W console builds using the command
 make GRAPH=Y
 ````
 
-To use the feature use the** *output** command to specify the display device
+To use the feature use the `*output` command to specify the display device
 
-* *output 0  - Output to serial console
-* *output 14 - Output to VGA display
-* *output 15 - Output to both serial console and VGA display
+* `*output 0`  - Output to serial console
+* `*output 14` - Output to VGA display
+* `*output 15` - Output to both serial console and VGA display
 
 Note that since BBC BASIC uses VDU commands to draw any graphics, the VGA display
 must be selected as an output device before any graphics can be drawn. The serial
