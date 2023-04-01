@@ -128,6 +128,12 @@ to initiate the connection. The onboard LED will flash while awaiting connection
 Note that you may use minicom as well, however, minicom will not display color correctly
 or resize the terminal window for the different MODE settings in BBC Basic.
 
+If connected to the Pico via USB then the Pico can be restarted by changing the USB Baud rate
+to special values:
+
+1200 - Resets the Pico to BOOTSEL mode, allowing you to load a new UF2 file.
+2400 - Restarts to BBC BASIC, killing any BASIC program previously running.
+
 ### Connecting to the GUI versions
 
 To use (once the Pico has been programmed), assuming a Pico on a VGA Demo board:
@@ -333,6 +339,29 @@ provides more details of the specific configuration:
   * 3 - Pico W network support using background interrupts.
 
 This may be extended in the future if more capabilities are added.
+
+### Console Vestion with VGA Graphics
+
+By request an option has been added in which the BBC BASIC console is over the
+USB or UART serial connection, but which is able to display text and graphics
+on a separate VGA display.
+
+This capability is not included in any of the standard builds. To enable this
+feature make either the Pico or Pico W console builds using the command
+
+````
+make GRAPH=Y
+````
+
+To use the feature use the** *output** command to specify the display device
+
+* *output 0  - Output to serial console
+* *output 14 - Output to VGA display
+* *output 15 - Output to both serial console and VGA display
+
+Note that since BBC BASIC uses VDU commands to draw any graphics, the VGA display
+must be selected as an output device before any graphics can be drawn. The serial
+console will ignore the graphics VDU commands.
 
 ### GUI version
 
