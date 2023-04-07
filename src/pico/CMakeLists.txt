@@ -329,7 +329,7 @@ if (TARGET tinyusb_device)
     endif()
   endif()
 
-  if (NOT ("$(OS_RAM}" STREQUAL "" ))
+  if (NOT ("${OS_RAM}" STREQUAL "" ))
     message(STATUS "Link with custom ${OS_RAM}kB of OS RAM storage")
     add_custom_command(
       OUTPUT ${CMAKE_BINARY_DIR}/picobb.ld
