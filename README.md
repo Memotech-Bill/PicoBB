@@ -513,6 +513,9 @@ by adding parameters to `make` command.
   MIN_STACK=N to use coding identical to BBCSDL. MIN_STACK=X provides further reduction in
   stack usage at some cost in execution speed (this option is not suppoerted by Richard Russell).
 * GRAPH=Y (Experimental) Add VGA output to console build.
+* OS_RAM=<size> to specify how much RAM (in kilobytes) to reserve for low level functions, which
+  is unavailable to BASIC. The default builds should default to the correct amount of RAM, but
+  if some of the above options are selected it may be necessary to adjust this.
 
 Note: the Makefile runs Python scripts to automaticly generate C files "sympico.h" and "pico_stub.c"
 needed to implement the SYS interface to the Pico SDK functions before running CMake. Therefore
@@ -566,6 +569,9 @@ The options supported by the CMake script are similar to those for `make`:
   * -DCYW43=BACKGROUND for network support with automatic (background) polling. This option reduces
     the memory available to BASIC.
 * -DGRAPH=Y (Experimental) Add VGA output to console build.
+* -DOS_RAM=<size> to specify how much RAM (in kilobytes) to reserve for low level functions, which
+  is unavailable to BASIC. The default builds should default to the correct amount of RAM, but
+  if some of the above options are selected it may be necessary to adjust this.
 * Other cmake options if required.
 
 Note: In a non-default build, if bit 2 of the STACK_CHECK option is not set then

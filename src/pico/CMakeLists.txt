@@ -149,26 +149,11 @@ if (TARGET tinyusb_device)
       set(CYW43_LINK 1)
     elseif( CYW43 )
       message(STATUS "Pico W CYW43 background support")
-      # The SDK version of cyw43_arch_threadsafe_background.c contains bugs.
       target_sources(bbcbasic PRIVATE ../../src/pico/network_cyw43.c)
       target_link_libraries(bbcbasic
         pico_cyw43_arch_lwip_threadsafe_background
         pico_lwip
         pico_lwip_nosys)
-      # Use our own copy
-      # Note: All the cyw43_arch_*.c files are always included but #ifdef statements
-      # turn the inappropriate files into (almost) empty files.
-      # target_link_libraries(bbcbasic
-      #   pico_cyw43_arch
-      #   pico_lwip
-      #   pico_lwip_nosys)
-      # target_compile_definitions(bbcbasic PUBLIC
-      #   CYW43_LWIP=1
-      #   PICO_CYW43_ARCH_THREADSAFE_BACKGROUND_FIXED=1
-      #   PICO_CYW43_ARCH_HEADER=pico/cyw43_arch/arch_threadsafe_background.h
-      #   )
-      # target_sources(bbcbasic PRIVATE ../../src/pico/cyw43_arch_threadsafe_background.c)
-      #
       target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=3)
       set(CYW43_LINK 1)
     endif()
@@ -342,6 +327,24 @@ if (TARGET tinyusb_device)
     if ( "${SOUND}" STREQUAL "SDL")
       message(FATAL_ERROR "Can not use core 1 for both sound and video")
     endif()
+  endif()
+
+  if (NOT ("$(OS_RAM}" STREQUAL "" ))
+    message(STATUS "Link with custom ${OS_RAM}kB of OS RAM storage")
+    add_custom_command(
+      OUTPUT ${CMAKE_BINARY_DIR}/picobb.ld
+      COMMAND ${CMAKE_SOURCE_DIR}/memmap.py ${CMAKE_BINARY_DIR}/picobb.ld ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld $(OS_RAM)
+      )
+    add_custom_target(link_file ALL DEPENDS ${CMAKE_BINARY_DIR}/picobb.ld)
+    add_dependencies(bbcbasic link_file)
+    pico_set_linker_script(bbcbasic ${CMAKE_BINARY_DIR}/picobb.ld)
+    string(CONCAT stk_expr "1024*(262-" ${OS_RAM} ")")
+    math(EXPR stk_size "${stk_expr}" OUTPUT_FORMAT HEXADECIMAL)
+    target_compile_definitions(bbcbasic PUBLIC
+      PICO_STACK_SIZE=${stk_size}
+      PICO_CORE1_STACK_SIZE=0x800
+      )
+  elseif (( "${STDIO}" STREQUAL "PICO" ) OR ( ${GRAPH} ))
     if( ${CYW43_LINK} )
       message(STATUS "Link with space for VGA video and CYW43 driver")
       target_compile_definitions(bbcbasic PUBLIC
@@ -361,7 +364,7 @@ if (TARGET tinyusb_device)
     if( ${CYW43_LINK} )
       message(STATUS "Link with space for CYW43 driver")
       target_compile_definitions(bbcbasic PUBLIC
-        PICO_STACK_SIZE=0x31800
+        PICO_STACK_SIZE=0x2F800
         PICO_CORE1_STACK_SIZE=0x800
         )
       pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_net_mc.ld)
