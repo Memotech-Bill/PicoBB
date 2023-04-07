@@ -31,6 +31,7 @@
 // Attempt to check consistancy of build
 
 #ifdef PICO
+#include <stdarg.h>
 #include <pico.h>
 #include <hardware/adc.h>
 #ifndef HAVE_CYW43
@@ -2358,6 +2359,23 @@ void faterr (const char *msg)
     syserror (msg);
 	error (256, "");
     }
+
+#ifdef PICO
+void sys_panic (const char *psMsg, ...)
+    {
+    char sErr[260];
+    va_list va;
+    va_start (va, psMsg);
+    reset ();
+    waitconsole ();
+    text ("Panic: ");
+    vsprintf (sErr, psMsg, va);
+    va_end (va);
+    text (sErr);
+    text ("\r\n");
+    error (256, 0);
+    }
+#endif
 
 void main_term (int exitcode)
     {

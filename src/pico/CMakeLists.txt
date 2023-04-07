@@ -121,6 +121,7 @@ if (TARGET tinyusb_device)
     PICO
     CAN_SET_RTC
     PICO_STACK_CHECK=${STACK_CHECK}
+    PICO_PANIC_FUNCTION=sys_panic
     )
   target_include_directories(bbcbasic PRIVATE
     ../../include
