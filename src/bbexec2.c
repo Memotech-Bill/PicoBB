@@ -71,7 +71,7 @@ void oswait (int);		// Pause for a specified time
 void osline (char *);		// Get a line of console input
 void putime (int);		// Store centisecond ticks
 #ifdef CAN_SET_RTC
-void putims (const char *, unsigned int);
+void putims2 (const char *, unsigned int);
 #endif
 void mouse (int*, int*, int*);	// Get mouse state
 void mouseon (int);		// Set mouse cursor (pointer)
@@ -3261,16 +3261,14 @@ static void xeq_TTIMEL (void)
         ++esi;
         equals ();
         VAR v = exprs ();
-        putims (v.s.p + zero, v.s.l);
+        putims2 (v.s.p + zero, v.s.l);
+        return;
         }
-    else
 #endif
-        {
-        long long n;
-        equals ();
-        n = expri ();
-        putime (n);
-        }
+    long long n;
+    equals ();
+    n = expri ();
+    putime (n);
     }
 
 /************************************ WAIT *************************************/

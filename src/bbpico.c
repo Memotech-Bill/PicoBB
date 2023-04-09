@@ -1481,7 +1481,7 @@ void putime (int n)
     }
 
 #ifdef CAN_SET_RTC
-void putims (const char *psTime, unsigned int ulen)
+void putims2 (const char *psTime, unsigned int ulen)
     {
     if (( psTime == NULL ) || ( ulen < 5 )) return;
     int len = ulen;
@@ -1531,6 +1531,15 @@ void putims (const char *psTime, unsigned int ulen)
     vldtim (&dt);
     rtc_set_datetime (&dt);
     }
+
+void putims (const char *psTime)
+    {
+    if ( psTime == NULL ) return;
+    const char *ps = strchr (psTime, '\r');
+    if ( ps == NULL ) return;
+    putims2 (psTime, ps - psTime);
+    }
+
 #endif
 
 // Wait for a specified number of centiseconds:
@@ -2784,7 +2793,7 @@ void *main_init (int argc, char *argv[])
 #endif
 #ifdef CAN_SET_RTC
     rtc_init ();
-    putims ("01 Jan 2000,00:00:00", 20);
+    putims2 ("01 Jan 2000,00:00:00", 20);
 #endif
 
 	UserTimerID = StartTimer (250);
