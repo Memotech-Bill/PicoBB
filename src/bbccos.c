@@ -44,6 +44,10 @@ typedef dispatch_source_t timer_t ;
 #undef MAX_PATH
 #ifdef PICO
 #define COPYBUFLEN 512	// length of buffer used for *COPY command
+#if ( defined(STDIO_USB) || defined(STDIO_UART) )
+#include <stdbool.h>
+bool bBBCtl = false;
+#endif
 #else
 #define COPYBUFLEN 4096	// length of buffer used for *COPY command
 #endif
@@ -1173,6 +1177,9 @@ void os_OUTPUT (char *p)
     int n = 0;
     sscanf (p, "%i", &n);
     optval = (optval & 0xF0) | (n & 0x0F);
+#if ( defined(STDIO_USB) || defined(STDIO_UART) )
+    if ( n & 0x20 ) bBBCtl = (( n & 0x10 ) == 0x10 );
+#endif
     }
 
 void os_DUMP (char *p)

@@ -367,6 +367,11 @@ static const int vdulen[] = {
     0,   1,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
     0,   1,   2,   5,   0,   0,   1,   9,   8,   5,   0,   1,   4,   4,   0,   2 };
 
+#if ( defined(STDIO_USB) || defined(STDIO_UART) )
+#include <stdbool.h>
+extern bool bBBCtl;
+#endif
+
 // Keycode translation table:
 #if KBD_STDIN
 static const unsigned char xkey[64] = {
@@ -712,6 +717,14 @@ int stdin_handler (int *px, int *py)
 	static char *p = report, *q = report;
 	unsigned char ch;
 
+#if ( defined(STDIO_USB) || defined(STDIO_UART) )
+    if ( bBBCtl && wait )
+        {
+        printf ("\x17\x1F\x00");
+		fflush (stdout);
+        }
+    else
+#endif
 	if (wait)
 	    {
 		printf ("\033[6n");
@@ -1136,6 +1149,14 @@ void oswrch (unsigned char vdu)
 			spchan = NULL;
 		    }
 	    }
+
+#if ( defined(STDIO_USB) || defined(STDIO_UART) )
+    if ( bBBCtl )
+        {
+        putchar (vdu);
+        return;
+        }
+#endif
 
 	if (vduq[10] != 0)		// Filling queue ?
 	    {
