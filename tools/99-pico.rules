@@ -1,0 +1,5 @@
+# /etc/udev/rules.d/99-pico.rules
+# Create a fixed link to a pico
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="000a", SYMLINK+="pico"
+
+
