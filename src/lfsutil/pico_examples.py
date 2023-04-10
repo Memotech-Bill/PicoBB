@@ -59,19 +59,24 @@ def Parse (examples, cf, dev, bld):
                             examples.append (Example (fn, parm[2]))
 
 def Build (cfg):
+    if os.path.exists (cfg.output):
+        tOut = os.path.getmtime (cfg.output)
+        make = False
+    else:
+        tOut = 0
+        make = True
     examples = []
     for cf in cfg.config_file:
+        if os.path.getmtime (cf) > tOut:
+            make = True
         Parse (examples, cf, cfg.device, cfg.build)
-    if os.path.exists (cfg.output):
-        make = Latest (examples) > os.path.getmtime (cfg.output)
-    else:
+    if Latest (examples) > tOut:
         make = True
     if make:
         for ex in examples:
             ex.Copy (cfg.tree)
         os.system (os.path.join (os.path.dirname (sys.argv[0]), 'mklfsimage') + ' -o ' + cfg.output
                    + ' ' + cfg.tree)
-    
 
 def Run ():
     if ( len (sys.argv) == 1 ):
