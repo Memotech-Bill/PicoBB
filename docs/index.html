@@ -1,0 +1,524 @@
+<html>
+  <head>
+    <title>BBC BASIC on the Raspberry Pi Pico and Pico W</title>
+    <style>
+      h1 {
+          text-align: center;
+      }
+      h2 {
+          border-bottom: 1px solid;
+      }
+      table {
+          margin: 5px auto;
+          border: 1px solid;
+          border-collapse: collapse;
+      }
+      th { font-weight: bold; }
+      th, td {
+          border: 1px solid;
+          padding: 2px 5px;
+          text-align: center;
+      }
+      code {
+          font-size: 120%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>BBC BASIC on the Raspberry Pi Pico and Pico W</h1>
+    <h2>Contents</h2>
+    <ul>
+      <li><a href="#intro">Introduction</a></li>
+      <li><a href="#connect">Connecting to the Pico</a></li>
+      <li><a href="#entry">Program Entry and Editing</a></li>
+      <li><a href="#storage">Program and Data Storage</a></li>
+      <li><a href="#sysvar">System Variables & System Identification</a></li>
+      <li><a href="#graphics">Graphics</a></li>
+      <li><a href="#sound">Sound</a></li>
+      <li><a href="#serial">Serial Input and Output</a></li>
+      <li><a href="#network">Network</a></li>
+      <li><a href="#assembler">Thumb Assembler</a></li>
+      <li><a href="#basic">BASIC keywords</a></li>
+      <li><a href="#star">Star Commands</a></li>
+      <li><a href="#vdu">VDU commands</a></li>
+    </ul>
+      <h2 id="intro">Introduction</h2>
+    <p><b>PicoBB</b> implements a version of BBC BASIC on the Raspberry Pi Pico and Pico W.
+      It is derived (with permission) from Richard Russell's
+      <a href="https://www.bbcbasic.co.uk/bbcsdl/index.html">BBCSDL</a>. It should be noted
+      that PicoBB is not an emulation of the BBC Micro, it is a native implementation of the
+      BBC BASIC language on the ARM cores of the RP2040 chip.</p>
+    <p>Richard has produced
+      <a href="https://www.bbcbasic.co.uk/bbcsdl/manual/index.html">extensive documentation</a>
+      for BBC BASIC as implemented by BBCSDL. No attempt is made to replace or reproduce that
+      documentation. Instead this document attempts to sumerise how BBC BASIC on the Pico
+      differs from that implemented by BBCSDL on other platforms.</p>
+    <p>Perhaps the biggest difference between PicoBB and BBCSDL is that the Pico is a much
+      smaller and less powerful processer than anything else used to run BBCSDL. As a
+      consequence there is much less memory available for the BASIC program, and the program
+      will be significantly slower than on other versions of BBCSDL.<p>
+    <p>There are two major versions of PicoBB with rather different properties:</p>
+    <dl>
+      <dt>Console Version</dt>
+      <dd>This version requires connecting to another computer for programming or any user
+        interaction. The connection may be via a USB port, or may use a serial UART. Either
+        way, a terminal emulator is used on the host computer. The terminal emulator should
+        support VT100 escape codes. With a Linux host <b>picocom</b> is the recommended
+        terminal emulator. One possible application of this version is to have a program
+        that auto-runs without any user interface or host computer, and controls hardware
+        or collects data using the Pico GPIO pins.</dd>
+      <dt>GUI Version</dt>
+      <dd>Ths version is stand-alone and uses a VGA monitor and a USB keyboard to provide a
+        complete programming environment. It is designed for a Pico attached to a Pimoroni
+        <a href="https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base">VGA Demonstration Board</a>
+        or similar board wired according to the outline given in Chapter 3 of
+        <a href="https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf">Hardware design with RP2040</a>.
+        Its primary purpose is to provide a learning experience similar to that of the 8-bit
+        computers of the 19980's. With a custom board design it is possible to free a few
+        GPIO pins for interfacing by either not using the lsb of the video output or omitting
+        either sound or SD card connections.</dd>
+    </dl>
+    <p>Either of these major versions may be on either a Pico or a Pico W. The latter introduces
+      the possibility of providing wireless networking. The builds which include network support
+      have slightly less memory available to BASIC. It is possible to run either a with or
+      without networking build on either a Pico or Pico W, although clearly networking will only
+      actually work with a network enabled build on a Pico W.</p>
+    <p>As well as the four builds resulting from Console / GUI and with / without networking
+      there a a number of compilation options to enable or disable features giving a large number
+      of potentially different builds. For build instructions see the
+      <a href="https://github.com/Memotech-Bill/PicoBB">README.md</a> file in the repository.
+      This documentaition mostly assumes using one of the four major builds.</p>
+    <h2 id="connect">Connecting to the Pico</h2>
+    <h3>Console Builds</h3>
+    <p>Programming the PicoBB console builds requires a connection from a host computer. This
+      may be over USB, in which case the Pico appears on the host as a USB serial port. Alternately
+      a 3.3v serial UART connection may be used, in which case the Pico transmits on pin 1 (GPIO 0)
+      and receives on pin 2 (GPIO 1). It is important that an RS232 or 5v serial connection is
+      <b>NOT</b> used, as the higher voltages will damage the Pico.</p>
+    <p>A terminal emulator program should be used to connect to the serial port. The connection
+      should be configured as:</p>
+    <ul>
+      <li>115200 baud rate.</li>
+      <li>8 stop bits.</li>
+      <li>1 stop bit.</li>
+      <li>No parity.</li>
+    </ul>
+    <p>If the host computer is running Linux, then <b>picocom</b> is the recommended terminal
+      emulator.</p>
+    <p>If a Raspberry Pi is used as host computer (and perhaps other Linux machines) the device name
+      of the Pico USB serial port can be variable (<code>/dev/ttyACM0</code>, <code>/dev/ttyACM1</code>,
+      etc.). To resolve this a
+      <a href="https://github.com/Memotech-Bill/PicoBB/tree/master/tools">UDEV rule</a> may be
+      used to give a fixed device name (<code>/dev/pico</code>) to the Pico.</p>
+    <h3>GUI Builds</h3>
+    <p>The simplest way to use the GUI builds is with a Pico or Pico W mounted on a
+      <a href="https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base">VGA Demonstration Board</a>.</p>
+    <ul>
+      <li>Power should be applied to the micro-USB socket on the demo board.</li>
+      <li>Display output is via the VGA connector.</li>
+      <li>The keyboard should be connected to the USB socket on the Pico itself. A USB to micro-USB
+        adaptor will be required. The Pico is somewhat selective as to which keyboards work, cheap
+        keyboards may be better.</li>
+      <li>An SD or SDHC card may be used, It should be formatted as FAT.</li>
+      <li>If required an amplified speaker or amplified headphones should be connected to the socket
+        on the VGA demo board. If using PWM sound (the default) then use the PWM socket. If using I2S
+        sound then use the socket labelled DAC.</li>
+    </ul>
+    <h2 id="entry">Program Entry and Editing</h2>
+    <p>Normally when you start BBCSDL on Microsoft Windows, Apple IOS or Linux,
+      you are not interacting directly with the BASIC interpreter, but instead you are using
+      an Integrated Development Environment (IDE) to edit and run your programs. This IDE is
+      itself written in BBC BASIC and runs automatically when you start BBCSDL.</p>
+    <p>The IDE program is far too large to run on a Pico, and it also relies upon GUI features
+      provided by the host operating system. Thus none of section 2 of the BBCSDL documentation
+      which describes the IDE is applicable.</p>
+    <p>If entering a program directly on the Pico it is necessary to use line numbers to order
+      the lines making up a program. Lines are deleted by entering just the line number with
+      nothing following. To correct a line, enter the new (corrected) line with the same line
+      number as the line to be replaced.</p>
+    <p>Alternately the program can be created in a text editior off the Pico then either use
+      the upload capability of the Console version to upload the file, or copy it onto a FAT
+      formatted SD card for the GUI version of PicoBB. In this case the program does not
+      require line numbers, the order is determined by the position of the line in the file.
+      A BBC BASIC program <a href="https://github.com/Memotech-Bill/PicoBB/tree/master/tools">yupload.bas</a>
+      to run on a host computer has been provided which will automatically upload a program from
+      the host to a Picco and run it.</p>
+    <h2 id="storage">Program and Data Storage</h2>
+    <p>The default builds of PicoBB use the upper half of the Pico's flash memory (1MB) to
+      provide storage for programs and data which is retained when power is removed. The
+      filesystem supports folders and long file names, although the maximum path length is
+      restricted to 260 characters. A forward slash (/) is used as the path seperator. The
+      standard BBC BASIC commands are used to access the files. Storeage in the flash is
+      implemented using <a href="https://github.com/littlefs-project/littlefs">littlefs</a>.</p>
+    <p>Additional storeage may be provided by an SD card reader attached to some of the Pico
+      GPIO pins (this is default for the GUI builds). SD and SDHC cards are supported and the
+      first FAT partition on the card is used. The contents of the SD card will appear under
+      the folder <b>/sdcard/</b>.</p>
+    <h2 id="sysvar">System Variables & System Identification</h2>
+    <p>The low byte of the system variable <code>@platform%</code> identifies the system on which a
+      program is running. For any of the Pico builds this will have the value 6. If running on a
+      standard Pico, the other three bytes will be zero. If running on a Pico W, the second byte
+      (bits 8-15) will have one of the following values:</p>
+    <ol>
+      <li> - No Pico W support (LED on Pico W unaccesable).</li>
+      <li> - Pico W GPIO support only (LED on Pico W accessible).</li>
+      <li> - Pico W network support using polling.</li>
+      <li> - Pico W network support using background processing.</li>
+    </ol>
+    <p>The same information can be obtained using SYS to call the C function <code>is_pico_w</code>.</p>
+    <p>The standard builds nominally for the Pico actually have Pico W GPIO support as that will
+      also run on a Pico, and does not change the amount of RAM available to BASIC. As a result they
+      have a value of 2 in the second byte. The standard Pico W builds have network support using
+      background processing and therefore have a value of 4 in the second byte.</p>
+    <p>The Pico build also supplies a new (read only) system variable <code>@picocfg&()</code> which
+      provides more details of the specific configuration:</p>
+    <ul>
+      <li><code>@picocfg&(0)</code> - User interface:<ul>
+        <li>Bit 0 - Console on USB.</li>
+        <li>Bit 1 - Console on UART.</li>
+        <li>Bit 2 - GUI user interface.</li>
+        </ul></li>
+      <li><code>@picocfg&(1)</code> - File systems:<ul>
+          <li>Bit 0 - On Pico flash memory (LFS filesystem).</li>
+          <li>Bit 1 - On SD card (FAT filesystem).</li>
+          <li>Bit 2 - Device filesystem (currently only UARTs).</li>
+          </ul></li>
+      <li><code>@picocfg&(2)</code> - Sound implementation:<ul>
+              <li>0 - No sound.</li>
+              <li>1 - Low quality sound on I2S.</li>
+              <li>2 - Low quality sound using PWM.</li>
+              <li>3 - High quality sound using PWM.</li>
+              </ul></li>
+      <li><code>@picocfg&(3)</code> - Number of serial devices:<ul>
+          <li>0 - No serial devices.</li>
+          <li>1 - One serial device (<code>/dev/uart</code>).</li>
+          <li>2 - Two serial devices (<code>dev/uart0</code>, <code>/dev/uart1</code>).</li>
+          <li>0xFF - GUI build, One serial device (<code>/dev/serial</code>), used by VDU printer commands.</li>
+          </ul></li>
+      <li><code>@picocfg&(4)</code> - Pico W support (only usable if running on Pico W):<ul>
+          <li>0 - No Pico W support (LED on Pico W unaccesable).</li>
+          <li>1 - Pico W GPIO support only (LED on Pico W accessible).</li>
+          <li>2 - Pico W network support using polling.</li>
+          <li>3 - Pico W network support using background interrupts.</li>
+          </ul></li></ul>
+    <p>This may be extended in the future if more capabilities are added.</p>
+    <p>All the other system variables from BBCSDL should exist although some of them are meaningless
+      on the Pico.</p>
+    <h2 id="graphics">Graphics</h2>
+    <h3>GUI Builds</h3>
+    <p>The GUI builds support almost all of the graphics capability of BBC BASIC. The graphics
+      modes supported are restricted by the amount of memory available on the Pico. The following
+      16 modes are supported:</p>
+    <table>
+      <thead>
+        <tr><th>Mode</th><th>Colours</th><th>Text</th><th>Graphics</th><th>Letterbox</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>2</td><td>80 x 32</td><td>640 x 256</td><td>Y</td></tr>
+        <tr><td>1</td><td>4</td><td>40 x 32</td><td>320 x 256</td><td>Y</td></tr>
+        <tr><td>2</td><td>16</td><td>20 x 32</td><td>160 x 256</td><td>Y</td></tr>
+        <tr><td>3</td><td>2</td><td>80 x 25</td><td>640 x 225</td><td></td></tr>
+        <tr><td>4</td><td>2</td><td>40 x 32</td><td>320 x 256</td><td>Y</td></tr>
+        <tr><td>5</td><td>4</td><td>20 x 32</td><td>160 x 256</td><td>Y</td></tr>
+        <tr><td>6</td><td>2</td><td>40 x 25</td><td>320 x 225</td><td></td></tr>
+        <tr><td>7</td><td>8</td><td>40 x 25</td><td>Teletext</td><td></td></tr>
+        <tr><td>8</td><td>2</td><td>80 x 30</td><td>640 x 480</td><td></td></tr>
+        <tr><td>9</td><td>4</td><td>40 x 30</td><td>320 x 480</td><td></td></tr>
+        <tr><td>10</td><td>16</td><td>20 x 30</td><td>160 x 480</td><td></td></tr>
+        <tr><td>11</td><td>2</td><td>80 x 25</td><td>640 x 450</td><td></td></tr>
+        <tr><td>12</td><td>2</td><td>40 x 30</td><td>320 x 480</td><td></td></tr>
+        <tr><td>13</td><td>4</td><td>20 x 30</td><td>160 x 480</td><td></td></tr>
+        <tr><td>14</td><td>2</td><td>40 x 25</td><td>320 x 450</td><td></td></tr>
+        <tr><td>15</td><td>16</td><td>40 x 30</td><td>320 x 240</td><td></td></tr>
+      </tbody>
+    </table>
+    <p>Modes 0-7 reproduce those from the BBC Micro:</p>
+    <ul>
+      <li>Modes 0-2, 4 &amp; 5 only have 256 rows of pixels which are displayed in the centre of
+        the monitor so may appear squashed.</li>
+      <li>Modes 3 &amp; 6 can also display graphics.</li>
+      <li>Except for Mode 7, colours 8-15 are high intensity rather than flashing.</li>
+      <li>They differ from the corresponding modes in BBCSDL in having fewer pixel rows.</li>
+    </ul>
+    <p>The generally most useful modes are mode 8, which is a monochrome display with the highest resolution,
+      and mode 15, which is a 16 colour mode with square pixels. The default mode on startup is mode 8.</p>
+    <p>The Pico display is paletted, with the number of colours displayed at any one time limitted by
+      the graphics mode. The VGA output generated by PicoBB uses five bits for each of red, green and blue,
+      giving 32k possible physical colours. These are all available if using the Pimoroni VGA demonstration
+      board. Custom boards may choose not to connect some of the colour lsb in order to provide some
+      available GPIO pins. This will reduce the number of physical colours available.</p>
+    <h3>Console Builds</h3>
+    <p>To be consistent with other BBCSDL console builds, PicoBB console builds define the following
+      ten modes:</p>
+    <table>
+      <thead>
+        <tr><th>Mode</th><th>Colours</th><th>Text</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>2</td><td>80 x 32</td></tr>
+        <tr><td>1</td><td>4</td><td>40 x 32</td></tr>
+        <tr><td>2</td><td>16</td><td>20 x 32</td></tr>
+        <tr><td>3</td><td>16</td><td>80 x 25</td></tr>
+        <tr><td>4</td><td>2</td><td>40 x 32</td></tr>
+        <tr><td>5</td><td>4</td><td>20 x 32</td></tr>
+        <tr><td>6</td><td>16</td><td>40 x 25</td></tr>
+        <tr><td>7</td><td>8</td><td>40 x 25</td></tr>
+        <tr><td>8</td><td>16</td><td>80 x 32</td></tr>
+        <tr><td>9</td><td>16</td><td>40 x 32</td></tr>
+      </tbody>
+    </table>
+    <p>In general, PiccoBB console builds do not support graphical output. Issuing graphics drawing commands
+      from a program running in console mode will not produce an error, they just do not produce
+      any output. However commands that attempt to interrogate the screen will generally fail.</p>
+    <p>There are two exceptions:</p>
+    <ul>
+      <li>Normally the console builds send VT100 escape codes to the host ccomputer to ccontrol the display.
+        However there is an option to send BBC BASIC VDU codes instead. These could then be interpreted
+        and displayed on the host computer, inccluding any graphics output. The
+        <a href="https://github.com/Memotech-Bill/PicoBB/tree/master/tools">yupload.bas</a> program
+        does this. There is minimal feedback from the host computer and therefore what is being displayed
+        may not correspond to what the Pico thinks is being displayed.</li>
+      <li>While not supported by any of the four standard builds, there is a compilation option to
+        include VGA output from a console build. With this option, if VGA output is selected, the
+        graphics capabilities are the same as for the GUI builds.</li>
+    </ul>
+    <h2 id="sound">Sound</h2>
+    <p>The console builds usually use the second ARM core on the Pico to produce high quality sound,
+      equivalent to that produced by BBCSDL on other platforrms. The GUI builds, however, use the second
+      ARM core for video generation. As a consequence a simpler sound generation is used which emulates
+      the sound chip in the original BBC micro.</p>
+    <p>All sound implementations use the BBC BASIC SOUND and ENVELOPE commands. *STEREO and *VOICE
+      are also implemented for high quality (SDL) sound.</p>
+    <p>For the console builds it will be necessary to attach low-pass filters to the sound output
+      pins (pins 32 &amp; 34, GPIOs 27 &amp; 28) and then connect the output from these to an amplifier.</p>
+    <p>For the GUI builds, the VGA demo board includes the necessary post-processing, and an amplifier
+      (or high impedance headphones) can be connected directly to the output sockets.</p>
+    <h2 id="serial">Serial Input and Output</h2>
+    <p>Depending upon the build used, serial devices may appear as as single <code>/dev/uart</code>
+      or the pair <code>/dev/uart0</code> and <code>/dev/uart1</code>. A serial port may be opened
+      using a command of the form:</p>
+    <code>port% = OPENUP("/dev/uart.baud=9600 parity=N data=8 stop=1 tx=0 rx=1 cts=2 rts=3")</code>
+    <p>Any of the pin numbers (tx, rx, cts, rts) may be omitted in which case that pin will not
+      be connected. This enables transmit only, or receive only connections, and connections
+      without flow control. The pin numbers selected must be valid Pico pin numbers for the
+      relevent UART and function.</p>
+    <p>If not specified, the following defaults are assumed: parity=N data=8 stop=1.</p>
+    <p>The baud rate must be specified.</p>
+    <p>If keyword=value format is used then the parameters may be given in any order. Alternately
+      the keyword and equals sign may be omitted in which case the parameters must be in the order
+      shown above.</p>
+    <p>Note: Contrary to the BBC Basic documentation commas must not be used between the parameters.</p>
+    <p>If the BBC Basic user interface is connected via USB, then either serial interface may be used.
+      If the user interface is connected via a serial connection, then do not open that interface
+      (<code>/dev/uart0</code> for a bare Pico, <code>/dev/uart1</code> for a Pico on VGA Demo board).</p>
+    <h2 id="network">Network</h2>
+    <p>The WiFi network is accessed using a Pico specific version of the BBC BASIC "socklib"
+      library. See the BBC BASIC <a href="https://www.bbcbasic.co.uk/bbcwin/manual/bbcwing.html#socklib" rel="nofollow">manual</a>
+      for details. This library is included in the filesystem images for the network builds.</p>
+    <p>The first time the library is used you will be prompted for the WiFi details (SSID, password
+      and two letter country code). These will then be stored in the file "wifi.cfg" for subsequent
+      use. To change the access point used, delete this file.</p>
+    <p>The filesystem images also include three example programs:</p>
+    <ul>
+      <li><b>client.bbc</b> and <b>server.bbc</b> - These are a pair of simple two-way chat programs.
+        They may be used to exchange messages with the corresponding program running on BBC BASIC
+        on another machine on the network.</li>
+      <li><b>tftp_server.bbc</b> - A file transfer program. This may be used to copy text or binary
+        files to and from the Pico. A suitable client program may be installed on a Raspberry Pi
+        using the command <code>sudo apt install tftp</code>.</li>
+    </ul>
+    <p>It is generally not practical to directly use the LWIP network routines provided by the Pico
+      C SDK as these rely heavily on callbacks into user supplied C (or assembler) routines. Therefore
+      some higher level routines have been written in C to provide the functions needed to implement
+      "socklib". If required, these routines may be accessed directly using SYS. They are documented
+      in the file "include/network.h".</p>
+    <h2 id="assembler">Thumb Assembler</h2>
+    <p>There is a built-in assembler for the ARM v6M instruction set as supported by the Pico.
+      By default the assembler uses "Unified" syntax. However including the following pseudo-op</p>
+    <p>syntax d</p>
+    <p>enables the following extensions to the allowed syntax:</p>
+    <ul>
+      <li>If an opcode takes three arguments and the first and second are the same, then the first may be omitted.</li>
+      <li>If the 's' suffix (indicating affects status flags) is omitted from the opcode, but the parameters are
+        only valid for a status affecting instruction, then that is assumed.</li>
+    </ul>
+    <p>The extensions may be disabled again by specifying:</p>
+    <p>syntax u</p>
+    <h2 id="basic">BASIC keywords</h2>
+    <p>Almost all of the BASIC keywords documented in section 5 of
+      <a href="https://www.bbcbasic.co.uk/bbcsdl/manual/index.html">BBC BASIC for SDL 2.0</a>
+      are implemented as desccribed. The following sections outline the differences.</p>
+    <h3>ADVAL</h3>
+    <p>The Pico has a 12-bit analogue to digital converter with a five input multiplexer. This can
+      be read using the BASIC ADVAL function with positive arguments. The returned value is an
+      integer in the range 0 to 4095, representing voltages in the range 0v to 3.3v. ADVAL can
+      return the following values:</p>
+    <table>
+      <tr><td>ADVAL(5)</td><td>Voltage on the Pico internal temperature sensor.</td></tr>
+      <tr><td>ADVAL(4)</td><td>Voltage on GPIO 29 (not routed on Pico).</td></tr>
+      <tr><td>ADVAL(3)</td><td>Voltage on GPIO 28 (pin 34 on Pico).</td></tr>
+      <tr><td>ADVAL(2)</td><td>Voltage on GPIO 27 (pin 32 on Pico).</td></tr>
+      <tr><td>ADVAL(1)</td><td>Voltage on GPIO 26 (pin 31 on Pico).</td></tr>
+      <tr><td>ADVAL(-1)</td><td>Number of bytes free in the keyboard buffer.</td></tr>
+      <tr><td>ADVAL(-5)</td><td>Number of bytes free in the channel 0 sound queue.</td></tr>
+      <tr><td>ADVAL(-6)</td><td>Number of bytes free in the channel 1 sound queue.</td></tr>
+      <tr><td>ADVAL(-7)</td><td>Number of bytes free in the channel 2 sound queue.</td></tr>
+      <tr><td>ADVAL(-8)</td><td>Number of bytes free in the channel 3 sound queue.</td></tr>
+    </table>
+    <p>The reading of the internal temperature sensor (in Centigrade) may be approximated by:</p>
+    <p>Temperature = 27 - (3.3 * ADVAL(5) / 4096 - 0.706) / 0.001721</p>
+    <h3>CALL</h3>
+    <p>If calling a machine code routine from BASIC using the CALL statement:</p>
+    <ul>
+      <li>The values of BASIC variables A%, B%, C% and D% are loaded into processor registers R0 - R3.</li>
+      <li>The values of BASIC registers E% and F% are pushed onto the stack.</li>
+      <li>The address of the call parameter table is pushed onto the stack.</li>
+    </ul>
+    <p>Other uses are as documented.</p>
+    <h3>GET(x,y) and GET$(x,y)</h3>
+    <p>Using GET or GET$ to attempt to return the character at a screen location will fail
+      on console builds with the message "Sorry, GETXY not implemented".</p>
+    <h3>INKEY and INKEY$</h3>
+    <p>For all versions of PicoBB, INKEY (or INKEY$) with a zero or positive argument works as documented.
+      INKEY(-256) returns 115 (ASCII code for lower case "s").</p>
+    <p>Console versions of PicoBB will return zero for other negative arguments. For the GUI
+      versions, INKEY works as documented for negative values corresponding to keyboard keys.
+      Mouse support is not implemented, so testing for mouse button status will always return
+      zero.</p>
+    <h3>MOUSE</h3>
+    <p>PicoBB does not have a mouse interface. This command will not produce an error, but
+      it will not have much effect either. A command of the form <code>MOUSE x,y,b</code> will create
+      the specified variables, all with value zero.</p>
+    <h3>ON MOUSE, ON MOVE and ON SYS</h3>
+    <p>The events trapped by these statements will never occur in PicoBB.</p>
+    <h3>PLOT</h3>
+    <p>With GUI builds, plotting modes 0 to 167 and 192 to 199 are implemented. Modes 168 to 191
+      and 200 to 255 will result in an error. It should be noted that the flood fill algorithm
+      used in PicoBB (<a href="https://publikationen.bibliothek.kit.edu/85696/763885">
+        "Space-efficient Region Filling in Raster Graphics", Dominik Henrich</a>) to limit
+      stack usage is different to that used in BBCSDL. It will have different results in some
+      cases. In particular the fill will never cross a boundary that is already the fill colour.</p>
+    <h3>POINT and TINT</h3>
+    <p>These commands will fail with an error message on console builds. On GUI builds they work
+      as documented and (unlike BBCSDL) they are fast.</p>
+    <h3>QUIT</h3>
+    <p>This command causes the Pico to restart.</p>
+    <h3>SYS</h3>
+    <p>The Pico does not support DLLs. Instead a compiled in list of functions are supported.
+      The list consists of most of the functions in the Pico C SDK (currently excluding the
+      Bluetoot functions) plus those functions from the C runtime library whicch are used by
+      the PicoBB program itself. If building PicoBB from source, the list of supported functions
+      can be found in "build/sympico.h".</p>
+    <h3>USR</h3>
+    <p>If calling a machine code routine from BASIC using the USR statement:</p>
+    <ul>
+      <li>The values of BASIC variables A%, B%, C% and D% are loaded into processor registers R0 - R3.</li>
+      <li>The values of BASIC registers E% and F% are pushed onto the stack.</li>
+      <li>The value in R0 when the assembler routine returns is the value returned to BASIC.</li>
+    </ul>
+    <p>Other uses are as documented.</p>
+    <h3>VDU</h3>
+    <p>The command behaves as doccumented. See ??? for how the VDU sequences are interpreted.</p>
+    <h3>WIDTH</h3>
+    <p>On console builds attempting to obtain the width of a string will fail with an error message.
+      On GUI builds it will work as documented, but since there is only a single, fixed pitch font,
+      the result is always eight times the number of characters in the string.</p>
+    <h2 id="star">Star Commands</h2>
+    <p>The Pico has no operating system, so there are no star commands other than those explicitly
+      implemented and documented.</p>
+    <p>The following BBCSDL star commands are not implemented on the Pico:</p>
+    <table><tr><td>*display<br/>*ega<br/>*font<br/>*gsave<br/>*hardcopy</td>
+        <td>*margins<br/>*mdisplay<br/>*noega<br/>*osk<br/>*play</td>
+        <td>*printer<br/>*printerfont<br/>*screensave<br/>*sys</td></tr></table>
+    <p>The following star commands differ from BBCSDL or are unique to PicoBB:</p>
+    <h3>*float</h3>
+    <p>Only <code>FLOAT 40</code> or <code>FLOAT 64</code> are supported.</p>
+    <h3>*input</h3>
+    <p>This command only accepts valid channel numbers 1 to 12, or zero to revert to normal input.
+      The &quot;special&quot; values 13 to 15 used by BBCSDL for &quot;non-overlapped I/O&quot; will
+      cause an error.</p>
+    <h3>*lock and *unlock</h3>
+    <p>These commands don't do anything. The Little File System used for storage in Pico flash memory
+      does not have any file attributes for recording Read-Only or Read-Write status. It would be possible
+      to implement the functions for the FAT filesystem on an external SD card, but that would be
+      incconsistent.</p>
+    <h3>*output</h3>
+    <p>This command works as documented for valid channel numbers 1 to 12, or zero to restore normal output.</p>
+    <p>The &quot;special&quot; values 13 to 15 used by BBCSDL for &quot;non-overlapped I/O&quot; will
+      usually cause an error. However for console builds which also have VGA output (not a standard build):</p>
+    <ul>
+      <li><code>*output 0</code> - directs output to the console host computer.</li>
+      <li><code>*output 14</code> - directs output to the VGA display.</li>
+      <li><code>*output 15</code> - directs output to both the host computer and VGA display.</li>
+    </ul>
+    <p>In order to draw graphics on the VGA display *output 14 or 15 must be selected so that the
+      graphics VDU sequences are processed by the VGA driver.</p>
+    <p>In addition, all console builds support:</p>
+    <ul>
+      <li><code>*output 32</code> - send VT100 escape sequences to the host computer (this is the default).</li>
+      <li><code>*output 48</code> - Send BBC BASIC VDU sequences to the host computer.</li>
+    </ul>
+    <h3>*run</h3>
+    <p>Although this command is implemented, there is no operation system, and so it always results
+      in "Bad command".</p>
+    <h3>*xupload &lt;filename&gt;</h3>
+    <p>Receive an uploaded file using XModem protocol. The name of the file must
+      be specified, as it is not sent by the upload program. Note that the length of the file will be
+      padded out to the next multiple of 128 bytes.</p>
+    <h3>*yupload [&lt;filename&gt;|&lt;dirname/&gt;]</h3>
+    <p>Receive an uploaded file using YModem protocol. The filename
+      is optional, but if given will override the name sent by the upload program. If a directory name
+      (ending in '/') is given, the uploaded file will be placed in that directory. The exact file
+      length will be preserved.</p>
+    <h3>*zupload  [&lt;filename&gt;|&lt;dirname/&gt;]</h3>
+    <p>As for <code>*yupload</code> but using ZModem protocol.</p>
+    <h3>*xdownload &lt;filename&gt;</h3>
+    <p>Download a file using XModem protocol. It will be necessary to specify
+      a filename at the receiving end. Note that the length of the file will be padded out to the next
+      multiple of 128 bytes.</p>
+    <h3>*ydownload &lt;filename&gt;</h3>
+    <p>Download a file using YModem protocol. The exact file length is transferred
+      and the name of the file is supplied to the download program.</p>
+    <h3>*zdownload &lt;filename&gt;</h3>
+    <p>As for <code>*ydownload</code> but using ZModem protocol.</p>
+    <h2 id="vdu">VDU commands</h2>
+    <p>The following table sumerises differences from BBCSDL in handling VDU command sequences:</p>
+    <table>
+      <thead><tr><th>VDU command</th><th>Console Build</th><th>GUI Build</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Ignored.</td><td>Implemented if printer enabled.</td></tr>
+        <tr><td>2</td><td>Sends an enable printer escape sequence.</td><td>Implemented if printer enabled.</td></tr>
+        <tr><td>3</td><td>Sends a disable printer escape sequence.</td><td>Implemented if printer enabled.</td></tr>
+        <tr><td>4</td><td>Ignored.</td><td>Implemented.</td></tr>
+        <tr><td>5</td><td>Ignored.</td><td>Implemented.</td></tr>
+        <tr><td>7</td><td>Sends a bell code.</td><td>No sound (TODO). Sends a bell code to printer if enabled.</td></tr>
+        <tr><td>16</td><td>Ignored.</td><td>Implemented.</td></tr>
+        <tr><td>17</td><td>Ignored.</td><td>Implemented.</td></tr>
+        <tr><td>23</td><td>Implements the following sub-codes:<br/>
+            1 - Cursor on / off.<br/>
+            16 - Line wrap on / off.<br/>
+            22 - User defined mode.</td>
+          <td>Implements the following sub-codes:<br/>
+            0 - Cursor start and end line.<br/>
+            1 - Cursor on / off.<br/>
+            16 - Line wrap on / off.<br/>
+            32+ - User defined characters (see note below).</td></tr>
+        <tr><td>24</td><td>Ignored.</td><td>Implemented.</td></tr>
+        <tr><td>25</td><td>Ignored.</td><td>Implements sub-codes 0 to 167 and 192 to 199.</td></tr>
+        <tr><td>28</td><td>Ignored.</td><td>Implemented.</td></tr>
+        <tr><td>29</td><td>Ignored.</td><td>Implemented.</td></tr>
+    </tbody></table>
+    <p>The standard GUI builds do not support a printer, but there exists a compilation option
+      to enable a printer on a serial port. If using a Pimoroni demonstration board using this requires
+      soldering in the "SD card jumper" pins, and cutting the tracks linking GPIO 20 & 21 to SDD1 & SDD2.</p>
+    <p>The command <code>VDU 23,...</code> may be used to define user character shapes. The following points should be
+      noted:</p>
+    <ul>
+      <li>Character codes are divided into blocks of 32 characters.</li>
+      <li>The first user defined character in a block allocates memory for all the characters in the block.</li>
+      <li>The first character block overwrites szCmdLine, which has minimal utility for the Pico.</li>
+      <li>PAGE has to be raised (by 256 bytes per block) if more than one block of user defined characters
+        is required.</li>
+    </ul>
+  </body>
+</html>

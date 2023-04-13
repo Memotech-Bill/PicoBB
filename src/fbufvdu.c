@@ -2887,7 +2887,7 @@ static void vdu_23 (int code, int data1, int data2)
         {
         csrdef (data2);
         }
-    else if ( vdu == 18 )
+    else if ( vdu == 16 )
         {
         uint8_t a = (data2 >> 8) & 0xFF;
         uint8_t b = (data2 >> 16) & 0xFF;
