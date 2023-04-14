@@ -420,6 +420,9 @@ int widthsfb (unsigned char *s, int l);
 #endif
 
 #ifdef PICO_SOUND
+void bell (void);
+void envel (const signed char *);
+void sound (int, int, int, int);
 #if PICO_SOUND == 3
 #include <hardware/uart.h>
 #endif
@@ -798,7 +801,18 @@ int stdin_handler (int *px, int *py)
 	return 0;
     }
 
-#ifndef PICO_SOUND
+#ifdef PICO_SOUND
+void bell (void)
+    {
+    signed char envelope[14] = {16, 2, 0, 0, 0, 40, 40, 46, 126, -1, 0, 0, 126, 0};
+    envel (envelope);
+    sound (0x13, 16, 160, 50);
+    }
+#else
+void bell (void)
+    {
+    }
+
 // SOUND Channel,Amplitude,Pitch,Duration
 void sound (short chan, signed char ampl, unsigned char pitch, unsigned char duration)
     {

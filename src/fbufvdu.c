@@ -60,6 +60,7 @@ void error (int, const char *);
 
 // Defined in bbpico.c:
 extern int getkey (unsigned char *pkey);
+extern void bell (void);
 // void *gethwm (void);
 
 #if REF_MODE > 0
@@ -2600,6 +2601,7 @@ static void vdu_6 (int code, int data1, int data2)
 // 0x07 - BELL
 static void vdu_7 (int code, int data1, int data2)
     {
+    bell ();
     if ( bPrint ) putchar (0x07);
     return;
     }

@@ -48,6 +48,7 @@ typedef dispatch_source_t timer_t ;
 #include <stdbool.h>
 bool bBBCtl = false;
 #endif
+void bell (void);
 #else
 #define COPYBUFLEN 4096	// length of buffer used for *COPY command
 #endif
@@ -305,6 +306,7 @@ void xeqvdu (int code, int data1, int data2)
 
 		case 7: // BELL
 			fwrite (&vdu, 1, 1, stdout) ;
+            bell ();
 			break ;
 
 		case 8: // LEFT
