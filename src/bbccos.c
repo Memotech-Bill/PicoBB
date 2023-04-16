@@ -73,9 +73,13 @@ int stdin_handler (int*, int*) ;
 int getkey (unsigned char *) ;
 #ifdef PICO_GUI
 void refresh (const char *p);
+int sdump (FILE *fBmp);
+int sload (FILE *fBmp);
 #endif
 #ifdef PICO_GRAPH
 void fbufvdu (int code, int data1, int data2);
+int sdump (FILE *fBmp);
+int sload (FILE *fBmp);
 #endif
 
 // Global variables:
@@ -122,10 +126,17 @@ static short modetab[NUMMODES][5] =
 
 enum {
         BYE, CD, CHDIR, COPY, DEL, DELETE, DIRCMD,
-		DUMP, ERA, ERASE, ESC, EXEC, FLOAT, FX,
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+		DISPLAY,
+#endif
+        DUMP, ERA, ERASE, ESC, EXEC, FLOAT, FX,
 		HELP, HEX, INPUT, KEY, LIST, LOAD, LOCK, LOWERCASE,
 		MD, MKDIR, OUTPUT, QUIT, RD, REFRESH,
-		REN, RENAME, RMDIR, RUN, SAVE, SPOOL, SPOOLON,
+		REN, RENAME, RMDIR, RUN, SAVE,
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+        SCREENSAVE,
+#endif
+        SPOOL, SPOOLON,
 		STEREO, TEMPO, TIMER, TV, TYPE, UNLOCK, VOICE,
 #if HAVE_MODEM
         XDOWNLOAD, XUPLOAD, YDOWNLOAD, YUPLOAD, ZDOWNLOAD, ZUPLOAD,
@@ -135,10 +146,17 @@ enum {
 
 static char *cmds[NCMDS] = {
         "bye", "cd", "chdir", "copy", "del", "delete", "dir",
-		"dump", "era", "erase", "esc", "exec", "float", "fx",
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+		"display",
+#endif
+        "dump", "era", "erase", "esc", "exec", "float", "fx",
 		"help", "hex", "input", "key", "list", "load", "lock", "lowercase",
 		"md", "mkdir", "output", "quit", "rd", "refresh",
-		"ren", "rename", "rmdir", "run", "save", "spool", "spoolon",
+		"ren", "rename", "rmdir", "run", "save",
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+        "screensave",
+#endif
+        "spool", "spoolon",
 		"stereo", "tempo", "timer", "tv", "type", "unlock", "voice",
 #if HAVE_MODEM
         "xdownload", "xupload", "ydownload", "yupload", "zdownload", "zupload"
@@ -662,6 +680,33 @@ void os_zmodem (char *p)
     zreceive ("\r", p);
     }
 #endif  // HAVE_MODEM
+
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+void os_DISPLAY (char *p)
+    {
+    char path[MAX_PATH];
+    p = setup (path, p, ".bmp", ' ', NULL);
+    FILE *fBmp = fopen (path, "rb");
+    if ( fBmp == NULL ) error (214,  "File or path not found");
+    int iErr = sload (fBmp);
+    fclose (fBmp);
+    if ( iErr != 0 ) error (iErr, "Invalid Bitmap");
+    }
+
+void os_SCREENSAVE (char *p)
+    {
+    char path[MAX_PATH];
+    p = setup (path, p, ".bmp", ' ', NULL);
+    printf ("SCREENSAVE %s\n", path);
+    FILE *fBmp = fopen (path, "wb");
+    if ( fBmp == NULL ) error (214,  "File or path not found");
+    printf ("Open %s: fBmp = %p\n", path, fBmp);
+    int iErr = sdump (fBmp);
+    fclose (fBmp);
+    printf ("iErr = %d\n", iErr);
+    if ( iErr != 0 ) error (iErr, "Disk fault");
+    }
+#endif  // defined(PICO_GUI) || defined(PICO_GRAPH)
 
 #ifdef MIN_STACK
 
@@ -1348,6 +1393,9 @@ void oscli (char *cmd)
         os_DEL,         // DEL
         os_DEL,         // DELETE
         os_DIR,         // DIRCMD
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+        os_DISPLAY,     // DISPLAY
+#endif
         os_DUMP,        // DUMP
         os_DEL,         // ERA
         os_DEL,         // ERASE
@@ -1374,6 +1422,9 @@ void oscli (char *cmd)
         os_RMDIR,       // RMDIR
         os_RUN,         // RUN
         os_SAVE,        // SAVE
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+        os_SCREENSAVE,  // SCREENSAVE
+#endif
         os_SPOOL,       // SPOOL
         os_SPOOLON,     // SPOOLON
         os_STEREO,      // STEREO
@@ -2015,6 +2066,16 @@ void oscli (char *cmd)
 			voices[b & 3] = n & 7 ;
 			return ;
 
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+        case DISPLAY:
+            os_DISPLAY (p);
+            return;
+
+        case SCREENSAVE:
+            os_SCREENSAVE (p);
+            return;
+#endif
+            
 #if HAVE_MODEM
         case XDOWNLOAD:
             os_XDOWNLOAD (p);

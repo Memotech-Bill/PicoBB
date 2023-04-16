@@ -140,6 +140,8 @@ static const KEYMAP padmap[] =
 static uint8_t keydn[HID_KEY_F20 + 1];
 static hid_keyboard_report_t prev_report = {0, 0, {0}}; // previous report to check key released
 
+bool bPrtScrn = false;
+
 static void key_press (uint8_t modifier, uint8_t key)
     {
 #if DEBUG > 0
@@ -195,6 +197,7 @@ static void key_press (uint8_t modifier, uint8_t key)
         }
     else if ( key == HID_KEY_PRINT_SCREEN )
         {
+        bPrtScrn = true;
         key = 0;
         }
     else if ( key ==  HID_KEY_SCROLL_LOCK )

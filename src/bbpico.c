@@ -405,7 +405,9 @@ unsigned int rnd (void);	// Return a pseudo-random number
 #include <hardware/dma.h>
 void setup_vdu (void);
 int vgetc (int x, int y);
-// Declared in picovdu.c
+void prtscrn (void);
+extern bool bPrtScrn;
+// Declared in picokbd.c
 void setup_keyboard (void);
 int testkey (int);
 #endif
@@ -1043,6 +1045,13 @@ void trap (void)
 		    }
 		error (17, NULL); // 'Escape'
 	    }
+#ifdef PICO_GUI
+    if ( bPrtScrn )
+        {
+        prtscrn ();
+        bPrtScrn = false;
+        }
+#endif
     }
 
 // Test for escape, kill, pause, single-step, flash and alert:

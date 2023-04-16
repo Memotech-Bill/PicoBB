@@ -22,6 +22,10 @@
       code {
           font-size: 120%;
       }
+      img {
+          display: block;
+          margin: 5px auto;
+      }
     </style>
   </head>
   <body>
@@ -206,6 +210,7 @@
       on the Pico.</p>
     <h2 id="graphics">Graphics</h2>
     <h3>GUI Builds</h3>
+    <img src="saucer.bmp">
     <p>The GUI builds support almost all of the graphics capability of BBC BASIC. The graphics
       modes supported are restricted by the amount of memory available on the Pico. The following
       16 modes are supported:</p>
@@ -247,6 +252,11 @@
       giving 32k possible physical colours. These are all available if using the Pimoroni VGA demonstration
       board. Custom boards may choose not to connect some of the colour lsb in order to provide some
       available GPIO pins. This will reduce the number of physical colours available.</p>
+    <p>A screen capture facility is provided. Pressing the <PrintScreen> key will save a file <code>prtscrxx.bmp</code>
+        where xx goes from 01 to 99. The number is reset to 01 if the Pico is restarted or more than 99
+        captures are made. Existing captures are overwritten without warning. For reasons of file size
+        the captures are stored in the <code>sdcard/</code> folder if that exists, otherwise they are
+        stored in the top folder.</p>
     <h3>Console Builds</h3>
     <p>To be consistent with other BBCSDL console builds, PicoBB console builds define the following
       ten modes:</p>
@@ -431,6 +441,11 @@
         <td>*margins<br/>*mdisplay<br/>*noega<br/>*osk<br/>*play</td>
         <td>*printer<br/>*printerfont<br/>*screensave<br/>*sys</td></tr></table>
     <p>The following star commands differ from BBCSDL or are unique to PicoBB:</p>
+    <h3>*display</h3>
+    <p>Only a limited implementation of this command is provided. A bitmap file can be loaded to
+      fill the entire screen. The size and bit depth of the file must match the currently selected
+      graphics mode. The easiest way to assure that is to use <code>*screensave</code> to create
+      the file.</p>
     <h3>*float</h3>
     <p>Only <code>FLOAT 40</code> or <code>FLOAT 64</code> are supported.</p>
     <h3>*input</h3>
@@ -461,6 +476,11 @@
     <h3>*run</h3>
     <p>Although this command is implemented, there is no operation system, and so it always results
       in "Bad command".</p>
+    <h3>*screensave</h3>
+    <p>Only a limited implementation of this command is provided. Saves the entire screen to the specified
+      file name. An extension of ".bmp" is assumed if not specified.</p>
+    <p>Note that four-colour modes will create a BMP file with a 2-bit colour depth. While this is a legal
+      BMP format, many graphics utilities do not support it.</p>
     <h3>*xupload &lt;filename&gt;</h3>
     <p>Receive an uploaded file using XModem protocol. The name of the file must
       be specified, as it is not sent by the upload program. Note that the length of the file will be
