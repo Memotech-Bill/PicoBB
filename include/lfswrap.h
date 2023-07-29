@@ -3,7 +3,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <dirent.h>
 
+/*
 #ifdef HAVE_FAT
 #include <../fatfs/ff.h>
 #else
@@ -54,5 +57,7 @@ extern int mount(void);
 #define readdir myreaddir
 #define closedir myclosedir
 #define rename myrename
+
+*/
 
 #endif

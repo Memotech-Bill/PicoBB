@@ -13,10 +13,11 @@ endif
 
 ifeq ($(LFS), Y)
 LFS_SOURCES = \
-	../../include/lfsmcu.h \
+	../../src/pfs/pfs_private.h \
+	../../src/pfs/pfs_ffs.c \
+	../../src/pfs/ffs_pico.c \
     ../../littlefs/lfs.h \
     ../../littlefs/lfs_util.h \
-    ../../src/lfsmcu.c \
     ../../littlefs/lfs.c \
     ../../littlefs/lfs_util.c
 else
@@ -25,16 +26,17 @@ endif
 
 ifeq ($(FAT), Y)
 FAT_SOURCES = \
+    ../../src/pfs/ffconf.h \
+    ../../src/pfs/sd_spi.h \
+	../../src/pfs/ff_disk.c \
+	../../src/pfs/sd_spi2.c \
+	../../src/pfs/sd_spi.pio \
+	../../src/pfs/pfs_fat.c \
     ../../fatfs/ff.h \
     ../../fatfs/diskio.h \
 	../../fatfs/ff.c \
 	../../fatfs/ffsystem.c \
-	../../fatfs/ffunicode.c \
-    ../../include/pico/sd_spi.h \
-    ../../include/ffconf.h \
-	../../src/pico/ff_disk.c \
-	../../src/pico/sd_spi2.c \
-	../../src/pico/sd_spi.pio
+	../../fatfs/ffunicode.c
 else
 FAT_SOURCES =
 endif
@@ -100,8 +102,9 @@ endif
 
 ifneq ($(SERIAL_DEV), 0)
 DEV_SOURCES = \
-	../../src/pico/picoser.c \
-	../../include/bbuart.h
+	../../src/pfs/sconfig.h \
+	../../src/pfs/picoser.h \
+	../../src/pfs/picoser.c
 else
 DEV_SOURCES =
 endif
@@ -117,15 +120,16 @@ SOURCES= \
     ../../src/bbasmb_arm_v6m.c \
     ../../src/lfswrap.c \
     ../../src/fault.c \
+	../../src/pfs/dirent.h \
+	../../src/pfs/pfs_private.h \
+	../../src/pfs/pname.c \
+	../../src/pfs/pfs_base.c \
+	../../src/pfs/pfs_stdio.c \
+	../../src/pfs/mount.c \
     ../../src/pico/sympico.c \
-    ../../src/pico/picoser.c \
 	../../src/pico/stack_trap.c \
 	../../src/pico/crctab.c \
 	../../src/pico/bbc_pico.ld \
-	../../include/ffconf.h \
-	../../include/lfswrap.h \
-	../../include/sconfig.h \
-	../../include/bbuart.h \
 	../../include/crctab.h \
 	../../include/zmodem.h \
     ../../m0FaultDispatch/m0FaultDispatch.c \

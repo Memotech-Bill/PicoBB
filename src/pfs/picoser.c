@@ -1,11 +1,12 @@
 /* picoser.c - UART driver for Pico */
 
+#include <string.h>
 #include <pico/critical_section.h>
 #include <hardware/uart.h>
 #include <hardware/structs/uart.h>
 #include <hardware/gpio.h>
 #include <hardware/irq.h>
-#include "bbuart.h"
+#include <picoser.h>
 
 #define NDATA   512     // Length of serial receive buffer (must be a power of 2)
 
@@ -169,4 +170,87 @@ void uclose (int uid)
     UDATA *pud = &udata[uid];
     uart_deinit (pud->uart);
     critical_section_deinit (&pud->ucs);
+    }
+
+bool parse_sconfig (const char *ps, SERIAL_CONFIG *sc)
+    {
+    static const char *psPar[] = { "baud", "parity", "data", "stop", "tx", "rx", "cts", "rts"};
+    int iPar = 0;
+    memset (sc, -1, sizeof (SERIAL_CONFIG));
+#if DEBUG
+    dbgmsg ("parse_config (%s)\r\n", ps);
+#endif
+    if ( *ps == '.' ) ++ps;
+    while (*ps)
+        {
+        while (*ps == ' ') ++ps;
+        if (( *ps == '\0' ) || ( *ps == '.' )) break;
+#if DEBUG
+        dbgmsg ("ps = %s\r\n", ps);
+#endif
+        const char *ps1 = ps;
+        while (true)
+            {
+            if (*ps == '=')
+                {
+                int n = ps - ps1;
+#if DEBUG
+                dbgmsg ("n = %d\r\n", n);
+#endif
+                iPar = -1;
+                for (int i = 0; i < sizeof (psPar) / sizeof (psPar[0]); ++i)
+                    {
+                    if (( n == strlen (psPar[i]) ) && ( ! strncasecmp (ps1, psPar[i], n) ))
+                        {
+                        iPar = i;
+                        break;
+                        }
+                    }
+#if DEBUG
+                dbgmsg ("keyword = %d\r\n", iPar);
+#endif
+                if ( iPar < 0 ) return false;
+                ps1 = ps + 1;
+                }
+            else if ((*ps == '\0' ) || (*ps == ' ') || (*ps == '.'))
+                {
+#if DEBUG
+                dbgmsg ("parameter = %d\r\n", iPar);
+#endif
+                if ( iPar == 1 )
+                    {
+                    if (( *ps1 == 'N' ) || ( *ps1 == 'n' )) sc->parity = UART_PARITY_NONE;
+                    else if (( *ps1 == 'E' ) || ( *ps1 == 'e' )) sc->parity = UART_PARITY_EVEN;
+                    else if (( *ps1 == 'O' ) || ( *ps1 == 'o' )) sc->parity = UART_PARITY_ODD;
+                    else return false;
+                    }
+                else
+                    {
+                    int n = 0;
+                    while (ps1 < ps)
+                        {
+                        if ((*ps1 < '0') || (*ps1 > '9')) return false;
+                        n = 10 * n + *ps1 - '0';
+                        ++ps1;
+                        }
+                    ((int *)(&sc->baud))[iPar] = n;
+#if DEBUG
+                    dbgmsg ("iPar = %d, n = %d\r\n", iPar, n);
+#endif
+                    }
+                ++iPar;
+                ++ps;
+                break;
+                }
+            ++ps;
+            }
+        }
+    if ( sc->data < 0 ) sc->data = 8;
+    if ( sc->stop < 0 ) sc->stop = 1;
+    if ( sc->parity < 0 ) sc->parity = UART_PARITY_NONE;
+#if DEBUG
+    dbgmsg ("sconfig (%d, %d, %d, %d, %d, %d, %d, %d)\r\n", sc->baud, sc->parity, sc->data, sc->stop,
+        sc->tx, sc->rx, sc->cts, sc->rts);
+#endif
+    return true;
     }

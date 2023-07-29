@@ -818,7 +818,7 @@ void os_DIR (char *p)
         }
     text ("Directory of ");
     text (q);
-    outchr (dd);
+    if ( q[1] != '\0' ) outchr (dd);
     text (p);
     crlf ();
 

@@ -39,6 +39,9 @@
 #endif
 #if HAVE_CYW43
 #include <pico/cyw43_arch.h>
+#ifndef CYW43_WL_GPIO_LED_PIN
+#define CYW43_WL_GPIO_LED_PIN   0
+#endif
 #endif
 #ifdef PICO_GUI
 #if ( ! defined(PICO_SCANVIDEO_COLOR_PIN_BASE) ) || ( ! defined(PICO_SCANVIDEO_SYNC_PIN_BASE) )
@@ -148,6 +151,10 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #else
 # ifdef PICO
 #define HISTORY 10  // Number of items in command history
+#define myftell ftell
+#define myfseek fseek
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <hardware/flash.h>
 #include <hardware/exception.h>
 #include <hardware/watchdog.h>
@@ -234,7 +241,8 @@ static struct
         "picocfg&(",
         &cfgdata
         };
-    
+
+void mount (void);
 # else
 #define HISTORY 100  // Number of items in command history
 #include <termios.h>
@@ -2233,6 +2241,19 @@ void SystemIO (int flag)
 #endif
 
 #ifdef PICO
+
+int usleep (useconds_t usec)
+    {
+    sleep_us (usec);
+    return 0;
+    }
+
+unsigned int sleep (unsigned int seconds)
+    {
+    sleep_ms (seconds*1000);
+    return 0;
+    }
+
 static bool UserTimerProc (struct repeating_timer *prt)
     {
 //    myPoll ();
