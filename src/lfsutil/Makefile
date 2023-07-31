@@ -1,14 +1,14 @@
-CFLAGS=-O2 -Wall -I.. -I../../littlefs -I../../include
+CFLAGS=-O2 -Wall -I.. -I../../pico-filesystem/littlefs -I../../include
 TARGETS=mklfsimage uf2conv uf2merge
-SOURCES=mklfsimage.c ../lfsmcu.c ../../littlefs/lfs.a
+SOURCES=mklfsimage.c lfsmcu.c ../../pico-filesystem/littlefs/liblfs.a
 
 all: $(TARGETS)
 
 mklfsimage: $(SOURCES)
 	gcc $(CFLAGS) -o mklfsimage $(SOURCES)
 
-../../littlefs/lfs.a:
-	cd ../../littlefs && make
+../../pico-filesystem/littlefs/liblfs.a:
+	cd ../../pico-filesystem/littlefs && make
 
 uf2conv: uf2conv.c uf2format.h
 	gcc $(CFLAGS) -o uf2conv uf2conv.c uf2format.h

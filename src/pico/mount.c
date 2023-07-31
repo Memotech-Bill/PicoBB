@@ -1,8 +1,12 @@
 // mount.c - Configure filesystems for Pico
 
 #include <pfs.h>
+#ifdef HAVE_LFS
 #include <ffs_pico.h>
+#endif
+#if SERIAL_DEV
 #include <picoser.h>
+#endif
 
 #define ROOT_SIZE 0x100000
 #define ROOT_OFFSET 0x100000

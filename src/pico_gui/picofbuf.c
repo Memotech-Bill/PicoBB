@@ -936,10 +936,6 @@ int setup_vdu (void)
     }
 
 #include <unistd.h>
-int usleep(useconds_t usec)
-    {
-    sleep_us (usec);
-    }
 
 static int bufsize (void)
     {

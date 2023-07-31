@@ -2,6 +2,6 @@
 	path = BBCSDL
 	url = https://github.com/rtrussell/BBCSDL.git
 	branch = master
-[submodule "littlefs"]
-	path = littlefs
-	url = https://github.com/littlefs-project/littlefs.git
+[submodule "pico-filesystem"]
+	path = pico-filesystem
+	url = https://github.com/Memotech-Bill/pico-filesystem.git

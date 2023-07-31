@@ -13,30 +13,29 @@ endif
 
 ifeq ($(LFS), Y)
 LFS_SOURCES = \
-	../../src/pfs/pfs_private.h \
-	../../src/pfs/pfs_ffs.c \
-	../../src/pfs/ffs_pico.c \
-    ../../littlefs/lfs.h \
-    ../../littlefs/lfs_util.h \
-    ../../littlefs/lfs.c \
-    ../../littlefs/lfs_util.c
+	../../pico-filesystem/flash/pfs_ffs.c \
+	../../pico-filesystem/flash/ffs_pico.c \
+    ../../pico-filesystem/littlefs/lfs.h \
+    ../../pico-filesystem/littlefs/lfs_util.h \
+    ../../pico-filesystem/littlefs/lfs.c \
+    ../../pico-filesystem/littlefs/lfs_util.c
 else
 LFS_SOURCES =
 endif
 
 ifeq ($(FAT), Y)
 FAT_SOURCES = \
-    ../../src/pfs/ffconf.h \
-    ../../src/pfs/sd_spi.h \
-	../../src/pfs/ff_disk.c \
-	../../src/pfs/sd_spi2.c \
-	../../src/pfs/sd_spi.pio \
-	../../src/pfs/pfs_fat.c \
-    ../../fatfs/ff.h \
-    ../../fatfs/diskio.h \
-	../../fatfs/ff.c \
-	../../fatfs/ffsystem.c \
-	../../fatfs/ffunicode.c
+    ../../pico-filesystem/sdcard/ffconf.h \
+    ../../pico-filesystem/sdcard/sd_spi.h \
+	../../pico-filesystem/sdcard/ff_disk.c \
+	../../pico-filesystem/sdcard/sd_spi2.c \
+	../../pico-filesystem/sdcard/sd_spi.pio \
+	../../pico-filesystem/sdcard/pfs_fat.c \
+    ../../pico-filesystem/fatfs/ff.h \
+    ../../pico-filesystem/fatfs/diskio.h \
+	../../pico-filesystem/fatfs/ff.c \
+	../../pico-filesystem/fatfs/ffsystem.c \
+	../../pico-filesystem/fatfs/ffunicode.c
 else
 FAT_SOURCES =
 endif
@@ -102,9 +101,9 @@ endif
 
 ifneq ($(SERIAL_DEV), 0)
 DEV_SOURCES = \
-	../../src/pfs/sconfig.h \
-	../../src/pfs/picoser.h \
-	../../src/pfs/picoser.c
+	../../pico-filesystem/serial/sconfig.h \
+	../../pico-filesystem/serial/picoser.h \
+	../../pico-filesystem/serial/picoser.c
 else
 DEV_SOURCES =
 endif
@@ -118,14 +117,14 @@ SOURCES= \
     ../../src/bbccos.c \
     ../../src/bbpico.c \
     ../../src/bbasmb_arm_v6m.c \
-    ../../src/lfswrap.c \
     ../../src/fault.c \
-	../../src/pfs/dirent.h \
-	../../src/pfs/pfs_private.h \
-	../../src/pfs/pname.c \
-	../../src/pfs/pfs_base.c \
-	../../src/pfs/pfs_stdio.c \
-	../../src/pfs/mount.c \
+	../../pico-filesystem/pfs/dirent.h \
+	../../pico-filesystem/pfs/pfs.h \
+	../../pico-filesystem/pfs/pfs_private.h \
+	../../pico-filesystem/pfs/pname.c \
+	../../pico-filesystem/pfs/pfs_base.c \
+	../../pico-filesystem/pfs/pfs_stdio.c \
+	../../src/pico/mount.c \
     ../../src/pico/sympico.c \
 	../../src/pico/stack_trap.c \
 	../../src/pico/crctab.c \
@@ -185,7 +184,7 @@ $(BBC_SRC)/include/version.h:
 	git submodule update --remote --recursive
 endif
 
-../../littlefs/lfs.c:
+../../pico-filesystem/littlefs/lfs.c:
 	git submodule update --remote --recursive
 
 bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) build/Makefile

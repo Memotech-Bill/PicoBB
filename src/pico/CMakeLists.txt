@@ -43,7 +43,7 @@ if (TARGET tinyusb_device)
     ../../src/fault.c
     ../../src/pico/sympico.c
     ../../src/pico/crctab.c
-    ../../src/pfs/mount.c
+    ../../src/pico/mount.c
     ${CMAKE_BINARY_DIR}/pico_stub.c
     )
   if (${MIN_STACK} STREQUAL "X")
@@ -192,56 +192,24 @@ if (TARGET tinyusb_device)
 
   if ( ${LFS} OR ${FAT} OR ${SERIAL_DEV} )
     message(STATUS "Including PFS filesystem manager")
-    target_include_directories(bbcbasic PRIVATE
-      ../../src/pfs
-      )
-    target_sources(bbcbasic PRIVATE
-      ../../src/pfs/pfs_base.c
-      ../../src/pfs/pfs_stdio.c
-      ../../src/pfs/pname.c
-      )
+    add_subdirectory (../../pico-filesystem pfs)
   endif()
 
   if ( ${LFS} )
     message(STATUS "Including LFS filesystem for flash storage")
+    target_link_libraries(bbcbasic flash_filesystem)
     target_compile_definitions(bbcbasic PUBLIC -DHAVE_LFS)
-    target_include_directories(bbcbasic PRIVATE
-      ../../littlefs
-      )
-    target_sources(bbcbasic PRIVATE
-      ../../src/pfs/pfs_ffs.c
-      ../../src/pfs/ffs_pico.c
-      ../../littlefs/lfs.c
-      ../../littlefs/lfs_util.c
-      )
   endif()
 
   if ( ${FAT} )
     message(STATUS "Including FAT filesystem for SD card storage")
+    target_link_libraries(bbcbasic sdcard_filesystem)
     target_compile_definitions(bbcbasic PUBLIC -DHAVE_FAT)
-    target_include_directories(bbcbasic PRIVATE
-      ../../fatfs
-      )
-    pico_generate_pio_header(bbcbasic ${CMAKE_CURRENT_LIST_DIR}/../../src/pfs/sd_spi.pio)
-    target_sources(bbcbasic PRIVATE
-      ../../src/pfs/pfs_fat.c
-      ../../src/pfs/ff_disk.c
-      ../../src/pfs/sd_spi2.c
-      ../../fatfs/ff.c
-      ../../fatfs/ffsystem.c
-      ../../fatfs/ffunicode.c
-      )
-    target_link_libraries(bbcbasic hardware_dma hardware_pio)
   endif()
 
   if ( ${SERIAL_DEV} )
+    target_link_libraries(bbcbasic serial_filesystem)
     target_compile_definitions(bbcbasic PRIVATE -DSERIAL_DEV=${SERIAL_DEV})
-    if ( ${SERIAL_DEV} GREATER 0 )
-      target_sources(bbcbasic PRIVATE
-        ../../src/pfs/pfs_serial.c
-        ../../src/pfs/picoser.c
-        )
-    endif()
   endif()
   
   if ( "${STDIO}" STREQUAL "PICO" )
