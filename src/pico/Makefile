@@ -170,6 +170,7 @@ build/sympico.h build/pico_stub.c: build $(SDK_HEADERS)
 	../../src/pico/symbols/merge_funcs.py build/sympico.h build/symbols_sdk.txt
 
 build/Makefile: build build/sympico.h build/pico_stub.c
+	rm -rf build/picobb.ld
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
 			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \

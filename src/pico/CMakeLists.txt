@@ -28,6 +28,9 @@ if ( NOT DEFINED STDIO )
   set(STDIO "USB+UART")
 endif()
 
+string(TOUPPER ${STDIO} STDIO)
+string(REPLACE "+" ";" STDIO_LIST ${STDIO})
+
 if ( NOT DEFINED BBC_SRC )
   set(BBC_SRC "../../BBCSDL")
 endif()
@@ -192,7 +195,13 @@ if (TARGET tinyusb_device)
 
   if ( ${LFS} )
     message(STATUS "Including LFS filesystem for flash storage")
-    target_compile_definitions(bbcbasic PUBLIC -DHAVE_LFS)
+    target_compile_definitions(bbcbasic PUBLIC
+      -DHAVE_LFS
+      -DROOT_SIZE=0x100000
+      -DROOT_OFFSET=0x100000
+      -DPICO_FLASH_BANK_TOTAL_SIZE=0x2000           # = 2 * FLASH_SECTOR_SIZE
+      -DPICO_FLASH_BANK_STORAGE_OFFSET=0x0FE000     # = ROOT_OFFSET - PICO_FLASH_BANK_TOTAL_SIZE
+      )
     target_sources(bbcbasic PRIVATE
       ../../src/lfsmcu.c
       ../../littlefs/lfs.c
@@ -261,44 +270,49 @@ if (TARGET tinyusb_device)
       tinyusb_host
       tinyusb_board
       )
-  elseif ( "${STDIO}" STREQUAL "USB+UART" )
-    message(STATUS "BBC Basic console I/O will be on USB or UART")
-    target_sources(bbcbasic PRIVATE
-      ../../src/pico/zmodem.c
-      ../../src/pico/pico_boot.c
-      )
-    target_link_libraries(bbcbasic
-      pico_stdio_usb
-      )
-    pico_enable_stdio_usb(bbcbasic 1)
-    pico_enable_stdio_uart(bbcbasic 1)
-    target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB -DSTDIO_UART)
-    target_compile_definitions(bbcbasic PUBLIC
-      PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
-      PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=0
-      )
-  elseif ( "${STDIO}" STREQUAL "UART" )
-    message(STATUS "BBC Basic console I/O will be on UART")
-    target_sources(bbcbasic PRIVATE ../../src/pico/zmodem.c)
-    pico_enable_stdio_usb(bbcbasic 0)
-    pico_enable_stdio_uart(bbcbasic 1)
-    target_compile_definitions(bbcbasic PRIVATE -DSTDIO_UART)
   else()
-    message(STATUS "BBC Basic console I/O will be on USB")
     target_sources(bbcbasic PRIVATE
       ../../src/pico/zmodem.c
-      ../../src/pico/pico_boot.c
       )
-    target_link_libraries(bbcbasic
-      pico_stdio_usb
-      )
-    pico_enable_stdio_usb(bbcbasic 1)
-    pico_enable_stdio_uart(bbcbasic 0)
-    target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB)
-    target_compile_definitions(bbcbasic PUBLIC
-      PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
-      PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=0
-      )
+    if ( "USB" IN_LIST STDIO_LIST )
+      message(STATUS "BBC Basic console I/O will be on USB")
+      target_sources(bbcbasic PRIVATE
+        ../../src/pico/pico_boot.c
+        )
+      target_link_libraries(bbcbasic
+        pico_stdio_usb
+        )
+      pico_enable_stdio_usb(bbcbasic 1)
+      target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB -DSTDIO_UART)
+      target_compile_definitions(bbcbasic PUBLIC
+        PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
+        PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=0
+        )
+    else()
+      pico_enable_stdio_usb(bbcbasic 0)
+    endif()
+    if ( "UART" IN_LIST STDIO_LIST )
+      message(STATUS "BBC Basic console I/O will be on UART")
+      target_link_libraries(bbcbasic
+        pico_stdio_uart
+        )
+      pico_enable_stdio_uart(bbcbasic 1)
+      target_compile_definitions(bbcbasic PRIVATE -DSTDIO_UART)
+    else()
+      pico_enable_stdio_uart(bbcbasic 0)
+    endif()
+    if ( "BT" IN_LIST STDIO_LIST )
+      message(STATUS "BBC Basic console I/O will be on Bluetooth")
+      target_sources(bbcbasic PRIVATE
+        stdio_bt.c
+        )
+      target_link_libraries(bbcbasic
+        pico_btstack_classic
+        pico_btstack_ble
+        pico_btstack_cyw43
+        )
+      target_compile_definitions(bbcbasic PRIVATE -DSTDIO_BT)
+    endif()
   endif()
 
   if( (${GRAPH}) AND (NOT ("${STDIO}" STREQUAL "PICO")))

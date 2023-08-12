@@ -340,7 +340,7 @@ provides more details of the specific configuration:
 
 This may be extended in the future if more capabilities are added.
 
-### Console Vestion with VGA Graphics
+### Console Version with VGA Graphics
 
 By request an option has been added in which the BBC BASIC console is over the
 USB or UART serial connection, but which is able to display text and graphics
@@ -477,10 +477,12 @@ by adding parameters to `make` command.
 
 * BOARD=... to specify a board other than the default "pico". If using the Pimoroni VGA
   Demo board see the discussion on board definition files below.
-* STDIO=... to select the user interface:
-  * STDIO=USB+UART for the console on both USB and UART.
-  * STDIO=USB for the basic console on USB.
-  * STDIO=UART for the basic console on UART.
+* STDIO=... to select the user interface devices. A list from the following, with options
+  separated by plus signs:
+  * USB for the basic console on USB.
+  * UART for the basic console on UART.
+  * BT for the basic console on Bluetooth (Experimental).
+  (Examples: STDIO=USB, STDIO=UART, STDIO=USB+UART, STDIO=USB+UART+BT)
 * LFS=Y to include storage on Pico flash or LFS=N to exclude it.
 * FAT=Y to include storage on SD card or FAT=N to exclude it. To include the SD card
   requires specifying a board which defines pins to use for the SD card.
@@ -526,10 +528,12 @@ The options supported by the CMake script are similar to those for `make`:
 * -DPICO_BOARD=... to specify a board other than the default "pico". If using the Pimoroni VGA
   Demo board see the discussion on board definition files below.
 * -DSTDIO=... to select the user interface:
-  * -DSTDIO=USB+UART for the console on both USB and UART.
-  * -DSTDIO=USB for the basic console on USB.
-  * -DSTDIO=UART for the basic console on UART.
   * -DSTDIO=PICO for the GUI version with input via USB keyboard and output via VGA monitor.
+  * -DSTDIO=... to select a list from the following, with options separated by plus signs:
+    * USB for the basic console on USB.
+    * UART for the basic console on UART.
+    * BT for the basic console on Bluetooth (Experimental).
+    (Examples: -DSTDIO=USB, -DSTDIO=UART, -DSTDIO=USB+UART, -DSTDIO=USB+UART+BT)
 * -DLFS=Y to include storage on Pico flash or -DLFS=N to exclude it.
 * -DFAT=Y to include storage on SD card or -DFAT=N to exclude it.
 * -DSOUND=I2S to enable sound via I2S. The pins used for the sound output are specified by

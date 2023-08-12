@@ -10,8 +10,12 @@
 #include "lfs.h"
 #include "lfs_util.h"
 
+#ifndef ROOT_SIZE
 #define ROOT_SIZE 0x100000
+#endif
+#ifndef ROOT_OFFSET
 #define ROOT_OFFSET 0x100000
+#endif
 
 #ifdef PICO
 #include <hardware/flash.h>

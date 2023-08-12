@@ -39,13 +39,17 @@
 #endif
 #if HAVE_CYW43
 #include <pico/cyw43_arch.h>
+#else
+#ifdef STDIO_BT
+#error Bluetooth Console requires Pico_W
+#endif
 #endif
 #ifdef PICO_GUI
 #if ( ! defined(PICO_SCANVIDEO_COLOR_PIN_BASE) ) || ( ! defined(PICO_SCANVIDEO_SYNC_PIN_BASE) )
 #error SCANVIDEO pins not defined for VGA display
 #endif
 #else
-#if ( ! defined(STDIO_USB) ) && ( ! defined(STDIO_UART) )
+#if ( ! defined(STDIO_USB) ) && ( ! defined(STDIO_UART) ) && ( ! defined(STDIO_BT) )
 #error No Console connection defined
 #endif
 #define HAVE_MODEM  1
@@ -159,7 +163,10 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #include <hardware/structs/mpu.h>
 #endif
 #ifdef STDIO_USB
-#include "tusb.h"
+#include <tusb.h>
+#endif
+#ifdef STDIO_BT
+#include <stdio_bt.h>
 #endif
 #define WM_TIMER 275
 #include "lfswrap.h"
@@ -197,6 +204,9 @@ static const struct
 #endif
 #ifdef STDIO_USB
             | 0x01
+#endif
+#ifdef STDIO_BT
+            | 0x10
 #endif
             , 0x00
 #ifdef HAVE_LFS
@@ -302,6 +312,9 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef STDIO_UART
     ", UART Console"
 #endif
+#ifdef STDIO_BT
+    ", Bluetooth Console"
+#endif
 #ifdef PICO_GRAPH
     ", VGA Display"
 #endif
@@ -367,7 +380,7 @@ static const int vdulen[] = {
     0,   1,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
     0,   1,   2,   5,   0,   0,   1,   9,   8,   5,   0,   1,   4,   4,   0,   2 };
 
-#if ( defined(STDIO_USB) || defined(STDIO_UART) )
+#if ( defined(STDIO_USB) || defined(STDIO_UART) || defined(STDIO_BT) )
 #include <stdbool.h>
 extern bool bBBCtl;
 #endif
@@ -722,7 +735,7 @@ int stdin_handler (int *px, int *py)
 	static char *p = report, *q = report;
 	unsigned char ch;
 
-#if ( defined(STDIO_USB) || defined(STDIO_UART) )
+#if ( defined(STDIO_USB) || defined(STDIO_UART) || defined(STDIO_BT) )
     if ( bBBCtl && wait )
         {
         printf ("\x17\x1F\x00");
@@ -1173,7 +1186,7 @@ void oswrch (unsigned char vdu)
 		    }
 	    }
 
-#if ( defined(STDIO_USB) || defined(STDIO_UART) )
+#if ( defined(STDIO_USB) || defined(STDIO_UART) || defined(STDIO_BT) )
     if ( bBBCtl )
         {
         putchar (vdu);
@@ -2374,6 +2387,9 @@ void waitconsole(void){
 #ifdef STDIO_USB
         if ( stdio_usb_connected() ) break;
 #endif
+#ifdef STDIO_BT
+        if ( stdio_bt_connected() ) break;
+#endif
 #ifdef STDIO_UART       
         unsigned char ch;
         getinp (&ch);
@@ -2385,8 +2401,15 @@ void waitconsole(void){
         }
     printf ("\r\n");
     led_state (0);
-#if defined (STDIO_USB) && defined (STDIO_UART)
+#if defined (STDIO_USB)
     if ( stdio_usb_connected() ) stdio_filter_driver (&stdio_usb);
+#if defined (STDIO_BT)
+    else if ( stdio_bt_connected() ) stdio_filter_driver (&stdio_bt);
+#endif
+#elif defined (STDIO_BT)
+    if ( stdio_bt_connected() ) stdio_filter_driver (&stdio_bt);
+#endif
+#if defined (STDIO_USB) || defined (STDIO_BT)
     else stdio_filter_driver (&stdio_uart);
 #endif
 #endif
@@ -2530,6 +2553,10 @@ void *main_init (int argc, char *argv[])
     if ( is_pico_w () > 1 )
         {
         iCyw = cyw43_arch_init_safe ();
+#ifdef STDIO_BT
+        stdio_bt_init ();
+        stdio_set_driver_enabled (&stdio_bt, true);
+#endif
         }
     else
         {
