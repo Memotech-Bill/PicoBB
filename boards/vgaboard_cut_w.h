@@ -82,6 +82,6 @@
 #define PICO_VGA_BOARD
 
 // vgaboard has a Pico on it, so default anything we haven't set above
-#include "boards/pico_w.h"
+#include "pico+w.h"
 
 #endif

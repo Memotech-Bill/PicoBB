@@ -1,5 +1,5 @@
 # Build defaults: Override by options on the make command
-BOARD=pico_w
+BOARD=pico+w
 CYW43=BACKGROUND
 STDIO=USB+UART
 LFS=Y

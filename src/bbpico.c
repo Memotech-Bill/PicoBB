@@ -6,7 +6,7 @@
 *       Raspberry Pico                                             *
 *                                                                  *
 *       bbpico.c Main program, Initialisation, Keyboard handling   *
-*       Version 0.40a, 23-Jan-2022                                 *
+*       Version 0.45a, 03-Sep-2023                                 *
 \******************************************************************/
 
 #ifndef KBD_STDIN
@@ -133,7 +133,7 @@ static inline void ISTORE(void* p, int i){ if ((intptr_t)p&3) *((unaligned_int*)
 
 #define ESCTIME 200  // Milliseconds to wait for escape sequence
 #define QRYTIME 1000 // Milliseconds to wait for cursor query response
-#define QSIZE 16     // Twice longest expected escape sequence
+#define QSIZE 32     // Twice longest expected escape sequence
 
 #ifdef _WIN32
 #define HISTORY 100  // Number of items in command history
@@ -371,6 +371,7 @@ char *szCmdLine;
 int MaximumRAM = MAXIMUM_RAM;
 timer_t UserTimerID;
 unsigned int palette[256];
+void *TTFcache[1];
 #ifdef PICO
 void *libtop;
 #endif
@@ -459,6 +460,7 @@ void quiet (void);
 // Dummy functions:
 void gfxPrimitivesSetFont(void) { };
 void gfxPrimitivesGetFont(void) { };
+void RedefineChar(void) { };
 
 // File scope variables:
 #if KBD_STDIN

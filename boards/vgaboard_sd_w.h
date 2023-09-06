@@ -70,7 +70,7 @@
 #define PICO_VGA_BOARD_SD
 
 // vgaboard has a Pico on it, so default anything we haven't set above
-#include "boards/pico_w.h"
+#include "pico+w.h"
 
 // pico.h defines a default UART which is not available on the VGA board
 
