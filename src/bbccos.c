@@ -286,7 +286,8 @@ void xeqvdu (int code, int data1, int data2)
 # endif
 #endif
                 {
-                fwrite (&vdu, 1, 1, stdout) ;
+                // fwrite (&vdu, 1, 1, stdout) ;
+                putchar (vdu);
                 return ;
                 }
 
@@ -298,6 +299,7 @@ void xeqvdu (int code, int data1, int data2)
 		printf ("\033[%i;999H", row + 1) ;
 		stdin_handler (&rhs, NULL) ;
 		printf ("\033[%i;%iH", row + 1, col + 1) ;
+        fflush (stdout);
 	    }
 
 	switch (vdu)
@@ -323,7 +325,8 @@ void xeqvdu (int code, int data1, int data2)
 			break ;
 
 		case 7: // BELL
-			fwrite (&vdu, 1, 1, stdout) ;
+			// fwrite (&vdu, 1, 1, stdout) ;
+            putchar (vdu);
             bell ();
 			break ;
 
@@ -340,7 +343,8 @@ void xeqvdu (int code, int data1, int data2)
 			else
 			    {
 				col-- ;
-				fwrite (&vdu, 1, 1, stdout) ;
+				// fwrite (&vdu, 1, 1, stdout) ;
+                putchar (vdu);
 			    }
 			break ;
 
@@ -375,7 +379,8 @@ void xeqvdu (int code, int data1, int data2)
 			break ;
 
 		case 13: // RETURN
-			fwrite (&vdu, 1, 1, stdout) ;
+			// fwrite (&vdu, 1, 1, stdout) ;
+            putchar (vdu);
 			col = 0 ;
 			break ;
 
@@ -436,7 +441,8 @@ void xeqvdu (int code, int data1, int data2)
 				col = 0 ;
 				newline (&col, &row) ;
 			    }
-			fwrite (&code, 1, 1, stdout) ;
+			// fwrite (&code, 1, 1, stdout) ;
+            putchar (code);
 			if ((col == rhs) && ((cmcflg & 1) == 0))
 			    {
 				printf ("\015") ;
@@ -475,7 +481,8 @@ void xeqvdu (int code, int data1, int data2)
 					col = 0 ;
 					newline (&col, &row) ;
 				    }
-				fwrite (&vdu, 1, 1, stdout) ;
+				// fwrite (&vdu, 1, 1, stdout) ;
+                putchar (vdu);
 				if ((col == rhs) && ((cmcflg & 1) == 0))
 				    {
 					printf ("\015") ;
