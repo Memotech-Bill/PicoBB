@@ -382,6 +382,7 @@ static const int vdulen[] = {
     0,   1,   2,   5,   0,   0,   1,   9,   8,   5,   0,   1,   4,   4,   0,   2 };
 
 #if ( defined(STDIO_USB) || defined(STDIO_UART) || defined(STDIO_BT) )
+#define printf(...) fprintf (stdout, __VA_ARGS__)
 #include <stdbool.h>
 extern bool bBBCtl;
 #endif
