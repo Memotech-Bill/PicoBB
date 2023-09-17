@@ -47,23 +47,7 @@ void os_ZDOWNLOAD (char *);
 void os_ZUPLOAD (char *);
 #endif
 
-enum {
-#if defined(PICO_GUI) || defined(PICO_GRAPH)
-    DISPLAY,
-#endif
-#if ( defined(STDIO_USB) || defined(STDIO_UART) )
-    OUTPUT,
-#endif
-#if defined(PICO_GUI) || defined(PICO_GRAPH)
-    REFRESH, SCREENSAVE,
-#endif
-#if HAVE_MODEM
-    XDOWNLOAD, XUPLOAD, YDOWNLOAD, YUPLOAD, ZDOWNLOAD, ZUPLOAD,
-#endif
-    NCMDS
-    };
-
-static char *cmds[NCMDS] = {
+static char *cmds[] = {
 #if defined(PICO_GUI) || defined(PICO_GRAPH)
     "display",
 #endif
@@ -195,8 +179,9 @@ void oscli (char *cmd)
     
 	if ( memchr (cmd, 0x0D, 256) != NULL )
         {
+        int ncmds = sizeof (cmds) / sizeof (cmds[0]);
         int i1 = -1;
-        int i2 = NCMDS;
+        int i2 = ncmds;
         while ( i2 - i1 > 1 )
             {
             int i3 = ( i1 + i2 ) / 2;
@@ -204,6 +189,7 @@ void oscli (char *cmd)
             int id = strncasecmp (cmd, cmds[i3], n);
             if ( id == 0 )
                 {
+                if ( sizeof (os_funcs) / sizeof (os_funcs[0]) != ncmds ) error (255, "Inconsistent arrays in oscli");
                 cmd += n;
                 if ((*cmd == ' ') || (*cmd == 0x0D) || (*cmd == '|'))
                     {
