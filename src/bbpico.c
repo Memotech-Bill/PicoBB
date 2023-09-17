@@ -2380,29 +2380,29 @@ static int waitdone=0;
 void waitconsole(void){
 	if(waitdone) return;
 #ifndef PICO_GUI
-	printf("Waiting for connection\r\n");
+	puts_raw("Waiting for connection\r\n");
     led_init ();
     int iLED = 0;
 	while (true)
         {
         iLED ^= 1;
         led_state (iLED);
-#ifdef STDIO_USB
+#if defined(STDIO_USB) && ((USB_CON & 1) == 0)
         if ( stdio_usb_connected() ) break;
 #endif
 #ifdef STDIO_BT
         if ( stdio_bt_connected() ) break;
 #endif
-#ifdef STDIO_UART       
+#if defined(STDIO_UART) || ((USB_CON & 1) == 1)
         unsigned char ch;
         getinp (&ch);
         if ( ch == 0x0D ) break;
 #endif
-		printf(".");
+		putchar_raw('.');
         myPoll ();
 		sleep_ms(1000);
         }
-    printf ("\r\n");
+    puts_raw ("\r\n");
     led_state (0);
 #if defined (STDIO_USB)
     if ( stdio_usb_connected() ) stdio_filter_driver (&stdio_usb);

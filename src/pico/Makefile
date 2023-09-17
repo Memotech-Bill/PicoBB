@@ -1,5 +1,6 @@
 BUILD_DIR := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))/build
 BBC_SRC=../../BBCSDL
+USB_CON=0
 
 ifeq ($(MIN_STACK), Y)
 EXEC_SOURCES = \
@@ -175,7 +176,7 @@ build/Makefile: build build/sympico.h build/pico_stub.c
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
 			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
-			-DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) -DGRAPH=$(GRAPH) -DOS_RAM=$(OS_RAM) \
+			-DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) -DGRAPH=$(GRAPH) -DOS_RAM=$(OS_RAM) -DUSB_CON=$(USB_CON) \
 			--no-warn-unused-cli -S ../../../src/pico -B .
 
 ifeq ($(BBC_SRC), ../../BBCSDL)

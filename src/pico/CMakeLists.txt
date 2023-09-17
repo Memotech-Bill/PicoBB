@@ -391,6 +391,13 @@ if (TARGET tinyusb_device)
       pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld)
     endif()
   endif()
+
+  target_compile_definitions(bbcbasic PUBLIC -DUSB_CON=${USB_CON})
+  if (${USB_CON} GREATER_EQUAL 2)
+    target_compile_definitions(bbcbasic PUBLIC
+      -DPICO_STDIO_USB_CONNECTION_WITHOUT_DTR=1
+      )
+  endif()
   
   pico_add_extra_outputs(bbcbasic)
 elseif(PICO_ON_DEVICE)
