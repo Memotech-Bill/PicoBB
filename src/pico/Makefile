@@ -114,6 +114,7 @@ SOURCES= \
 	$(BBC_SRC)/include/bbccon.h \
     ../../src/bbccos.c \
     ../../src/bbpico.c \
+    ../../src/picocli.c \
     ../../src/bbasmb_arm_v6m.c \
     ../../src/lfswrap.c \
     ../../src/fault.c \

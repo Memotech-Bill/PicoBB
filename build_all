@@ -5,14 +5,30 @@ ROOT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $ROOT_DIR/console/pico
 make clean
 make
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+#
 cd $ROOT_DIR/console/pico_w
 make clean
 make
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+#
 cd $ROOT_DIR/bin/pico
 make clean
 make
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+#
 cd $ROOT_DIR/bin/pico_w
 make clean
 make
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+#
 cd $ROOT_DIR
 find . -name "bbcbasic_*.uf2" -ls

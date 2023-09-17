@@ -42,6 +42,7 @@ if (TARGET tinyusb_device)
     ${BBC_SRC}/src/bbmain.c
     ../../src/bbccos.c
     ../../src/bbpico.c
+    ../../src/picocli.c
     ../../src/bbasmb_arm_v6m.c 
     ../../src/lfswrap.c 
     ../../src/fault.c
