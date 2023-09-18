@@ -2380,7 +2380,9 @@ static int waitdone=0;
 void waitconsole(void){
 	if(waitdone) return;
 #ifndef PICO_GUI
+#if (USB_CON & 2) == 0
 	puts_raw("Waiting for connection\r\n");
+#endif
     led_init ();
     int iLED = 0;
 	while (true)
@@ -2398,7 +2400,9 @@ void waitconsole(void){
         getinp (&ch);
         if ( ch == 0x0D ) break;
 #endif
+#if (USB_CON & 2) == 0
 		putchar_raw('.');
+#endif
         myPoll ();
 		sleep_ms(1000);
         }

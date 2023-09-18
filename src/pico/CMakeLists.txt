@@ -393,7 +393,7 @@ if (TARGET tinyusb_device)
   endif()
 
   target_compile_definitions(bbcbasic PUBLIC -DUSB_CON=${USB_CON})
-  if (${USB_CON} GREATER_EQUAL 2)
+  if (${USB_CON} GREATER_EQUAL 4)
     target_compile_definitions(bbcbasic PUBLIC
       -DPICO_STDIO_USB_CONNECTION_WITHOUT_DTR=1
       )
