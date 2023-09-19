@@ -2381,7 +2381,7 @@ void waitconsole(void){
 	if(waitdone) return;
 #ifndef PICO_GUI
 #if (USB_CON & 2) == 0
-	puts_raw("Waiting for connection\r\n");
+	puts_raw("Waiting for connection\r");
 #endif
     led_init ();
     int iLED = 0;
@@ -2406,7 +2406,7 @@ void waitconsole(void){
         myPoll ();
 		sleep_ms(1000);
         }
-    puts_raw ("\r\n");
+    puts_raw ("\r");
     led_state (0);
 #if defined (STDIO_USB)
     if ( stdio_usb_connected() ) stdio_filter_driver (&stdio_usb);
