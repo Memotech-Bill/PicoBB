@@ -109,6 +109,7 @@ endif
 
 SOURCES= \
     $(BBC_SRC)/src/bbmain.c \
+    $(BBC_SRC)/src/sort.c \
     $(BBC_SRC)/src/bbdata_arm_32.s \
 	$(BBC_SRC)/include/BBC.h \
 	$(BBC_SRC)/include/version.h \
@@ -184,7 +185,7 @@ $(BBC_SRC)/include/version.h:
 	git submodule update --remote --recursive
 endif
 
-../../littlefs/lfs.c:
+../../littlefs/lfs.h:
 	git submodule update --remote --recursive
 
 bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) build/Makefile

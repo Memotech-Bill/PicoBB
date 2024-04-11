@@ -1,13 +1,13 @@
 CFLAGS=-O2 -Wall -I.. -I../../littlefs -I../../include
 TARGETS=mklfsimage uf2conv uf2merge
-SOURCES=mklfsimage.c ../lfsmcu.c ../../littlefs/lfs.a
+SOURCES=mklfsimage.c ../lfsmcu.c ../../littlefs/liblfs.a
 
 all: $(TARGETS)
 
 mklfsimage: $(SOURCES)
 	gcc $(CFLAGS) -o mklfsimage $(SOURCES)
 
-../../littlefs/lfs.a:
+../../littlefs/liblfs.a:
 	cd ../../littlefs && make
 
 uf2conv: uf2conv.c uf2format.h
