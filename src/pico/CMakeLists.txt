@@ -40,8 +40,7 @@ if (TARGET tinyusb_device)
   add_executable(bbcbasic 
     ${BBC_SRC}/src/bbdata_arm_32.s
     ${BBC_SRC}/src/bbmain.c
-    ${BBC_SRC}/src/sort.c
-    ../../src/bbccos.c
+    ${BBC_SRC}/src/bbccos.c
     ../../src/bbpico.c
     ../../src/picocli.c
     ../../src/bbasmb_arm_v6m.c 
