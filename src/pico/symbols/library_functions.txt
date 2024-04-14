@@ -1,0 +1,6 @@
+# C runtime library functions that are required to support BBC BASIC libraries
+free
+malloc
+memcpy
+memmove
+memset

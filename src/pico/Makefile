@@ -187,10 +187,11 @@ endif
 ../../littlefs/lfs.h:
 	git submodule update --remote --recursive
 
-bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) build/Makefile
+bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) ../../src/pico/symbols/library_functions.txt build/Makefile
 	cd build && make
 	../../src/pico/symbols/map_funcs.py build/bbcbasic.elf.map build/symbols_map.txt
-	../../src/pico/symbols/merge_funcs.py build/sympico.h build/symbols_sdk.txt build/symbols_map.txt
+	../../src/pico/symbols/merge_funcs.py build/sympico.h build/symbols_sdk.txt build/symbols_map.txt \
+		../../src/pico/symbols/library_functions.txt
 	cd build && make
 	cp build/bbcbasic.uf2 bbcbasic$(SUFFIX).uf2
 	cp build/bbcbasic.elf bbcbasic$(SUFFIX).elf
