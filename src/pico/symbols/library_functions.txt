@@ -4,3 +4,8 @@ malloc
 memcpy
 memmove
 memset
+# SDL functions commonly called by BBC BASIC libraries, and mapped to corresponding C functions
+SDL_free
+SDL_malloc
+SDL_memset
+SDL_memcpy

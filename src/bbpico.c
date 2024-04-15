@@ -1659,6 +1659,28 @@ void *sysadr (char *name)
 #endif
     }
 
+// Emulation of SDL routines commonly called from BBC BASIC
+
+void *SDL_malloc (size_t size)
+    {
+    return malloc (size);
+    }
+
+void SDL_free (void *ptr)
+    {
+    free (ptr);
+    }
+
+void *SDL_memset (void *ptr, int c, size_t n)
+    {
+    return memset (ptr, c, n);
+    }
+
+void *SDL_memcpy (void *dst, void *src, size_t n)
+    {
+    return memmove (dst, src, n);
+    }
+
 // Call an emulated OS subroutine (if CALL or USR to an address < 0x10000)
 int oscall (int addr)
     {
