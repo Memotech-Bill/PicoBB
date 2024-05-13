@@ -347,10 +347,30 @@ USB or UART serial connection, but which is able to display text and graphics
 on a separate VGA display.
 
 This capability is not included in any of the standard builds. To enable this
-feature make either the Pico or Pico W console builds using the command
+feature use one of the following make commands
+
+In **console/pico**:
 
 ````
-make GRAPH=Y
+make BOARD=vgaboard_sd CYW43=NONE STDIO=USB SERIAL_DEV=0 GRAPH=Y SOUND=I2S
+````
+
+or:
+
+````
+make BOARD=vgaboard_sd CYW43=NONE STDIO=USB SERIAL_DEV=0 GRAPH=Y SOUND=PWM
+````
+
+In **console/pico_w**:
+
+````
+make BOARD=vgaboard_sd_w STDIO=USB SERIAL_DEV=0 GRAPH=Y SOUND=I2S
+````
+
+or:
+
+````
+make BOARD=vgaboard_sd_w STDIO=USB SERIAL_DEV=0 GRAPH=Y SOUND=PWM
 ````
 
 To use the feature use the `*output` command to specify the display device

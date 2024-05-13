@@ -255,6 +255,6 @@ void xeqvdu (int code, int data1, int data2)
     {
     if ((optval & 0x0F) >= 14) fbufvdu (code, data1, data2);
     if ((optval & 0x0F) == 14) return;
-    org_xeqvdu (int code, int data1, int data2);
+    org_xeqvdu (code, data1, data2);
     }
 #endif

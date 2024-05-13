@@ -135,7 +135,10 @@ if (TARGET tinyusb_device)
     )
 
   if( DEFINED CYW43 )
-    if( "${CYW43}" STREQUAL "GPIO" )
+    if( "${CYW43}" STREQUAL "NONE" )
+      message(STATUS "No Pico W support")
+      set(CYW43_LINK 0)
+    elseif( "${CYW43}" STREQUAL "GPIO" )
       message(STATUS "Pico W GPIO (LED) only support")
       target_link_libraries(bbcbasic
         pico_cyw43_arch_none
@@ -284,7 +287,7 @@ if (TARGET tinyusb_device)
         pico_stdio_usb
         )
       pico_enable_stdio_usb(bbcbasic 1)
-      target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB -DSTDIO_UART)
+      target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB)
       target_compile_definitions(bbcbasic PUBLIC
         PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
         PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=0

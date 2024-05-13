@@ -16,12 +16,12 @@
 #define modechg null_modechg
 #define defchr  null_defchr
 #define newline null_newline
-#define xeqvdu  null_exeqvdu
+#define xeqvdu  null_xeqvdu
 #endif
 
 #ifdef PICO_GRAPH
 #define modechg null_modechg
-#define xeqvdu  org_exeqvdu
+#define xeqvdu  org_xeqvdu
 #endif
 
 #endif
