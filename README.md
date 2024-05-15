@@ -80,6 +80,11 @@ Building has been tested on a Raspberry Pi running Rasperry Pi OS. Building in o
 environments may present difficulties.
 
 To build this for the Pico, make sure you have the SDK installed and the tinyusb module installed.
+Building the GUI versions requires [pico-extras](https://github.com/raspberrypi/pico-extras)
+as well as [pico-sdk](https://github.com/raspberrypi/pico-sdk). The environment variables
+PICO_EXTRAS_PATH and PICO_SDK_PATH respectively to the locations where these are installed.
+Installing the SDK using the script [pico_setup.sh](https://raw.githubusercontent.com/raspberrypi/pico-setup/master/pico_setup.sh)
+will automatically install and configure everything required.
 
 Download the source code using:
 
