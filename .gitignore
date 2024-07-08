@@ -51,6 +51,7 @@ build*/
 .#*
 
 # Misc
+wifi.cfg
 *.zip
 *.lfs
 mklfsimage

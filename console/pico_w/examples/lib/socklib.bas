@@ -22,6 +22,8 @@ REM  FN_checkconnectionM(socket) As FN_checkconnection but don't close listen sk
 REM  FN_udpsocket(host$,port$)   Create a UDP socket and optionally bind to host
 REM  FN_sendtosocket(skt,buf,len,host,port)   Write to UDP socket, specifying peer
 REM  FN_recvfromsocket(skt,buf,len,host,port) Read from UDP socket, returning peer
+REM Routine added for Pico:
+REM  FN_gethostip                Return the IP4 address of the device as integer
 
 REM Initialise the BBCSDL Sockets interface
 DEF PROC_initsockets(N%)
@@ -38,8 +40,8 @@ IF (cc1% >= 97) AND (cc1% <= 122) THEN cc1% -= 32
 IF (cc2% >= 97) AND (cc2% <= 122) THEN cc2% -= 32
 ccode% = cc1% + 256 * cc2%
 IF ccode% = 19285 THEN ccode% = 16967 : REM UK -> GB
-chan = OPENOUT("wifi.cfg")
-PRINT#chan, ssid$, pwd$, ccode%
+chan% = OPENOUT("wifi.cfg")
+PRINT#chan%, ssid$, pwd$, ccode%
 ELSE
 INPUT#chan%, ssid$, pwd$, ccode%
 ENDIF
@@ -62,12 +64,19 @@ DEF PROC_exitsockets
 SYS "net_freeall"
 ENDPROC
 
+REM Get the IP address of the local machine
+DEF FN_gethostip
+LOCAL IPaddress{} : DIM IPaddress{host%}
+SYS "net_wifi_get_ipaddr", 0, ^IPaddress.host% TO err%
+IF err% <> 0 THEN = 0
+= IPaddress.host%
+
 REM Get the name of the local machine
 DEF FN_gethostname
 LOCAL h%, IPaddress{} : DIM IPaddress{host%}
-230 SYS "net_wifi_get_ipaddr", 0, ^IPaddress.host% TO err%
-240 IF err% <> 0 THEN = ""
-280 SYS "ip4addr_ntoa", ^IPaddress.host% TO h%
+SYS "net_wifi_get_ipaddr", 0, ^IPaddress.host% TO err%
+IF err% <> 0 THEN = ""
+SYS "ip4addr_ntoa", ^IPaddress.host% TO h%
 = $$h%
 
 REM Set up a TCP listening socket
