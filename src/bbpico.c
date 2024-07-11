@@ -400,6 +400,7 @@ static const unsigned char xkey[64] = {
 #define PICO_DEFAULT_LED_PIN    25
 #define PICO_ERROR_NO_CYW43     -257        // No support
 int iCyw = PICO_ERROR_NO_CYW43;
+void net_clear (void);
 #endif
 
 // Declared in bbcans.c:
@@ -2466,6 +2467,13 @@ void faterr (const char *msg)
     }
 
 #ifdef PICO
+void pico_clear (void)
+    {
+#if HAVE_CYW43 > 1
+    net_clear ();
+#endif
+    }
+
 void sys_panic (const char *psMsg, ...)
     {
     char sErr[260];

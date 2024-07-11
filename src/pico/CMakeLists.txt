@@ -89,6 +89,8 @@ if (TARGET tinyusb_device)
   endif()
       
   pico_set_printf_implementation(bbcbasic compiler)
+  # Registers r10 and r11 are defined as BASIC Program and Stack pointers in BBC.h
+  target_compile_options(bbcbasic PUBLIC -ffixed-r10 -ffixed-r11)
   target_compile_options(bbcbasic PRIVATE -O1 -g)
   target_link_options(bbcbasic PRIVATE -g)
   target_link_libraries(bbcbasic
@@ -165,12 +167,23 @@ if (TARGET tinyusb_device)
     elseif( CYW43 )
       message(STATUS "Pico W CYW43 background support")
       target_sources(bbcbasic PRIVATE ../../src/pico/network_cyw43.c)
-      target_link_libraries(bbcbasic
-        pico_cyw43_arch_lwip_threadsafe_background
-        pico_lwip
-        pico_lwip_nosys)
       target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=3)
-      set(CYW43_LINK 1)
+      if (${NET_HEAP} GREATER 0)
+        set(CYW43_LINK 2)
+        add_subdirectory(../lwip ${CMAKE_CURRENT_BINARY_DIR}/../lwip)
+        target_sources(bbcbasic PRIVATE ../../src/pico/heap.c)
+        target_compile_definitions(bbcbasic PUBLIC NET_HEAP=${NET_HEAP})
+        target_link_libraries(bbcbasic
+          pico_cyw43_arch_threadsafe_background
+          picobb_lwip
+          picobb_lwip_nosys)
+      else()
+        set(CYW43_LINK 1)
+        target_link_libraries(bbcbasic
+          pico_cyw43_arch_lwip_threadsafe_background
+          pico_lwip
+          pico_lwip_nosys)
+      endif()
     endif()
   else()
     set(CYW43_LINK 0)
@@ -386,7 +399,14 @@ if (TARGET tinyusb_device)
       pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico.ld)
     endif()
   else()
-    if( ${CYW43_LINK} )
+    if( ${CYW43_LINK} EQUAL 2)
+      message(STATUS "Link with space for CYW43 driver and optimised LWIP")
+      target_compile_definitions(bbcbasic PUBLIC
+        PICO_STACK_SIZE=0x39000
+        PICO_CORE1_STACK_SIZE=0x800
+        )
+      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_net2_mc.ld)
+    elseif( ${CYW43_LINK} )
       message(STATUS "Link with space for CYW43 driver")
       target_compile_definitions(bbcbasic PUBLIC
         PICO_STACK_SIZE=0x2F800

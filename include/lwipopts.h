@@ -1,24 +1,26 @@
 #ifndef _LWIPOPTS_EXAMPLE_COMMONH_H
 #define _LWIPOPTS_EXAMPLE_COMMONH_H
 
-
 // Common settings used in most of the pico_w examples
 // (see https://www.nongnu.org/lwip/2_1_x/group__lwip__opts.html for details)
 
-// allow override in some examples
-#ifndef NO_SYS
 #define NO_SYS                      1
-#endif
-// allow override in some examples
-#ifndef LWIP_SOCKET
 #define LWIP_SOCKET                 0
+
+#ifndef NET_HEAP
+#define NET_HEAP                    0
 #endif
+#if NET_HEAP == 1
+#define MEMP_MEM_MALLOC             1
+#else
 #if PICO_CYW43_ARCH_POLL
 #define MEM_LIBC_MALLOC             1
 #else
 // MEM_LIBC_MALLOC is incompatible with non polling versions
 #define MEM_LIBC_MALLOC             0
 #endif
+#endif
+
 #define MEM_ALIGNMENT               4
 #define MEM_SIZE                    4000
 #define MEMP_NUM_TCP_SEG            32

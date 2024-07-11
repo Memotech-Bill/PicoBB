@@ -12,6 +12,10 @@
 #include <lwip/ip_addr.h>
 #include <lwip/dns.h>
 
+#if CYW43_LWIP != 1
+#error  CYW43 Support not enabled
+#endif
+
 #define DIAG    0
 #if DIAG
 #define DPRINT  printf
@@ -45,6 +49,20 @@ static const char *psError[] =
     "Connection closed.",           // -15 - ERR_CLSD
     "Illegal argument. ",           // -16 - ERR_ARG
     };
+
+#if NET_HEAP
+
+// Allocate storage on the BASIC heap
+#include "heap.h"
+
+#else
+
+// Use C heap
+#define heap_malloc  malloc
+#define heap_calloc  calloc
+#define heap_free    free
+
+#endif
 
 static inline int net_error (err_t err)
     {
@@ -115,7 +133,7 @@ static int net_scan_cb (void *env, const cyw43_ev_scan_result_t *result)
     {
     if ( ( scan_err == ERR_OK ) && result )
         {
-        scan_cb_result_t *psr = (scan_cb_result_t *) malloc (sizeof (scan_cb_result_t));
+        scan_cb_result_t *psr = (scan_cb_result_t *) heap_malloc (sizeof (scan_cb_result_t));
         if ( psr != NULL )
             {
             psr->next = NULL;
@@ -174,7 +192,7 @@ int net_wifi_scan (net_scan_result_t *pscan)
         if ( scan_first == NULL ) scan_last = NULL;
         net_crit_end ();
         memcpy (pscan, &psr->scan, sizeof (net_scan_result_t));
-        free (psr);
+        heap_free (psr);
         return ERR_OK;
         }
     memset (pscan, 0, sizeof (net_scan_result_t));
@@ -233,7 +251,7 @@ static tcp_conn_t *tcp_conn_alloc (void)
         }
     else
         {
-        conn = (tcp_conn_t *) calloc (1, sizeof (tcp_conn_t));
+        conn = (tcp_conn_t *) heap_calloc (1, sizeof (tcp_conn_t));
         }
     if ( conn != NULL )
         {
@@ -632,7 +650,7 @@ static udp_msg_t *udp_msg_alloc (void)
         }
     else
         {
-        m = (udp_msg_t *) calloc (1, sizeof (udp_msg_t));
+        m = (udp_msg_t *) heap_calloc (1, sizeof (udp_msg_t));
         }
     return m;
     }
@@ -665,7 +683,7 @@ static udp_conn_t *udp_conn_alloc (void)
         }
     else
         {
-        conn = (udp_conn_t *) calloc (1, sizeof (udp_conn_t));
+        conn = (udp_conn_t *) heap_calloc (1, sizeof (udp_conn_t));
         }
     if ( conn != NULL )
         {
@@ -838,7 +856,13 @@ void net_udp_close (intptr_t connin)
     DPRINT ("net_udp_close (%p)\n", connin);
     if ( ! net_udp_valid (connin) ) return;
     udp_conn_t *conn = (udp_conn_t *) connin;
+    udp_msg_t *m = conn->m_fst;
     cyw43_arch_lwip_begin();
+    while (m != NULL)
+        {
+        if (m->p != NULL) pbuf_free (m->p);
+        m = m->next;
+        }
     udp_disconnect (conn->pcb);
     udp_remove (conn->pcb);
     cyw43_arch_lwip_end();
@@ -856,7 +880,7 @@ void net_freeall (void)
         {
         tcp_conn_t *conn = tconn_free;
         tconn_free = conn->next;
-        free ((void *) conn);
+        heap_free ((void *) conn);
         }
     while ( uconn_active != NULL )
         {
@@ -866,7 +890,15 @@ void net_freeall (void)
         {
         udp_conn_t *conn = uconn_free;
         uconn_free = conn->next;
-        free ((void *) conn);
+        heap_free ((void *) conn);
         }
     last_error = 0;
+    }
+
+void net_clear (void)
+    {
+    net_freeall ();
+#if NET_HEAP
+    heap_clear ();
+#endif
     }
