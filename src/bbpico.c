@@ -2467,13 +2467,6 @@ void faterr (const char *msg)
     }
 
 #ifdef PICO
-void pico_clear (void)
-    {
-#if HAVE_CYW43 > 1
-    net_clear ();
-#endif
-    }
-
 void sys_panic (const char *psMsg, ...)
     {
     char sErr[260];

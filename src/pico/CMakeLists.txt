@@ -171,7 +171,7 @@ if (TARGET tinyusb_device)
       if (${NET_HEAP} GREATER 0)
         set(CYW43_LINK 2)
         add_subdirectory(../lwip ${CMAKE_CURRENT_BINARY_DIR}/../lwip)
-        target_sources(bbcbasic PRIVATE ../../src/pico/heap.c)
+        target_sources(bbcbasic PRIVATE ../../src/heap.c)
         target_compile_definitions(bbcbasic PUBLIC NET_HEAP=${NET_HEAP})
         target_link_libraries(bbcbasic
           pico_cyw43_arch_threadsafe_background
@@ -383,7 +383,14 @@ if (TARGET tinyusb_device)
       PICO_CORE1_STACK_SIZE=0x800
       )
   elseif (( "${STDIO}" STREQUAL "PICO" ) OR ( ${GRAPH} ))
-    if( ${CYW43_LINK} )
+    if( ${CYW43_LINK} EQUAL 2)
+      message(STATUS "Link with space for VGA video, CYW43 driver and optimised LWIP")
+      target_compile_definitions(bbcbasic PUBLIC
+        PICO_STACK_SIZE=0x2F800
+        PICO_CORE1_STACK_SIZE=0x800
+        )
+      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico_net2.ld)
+    elseif( ${CYW43_LINK} )
       message(STATUS "Link with space for VGA video and CYW43 driver")
       target_compile_definitions(bbcbasic PUBLIC
         PICO_STACK_SIZE=0x21800

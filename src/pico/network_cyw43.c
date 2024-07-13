@@ -16,7 +16,13 @@
 #error  CYW43 Support not enabled
 #endif
 
+#define NUM_SCAN_RESULT     5
+#define NUM_UDP_MSG         5
+#define MALLOC_OVERHEAD     8
+
+#ifndef DIAG
 #define DIAG    0
+#endif
 #if DIAG
 #define DPRINT  printf
 #else
@@ -861,7 +867,9 @@ void net_udp_close (intptr_t connin)
     while (m != NULL)
         {
         if (m->p != NULL) pbuf_free (m->p);
-        m = m->next;
+        udp_msg_t *m2 = m->next;
+        udp_msg_free (m);
+        m = m2;
         }
     udp_disconnect (conn->pcb);
     udp_remove (conn->pcb);
@@ -892,13 +900,65 @@ void net_freeall (void)
         uconn_free = conn->next;
         heap_free ((void *) conn);
         }
+    while ( umsg_free != NULL )
+        {
+        udp_msg_t *umsg = umsg_free;
+        umsg_free = umsg->next;
+        heap_free (umsg);
+        }
     last_error = 0;
     }
 
-void net_clear (void)
+int net_heap_size (int nconn)
     {
+#if NET_HEAP
+    int count = 0;
+    int size = 0;
+    memp_size (&count, &size);
+    count += NUM_SCAN_RESULT + (2 + NUM_UDP_MSG) * nconn;
+    size += NUM_SCAN_RESULT * sizeof (scan_cb_result_t)
+        + nconn * sizeof (tcp_conn_t)
+        + nconn * sizeof (udp_conn_t)
+        + NUM_UDP_MSG * nconn * sizeof (udp_msg_t)
+        + MALLOC_OVERHEAD * count;
+    DPRINT ("net_heap_size = %d\n", size);
+    return size;
+#else
+    return 0;
+#endif
+    }
+
+void net_init (void *base, void *top)
+    {
+    DPRINT ("net_init (%p, %p)\n", base, top);
+#if NET_HEAP
+    if ( heap_init (base, top) )
+        {
+        tconn_active = NULL;
+        tconn_free = NULL;
+        uconn_active = NULL;
+        uconn_free = NULL;
+        umsg_free = NULL;
+        }
+#endif
+    }
+
+void net_term (void)
+    {
+    DPRINT ("net_term\n");
     net_freeall ();
 #if NET_HEAP
-    heap_clear ();
+    heap_term ();
+#endif
+    }
+
+void net_limits (void **bot, void **top)
+    {
+#if NET_HEAP
+    heap_limits (bot, top);
+    DPRINT ("net_limits: %p, %p\n", bot, top);
+#else
+    *bot = NULL;
+    *top = NULL;
 #endif
     }

@@ -47,6 +47,15 @@
  *
  */
 
+#ifndef DIAG
+#define DIAG    0
+#endif
+#if DIAG
+#define DPRINT  printf
+#else
+#define DPRINT(...)
+#endif
+
 #if NET_HEAP
 // Force dynamic style variable declarations
 #define MEMP_MEM_MALLOC     1
@@ -84,15 +93,17 @@
 #include "lwip/ip6_frag.h"
 #include "lwip/mld6.h"
 
-// Construct struct memp_desc memp_XXX describing size of allocations
-#define LWIP_MEMPOOL(name,num,size,desc) LWIP_MEMPOOL_DECLARE(name,num,size,desc)
-#include "lwip/priv/memp_std.h"
+struct memp_info
+    {
+    u16_t   size;
+    u16_t   num;
+    };
 
-// Construct memp_pools[] array of pointers to the struct memp_desc for each pool
-const struct memp_desc *const memp_pools[MEMP_MAX] = {
-#define LWIP_MEMPOOL(name,num,size,desc) &memp_ ## name,
+// Construct memp_info for each memory pool
+#define LWIP_MEMPOOL(name,num,size,desc)    {(size), (num)},
+const struct memp_info info[] = {
 #include "lwip/priv/memp_std.h"
-};
+    };
 
 #if NET_HEAP
 #include "heap.h"
@@ -111,8 +122,20 @@ void memp_init (void)
         pool_SYS_TMO[SYS_TIMERS_ALLOC * i] = (uintptr_t) free_SYS_TMO;
         free_SYS_TMO = &pool_SYS_TMO[SYS_TIMERS_ALLOC * i];
         }
-    // Initialise BASIC heap allocation
-    heap_init ();
+    }
+
+void memp_size (int *count, int *size)
+    {
+    *count = 0;
+    *size = 0;
+    for (int i = 0; i < LWIP_ARRAYSIZE(info); ++i)
+        {
+        if (i != MEMP_SYS_TIMEOUT)
+            {
+            *count += info[i].num;
+            *size += info[i].num * info[i].size;
+            }
+        }
     }
 
 void *memp_malloc (memp_t type)
@@ -125,7 +148,8 @@ void *memp_malloc (memp_t type)
         return (void *) ptr;
         }
     // Other structures are allocated on BASIC heap
-    return heap_malloc (memp_pools[type]->size);
+    DPRINT ("memp_malloc: type = %d: ", type);
+    return heap_malloc (info[type].size);
     }
 
 void memp_free (memp_t type, void *mem)
@@ -140,11 +164,22 @@ void memp_free (memp_t type, void *mem)
     else
         {
         // Other structures are allocated on BASIC heap
+        DPRINT ("memp_free: type = %d: ", type);
         heap_free (mem);
         }
     }
 
 #else   // not NET_HEAP
+
+// Construct struct memp_desc memp_XXX describing size of allocations
+#define LWIP_MEMPOOL(name,num,size,desc) LWIP_MEMPOOL_DECLARE(name,num,size,desc)
+#include "lwip/priv/memp_std.h"
+
+// Construct memp_pools[] array of pointers to the struct memp_desc for each pool
+const struct memp_desc *const memp_pools[MEMP_MAX] = {
+#define LWIP_MEMPOOL(name,num,size,desc) &memp_ ## name,
+#include "lwip/priv/memp_std.h"
+};
 
 // Original LWIP code cleaned up by removing conditional compilation blocks
 // in order to assist understanding
@@ -186,7 +221,6 @@ memp_init(void)
 
   /* for every pool: */
   for (i = 0; i < LWIP_ARRAYSIZE(memp_pools); i++) {
-      printf ("memp_pools[%d] = %p\n", i, memp_pools[i]);
     memp_init_pool(memp_pools[i]);
   }
 }
@@ -208,7 +242,7 @@ do_memp_malloc_pool(const struct memp_desc *desc)
                 ((mem_ptr_t)memp % MEM_ALIGNMENT) == 0);
     SYS_ARCH_UNPROTECT(old_level);
     /* cast through u8_t* to get rid of alignment warnings */
-    printf ("memp_malloc (%p) = %p\n", desc, (u8_t *)memp + MEMP_SIZE);
+    DPRINT ("memp_malloc (%p) = %p\n", desc, (u8_t *)memp + MEMP_SIZE);
     return ((u8_t *)memp + MEMP_SIZE);
   } else {
     SYS_ARCH_UNPROTECT(old_level);
@@ -246,7 +280,7 @@ memp_malloc_pool(const struct memp_desc *desc)
 void *
 memp_malloc(memp_t type)
 {
-printf ("memp_malloc (%d):\n", type);
+  DPRINT ("memp_malloc (%d):\n", type);
   void *memp;
   LWIP_ERROR("memp_malloc: type < MEMP_MAX", (type < MEMP_MAX), return NULL;);
 
@@ -258,7 +292,7 @@ printf ("memp_malloc (%d):\n", type);
 static void
 do_memp_free_pool(const struct memp_desc *desc, void *mem)
 {
-  printf ("memp_free (%p, %p)\n", desc, mem);
+  DPRINT ("memp_free (%p, %p)\n", desc, mem);
   struct memp *memp;
   SYS_ARCH_DECL_PROTECT(old_level);
 

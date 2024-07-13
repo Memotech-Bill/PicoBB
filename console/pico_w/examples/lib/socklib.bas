@@ -25,11 +25,47 @@ REM  FN_recvfromsocket(skt,buf,len,host,port) Read from UDP socket, returning pe
 REM Routine added for Pico:
 REM  FN_gethostip                Return the IP4 address of the device as integer
 
+REM Move HIMEM and BASIC stack down to make room for network heap
+DEF PROC__socklib_rsrv(size%)
+LOCAL b%%, d%%, s%%
+DIM s%% LOCAL TRUE, b%% LOCAL size%-&20, d%% LOCAL TRUE
+WHILE s%% < HIMEM
+?d%% = ?s%%
+d%% += 1 : s%% += 1
+ENDWHILE
+HIMEM = d%%
+ENDPROC
+
+REM Move HIMEM and BASIC stack up recovering space used by network heap
+DEF PROC__socklib_free(size%)
+LOCAL b%%, d%%, s%%
+DIM s%% LOCAL TRUE, b%% LOCAL 7, d%% LOCAL TRUE
+b%% = size% + s%% - d%% - &20
+s%%!-12 += b%% : d%% = s%% + b%%
+WHILE s%% < HIMEM
+?d%% = ?s%%
+d%% += 1 : s%% += 1
+ENDWHILE
+HIMEM = d%%
+ENDPROC
+
 REM Initialise the BBCSDL Sockets interface
 DEF PROC_initsockets(N%)
-DEF PROC_initsockets
-LOCAL chan%, err%
-SYS "net_freeall"
+DEF PROC_initsockets : LOCAL N% : N% = 2
+LOCAL chan%, err%, hsize%
+SYS "net_heap_size", N% TO hsize%
+LOCAL HeapPos{} : DIM HeapPos{bot%,top%}
+IF hsize% > 0 THEN
+SYS "heap_limits",^HeapPos.bot%,^HeapPos.top%
+IF HeapPos.bot% <> HIMEM THEN
+DIM vt% TRUE, sp% LOCAL TRUE
+IF (sp% - vt%) < hsize% THEN ERROR 0, "No space"
+HeapPos.top% = HIMEM
+PROC__socklib_rsrv(hsize%)
+HeapPos.bot% = HIMEM
+ENDIF
+ENDIF
+SYS "net_init", HeapPos.bot%, HeapPos.top%
 chan% = OPENIN("wifi.cfg")
 IF chan% = 0 THEN
 LOCAL ccode$, cc1%, cc2%
@@ -61,7 +97,15 @@ ENDPROC
 
 REM Shut down the BBCSDL Sockets interface
 DEF PROC_exitsockets
+LOCAL hsize%, HeapPos{} : DIM HeapPos{bot%,top%}
+SYS "net_limits",^HeapPos.bot%,^HeapPos.top%
 SYS "net_freeall"
+SYS "cyw43_arch_deinit"
+IF HeapPos.bot% = HIMEM THEN
+hsize% = HeapPos.top% - HeapPos.bot%
+SYS "net_term"
+PROC__socklib_free(hsize%)
+ENDIF
 ENDPROC
 
 REM Get the IP address of the local machine

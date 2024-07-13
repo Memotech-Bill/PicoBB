@@ -332,8 +332,58 @@ int net_udp_recv (intptr_t conn, uint32_t len, void *data, ip_addr_t *ipaddr, ui
 
 net_freeall - Close all connections and free all memory
 
+SYS "net_freeall"
+
 */
 
 void net_freeall (void);
+
+/*-------------------------------------------------------------------------------
+
+net_heap size - Suggest size of heap for network connections
+
+SYS "net_heap_size", nconn% TO size%
+
+nconn% =    Expected number of connections
+
+*/
+
+int net_heap_size (int nconn);
+
+/*-------------------------------------------------------------------------------
+
+net_init - Initialise memory for network operations
+
+SYS "net_init", base%, top%
+
+base% =     Base of memory for heap
+top% =      Top of memory for heap
+
+*/
+
+void net_init (void *base, void *top);
+
+/*-------------------------------------------------------------------------------
+
+net_term - Tidy up memory following network operations
+
+SYS "net_term"
+
+*/
+
+void net_term (void);
+
+/*-------------------------------------------------------------------------------
+
+net_limits - Obtain position of network heap
+
+SYS "net_limits", ^base%, ^top%
+
+base% =     Base of memory for heap
+top% =      Top of memory for heap
+
+*/
+
+void net_limits (void **base, void **top);
 
 #endif

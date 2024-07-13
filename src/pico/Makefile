@@ -3,6 +3,12 @@ BBC_SRC?=../../BBCSDL
 USB_CON?=0
 NET_HEAP?=0
 
+EXAMPLE_FILES = ../../BBCSDL/lib/*.bbc \
+		../../BBCSDL/tests/*.bbc \
+		../../BBCSDL/examples/general/*.bbc \
+		../../console/pico/examples/* \
+		../../console/pico/lib/*
+
 ifeq ($(MIN_STACK), Y)
 EXEC_SOURCES = \
     ../../src/bbexec2.c \
@@ -64,6 +70,8 @@ GUI_SOURCES = \
     ../../src/pico_gui/picofbuf.c \
     ../../src/pico_gui/framebuffer.S
 SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt
+EXAMPLE_FILES += ../../bin/pico/examples/* \
+		../../bin/pico/examples/graphics/*
 else
 GUI_SOURCES = ../../src/pico/zmodem.c
 SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
@@ -79,25 +87,34 @@ SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_cyw43_poll.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 NET_SOURCES = ../../include/network.h \
-	../../src/pico/network_cyw43.c
+	../../src/pico/network_cyw43.c \
+	../../src/heap.c
 SDL_EXAMPLES = ../../BBCSDL/examples/general/client.bbc \
 	../../BBCSDL/examples/general/server.bbc
+EXAMPLE_FILES += 	../../console/pico_w/examples/* \
+		../../console/pico_w/examples/lib/*
 else ifeq ($(CYW43), BACKGROUND)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_cyw43_background.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 NET_SOURCES = ../../include/network.h \
-	../../src/pico/network_cyw43.c
+	../../src/pico/network_cyw43.c \
+	../../src/heap.c
 SDL_EXAMPLES = ../../BBCSDL/examples/general/client.bbc \
 	../../BBCSDL/examples/general/server.bbc
+EXAMPLE_FILES += 	../../console/pico_w/examples/* \
+		../../console/pico_w/examples/lib/*
 else ifeq ($(CYW43), Y)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_cyw43_background.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 NET_SOURCES = ../../include/network.h \
-	../../src/pico/network_cyw43.c
+	../../src/pico/network_cyw43.c \
+	../../src/heap.c
 SDL_EXAMPLES = ../../BBCSDL/examples/general/client.bbc \
 	../../BBCSDL/examples/general/server.bbc
+EXAMPLE_FILES += 	../../console/pico_w/examples/* \
+		../../console/pico_w/examples/lib/*
 endif
 
 ifneq ($(SERIAL_DEV), 0)
@@ -218,7 +235,7 @@ filesystem$(SUFFIX).lfs: $(FILESYS) ../../src/lfsutil/mklfsimage
 	rm -f filesystem.lfs
 	./mklfsimage -o filesystem$(SUFFIX).lfs $(FILESYS)
 else
-filesystem$(SUFFIX).lfs: $(BASIC_EXAMPLES) ../../src/lfsutil/pico_examples.py ../../src/lfsutil/mklfsimage
+filesystem$(SUFFIX).lfs: $(BASIC_EXAMPLES) $(EXAMPLE_FILES) ../../src/lfsutil/pico_examples.py ../../src/lfsutil/mklfsimage
 	rm -rf build/tree
 	../../src/lfsutil/pico_examples.py -o filesystem$(SUFFIX).lfs -t build/tree $(DEVICE) $(BUILD) $(BASIC_EXAMPLES)
 endif
