@@ -170,7 +170,7 @@ if (TARGET tinyusb_device)
       target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=3)
       if (${NET_HEAP} GREATER 0)
         set(CYW43_LINK 2)
-        add_subdirectory(../lwip ${CMAKE_CURRENT_BINARY_DIR}/../lwip)
+        add_subdirectory(../lwip ${CMAKE_CURRENT_BINARY_DIR}/lwip)
         target_sources(bbcbasic PRIVATE ../../src/heap.c)
         target_compile_definitions(bbcbasic PUBLIC NET_HEAP=${NET_HEAP})
         target_link_libraries(bbcbasic

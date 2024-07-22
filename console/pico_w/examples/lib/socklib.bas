@@ -29,11 +29,8 @@ REM Move HIMEM and BASIC stack down to make room for network heap
 DEF PROC__socklib_rsrv(size%)
 LOCAL b%%, d%%, s%%
 DIM s%% LOCAL TRUE, b%% LOCAL size%-&20, d%% LOCAL TRUE
-WHILE s%% < HIMEM
-?d%% = ?s%%
-d%% += 1 : s%% += 1
-ENDWHILE
-HIMEM = d%%
+SYS "memmove", d%%, s%%, HIMEM - s%%
+HIMEM = d%% + HIMEM - s%%
 ENDPROC
 
 REM Move HIMEM and BASIC stack up recovering space used by network heap
@@ -42,11 +39,8 @@ LOCAL b%%, d%%, s%%
 DIM s%% LOCAL TRUE, b%% LOCAL 7, d%% LOCAL TRUE
 b%% = size% + s%% - d%% - &20
 s%%!-12 += b%% : d%% = s%% + b%%
-WHILE s%% < HIMEM
-?d%% = ?s%%
-d%% += 1 : s%% += 1
-ENDWHILE
-HIMEM = d%%
+SYS "memmove", d%%, s%%, HIMEM - s%%
+HIMEM = d%% + HIMEM - s%%
 ENDPROC
 
 REM Initialise the BBCSDL Sockets interface

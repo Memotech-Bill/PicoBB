@@ -146,7 +146,7 @@
       require line numbers, the order is determined by the position of the line in the file.
       A BBC BASIC program <a href="https://github.com/Memotech-Bill/PicoBB/tree/master/tools">yupload.bas</a>
       to run on a host computer has been provided which will automatically upload a program from
-      the host to a Picco and run it.</p>
+      the host to a Pico and run it.</p>
     <h2 id="storage">Program and Data Storage</h2>
     <p>The default builds of PicoBB use the upper half of the Pico's flash memory (1MB) to
       provide storage for programs and data which is retained when power is removed. The
@@ -277,14 +277,14 @@
         <tr><td>9</td><td>16</td><td>40 x 32</td></tr>
       </tbody>
     </table>
-    <p>In general, PiccoBB console builds do not support graphical output. Issuing graphics drawing commands
+    <p>In general, PicoBB console builds do not support graphical output. Issuing graphics drawing commands
       from a program running in console mode will not produce an error, they just do not produce
       any output. However commands that attempt to interrogate the screen will generally fail.</p>
     <p>There are two exceptions:</p>
     <ul>
-      <li>Normally the console builds send VT100 escape codes to the host ccomputer to ccontrol the display.
+      <li>Normally the console builds send VT100 escape codes to the host computer to control the display.
         However there is an option to send BBC BASIC VDU codes instead. These could then be interpreted
-        and displayed on the host computer, inccluding any graphics output. The
+        and displayed on the host computer, including any graphics output. The
         <a href="https://github.com/Memotech-Bill/PicoBB/tree/master/tools">yupload.bas</a> program
         does this. There is minimal feedback from the host computer and therefore what is being displayed
         may not correspond to what the Pico thinks is being displayed.</li>
@@ -328,7 +328,7 @@
     <p>The first time the library is used you will be prompted for the WiFi details (SSID, password
       and two letter country code). These will then be stored in the file "wifi.cfg" for subsequent
       use. To change the access point used, delete this file.</p>
-    <p>The filesystem images also include three example programs:</p>
+    <p>The filesystem images also include four example programs:</p>
     <ul>
       <li><b>client.bbc</b> and <b>server.bbc</b> - These are a pair of simple two-way chat programs.
         They may be used to exchange messages with the corresponding program running on BBC BASIC
@@ -343,6 +343,13 @@
       some higher level routines have been written in C to provide the functions needed to implement
       "socklib". If required, these routines may be accessed directly using SYS. They are documented
       in the file "include/network.h".</p>
+    <p>The original implementation of the network code utilised a large static allocation of a memory pool
+      for network buffers, which substantially reduced the memory available to BASIC for the Pico W build,
+      even if networking is not used (the static memory pool is the default for the <b>pico-sdk</b> when
+      using background CYW43 network support). Following a discussion with Richard Russel, this has been
+      revised. Calling <b>PROC_initsockets</b> reserves space for the network buffers by moving <b>HIMEM</b>
+      down. Providing that nothing else changes <b>HIMEM</b>, this space is reclaimed when <b>PROC_exitsockets</b>
+      is called.</p>
     <h2 id="assembler">Thumb Assembler</h2>
     <p>There is a built-in assembler for the ARM v6M instruction set as supported by the Pico.
       By default the assembler uses "Unified" syntax. However including the following pseudo-op</p>
@@ -358,7 +365,7 @@
     <h2 id="basic">BASIC keywords</h2>
     <p>Almost all of the BASIC keywords documented in section 5 of
       <a href="https://www.bbcbasic.co.uk/bbcsdl/manual/index.html">BBC BASIC for SDL 2.0</a>
-      are implemented as desccribed. The following sections outline the differences.</p>
+      are implemented as described. The following sections outline the differences.</p>
     <h3>ADVAL</h3>
     <p>The Pico has a 12-bit analogue to digital converter with a five input multiplexer. This can
       be read using the BASIC ADVAL function with positive arguments. The returned value is an
@@ -417,7 +424,7 @@
     <h3>SYS</h3>
     <p>The Pico does not support DLLs. Instead a compiled in list of functions are supported.
       The list consists of most of the functions in the Pico C SDK (currently excluding the
-      Bluetoot functions) plus those functions from the C runtime library whicch are used by
+      Bluetoot functions) plus those functions from the C runtime library which are used by
       the PicoBB program itself. If building PicoBB from source, the list of supported functions
       can be found in "build/sympico.h".</p>
     <h3>USR</h3>
@@ -429,7 +436,7 @@
     </ul>
     <p>Other uses are as documented.</p>
     <h3>VDU</h3>
-    <p>The command behaves as doccumented. See ??? for how the VDU sequences are interpreted.</p>
+    <p>The command behaves as documented. See ??? for how the VDU sequences are interpreted.</p>
     <h3>WIDTH</h3>
     <p>On console builds attempting to obtain the width of a string will fail with an error message.
       On GUI builds it will work as documented, but since there is only a single, fixed pitch font,
@@ -457,7 +464,7 @@
     <p>These commands don't do anything. The Little File System used for storage in Pico flash memory
       does not have any file attributes for recording Read-Only or Read-Write status. It would be possible
       to implement the functions for the FAT filesystem on an external SD card, but that would be
-      incconsistent.</p>
+      inconsistent.</p>
     <h3>*output</h3>
     <p>This command works as documented for valid channel numbers 1 to 12, or zero to restore normal output.</p>
     <p>The &quot;special&quot; values 13 to 15 used by BBCSDL for &quot;non-overlapped I/O&quot; will

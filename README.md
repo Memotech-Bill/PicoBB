@@ -29,7 +29,7 @@ There are currently four standard builds, see Releases for pre-built UF2 files:
 ### Console version with WiFi: bbcbasic_pwc in folder console/pico_w
 
 * As per the console version but with support for networking over the built in WiFi on a Pico W.
-* Has 190KB of RAM available, shared between BASIC and the machine stack.
+* Has 228KB (previously 190KB) of RAM available, shared between BASIC and the machine stack.
 
 ### GUI version: bbcbasic_pkg in folder bin/pico
 
@@ -47,7 +47,7 @@ There are currently four standard builds, see Releases for pre-built UF2 files:
 ### GUI version with WiFi: bbcbasic_pwg in folder bin/pico_w
 
 * As per the GUI version but with support for networking over the built in WiFi on a Pico W.
-* Has 134KB of RAM available, shared between BASIC and the machine stack.
+* Has 172KB (previously 134KB) of RAM available, shared between BASIC and the machine stack.
 
 Any of the four builds will run on either a Pico or a Pico W (and probably most other RP2040 boards)
 but clearly the networking will only actually work on a Pico W.
@@ -115,7 +115,8 @@ Repeat the process for filesystem.uf2
 For information BBC BASIC syntax and usage, see the
 [BBC BASIC Manual](https://www.bbcbasic.co.uk/bbcwin/manual/).
 Note that the description of the IDE in sections 1 and 2 of the documentation is not applicable,
-this is not supported by the Pico version.
+this is not supported by the Pico version. Major differences between **PicoBB** and other versions
+of **BBCSDL** are suumerised [here](https://memotech-bill.github.io/PicoBB/).
 
 ### Connecting to the Console versions (from Raspberry Pi)
 
@@ -245,11 +246,12 @@ The first time the library is used you will be prompted for the WiFi details (SS
 and two letter country code). These will then be stored in the file "wifi.cfg" for subsequent
 use. To change the access point used, delete this file.
 
-The filesystem images also include three example programs:
+The filesystem images also include four example programs:
 
 * **client.bbc** and **server.bbc** - These are a pair of simple two-way chat programs.
   They may be used to exchange messages with the corresponding program running on BBC BASIC
   on another machine on the network.
+* **lanchat.bbc** - A simple program to exchange messages with multiple users on a LAN.
 * **tftp_server.bbc** - A file transfer program. This may be used to copy text or binary
   files to and from the Pico. A suitable client program may be installed on a Raspberry Pi
   using the command `sudo apt install tftp`.
@@ -535,10 +537,14 @@ by adding parameters to `make` command.
     available to BASIC.
   * CYW43=BACKGROUND for network support with automatic (background) polling. This option reduces
     the memory available to BASIC.
+* NET_HEAP=... Controls allocation of network memory pool.
+  * NET_HEAP=0 Use **pico-sdk** default network memory allocation (static memory pool for
+    CYW43=BACKGROUND).
+  * NET_HEAP=1 Allocate memory pool by moving **HIMEM** down.
 * MIN_STACK=Y to use revised code in expression evaluation to minimise stack utilisation. This
   appears to work but has not been as extensively validated as the original BBCSDL code. Use
   MIN_STACK=N to use coding identical to BBCSDL. MIN_STACK=X provides further reduction in
-  stack usage at some cost in execution speed (this option is not suppoerted by Richard Russell).
+  stack usage at some cost in execution speed (this option is not supported by Richard Russell).
 * GRAPH=Y (Experimental) Add VGA output to console build.
 * OS_RAM=<size> to specify how much RAM (in kilobytes) to reserve for low level functions, which
   is unavailable to BASIC. The default builds should default to the correct amount of RAM, but
@@ -628,6 +634,7 @@ Pico W Console:
 
     BOARD=pico_w
     CYW43=BACKGROUND
+    NET_HEAP=1
     STDIO=USB+UART
     LFS=Y
     FAT=N
@@ -653,6 +660,7 @@ Pico W GUI
 
     BOARD=vgaboard_sd_w
     CYW43=BACKGROUND
+    NET_HEAP=1
     STDIO=PICO
     LFS=Y
     FAT=Y
