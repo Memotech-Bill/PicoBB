@@ -13,6 +13,11 @@ endif()
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+
+set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/../../boards)
+# if(DEFINED ENV{picotool_DIR})
+#   set(picotool_DIR $ENV{picotool_DIR})
+# endif()
 if(DEFINED ENV{PICO_SDK_PATH})
   include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 else()
@@ -26,8 +31,6 @@ if (( "${STDIO}" STREQUAL "PICO" ) OR ( ${GRAPH} ))
     message(FATAL_ERROR "Please set environment variable PICO_EXTRAS_PATH to location of pico-extras")
   endif()
 endif()
-
-set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/../../boards)
 
 project(bbcbasic C CXX ASM)
 pico_sdk_init()
@@ -90,7 +93,9 @@ if (TARGET tinyusb_device)
       
   pico_set_printf_implementation(bbcbasic compiler)
   # Registers r10 and r11 are defined as BASIC Program and Stack pointers in BBC.h
-  target_compile_options(bbcbasic PUBLIC -ffixed-r10 -ffixed-r11)
+  # target_compile_options(bbcbasic PUBLIC -ffixed-r10 -ffixed-r11)
+  # Work around a bug in panic.c in v2.0 Pico SDK
+  target_compile_options(bbcbasic PUBLIC -include pico/platform/compiler.h)
   target_compile_options(bbcbasic PRIVATE -O1 -g)
   target_link_options(bbcbasic PRIVATE -g)
   target_link_libraries(bbcbasic
@@ -213,7 +218,7 @@ if (TARGET tinyusb_device)
       -DPICO_MCLOCK
       )
     target_sources(bbcbasic PRIVATE
-      ${BBC_SRC}/src/sound_sdl.c
+      ../../src/pico/sound_sdl.c
       )
     target_link_libraries(bbcbasic hardware_pwm)
   endif()

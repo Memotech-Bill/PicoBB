@@ -16,7 +16,6 @@
 //              3 Two buffers both below PAGE
 #define DBUF_MODE   1
 
-#include "pico/platform.h"
 #include "pico.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"

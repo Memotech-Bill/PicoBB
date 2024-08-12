@@ -1,13 +1,13 @@
 # Header files for the majority of the SDK functions
 %global NDEBUG
 %function is_pico_w
-${PICO_SDK_PATH}/src/common/pico_base/include/pico/config.h
-${PICO_SDK_PATH}/src/common/pico_base/include/pico/error.h
-${PICO_SDK_PATH}/src/common/pico_base/include/pico.h
-${PICO_SDK_PATH}/src/common/pico_base/include/pico/types.h
-${PICO_SDK_PATH}/src/common/pico_bit_ops/include/pico/bit_ops.h
-${PICO_SDK_PATH}/src/common/pico_divider/include/pico/divider.h
-${PICO_SDK_PATH}/src/common/pico_stdlib/include/pico/stdlib.h
+${PICO_SDK_PATH}/src/common/pico_base_headers/include/pico/config.h
+${PICO_SDK_PATH}/src/common/pico_base_headers/include/pico/error.h
+${PICO_SDK_PATH}/src/common/pico_base_headers/include/pico.h
+${PICO_SDK_PATH}/src/common/pico_base_headers/include/pico/types.h
+${PICO_SDK_PATH}/src/common/pico_bit_ops_headers/include/pico/bit_ops.h
+${PICO_SDK_PATH}/src/common/pico_divider_headers/include/pico/divider.h
+${PICO_SDK_PATH}/src/common/pico_stdlib_headers/include/pico/stdlib.h
 ${PICO_SDK_PATH}/src/common/pico_sync/include/pico/critical_section.h
 ${PICO_SDK_PATH}/src/common/pico_sync/include/pico/lock_core.h
 ${PICO_SDK_PATH}/src/common/pico_sync/include/pico/mutex.h
@@ -18,9 +18,9 @@ ${PICO_SDK_PATH}/src/common/pico_time/include/pico/time.h
 ${PICO_SDK_PATH}/src/common/pico_util/include/pico/util/datetime.h
 ${PICO_SDK_PATH}/src/common/pico_util/include/pico/util/pheap.h
 ${PICO_SDK_PATH}/src/common/pico_util/include/pico/util/queue.h
+${PICO_SDK_PATH}/src/common/hardware_claim/include/hardware/claim.h
 ${PICO_SDK_PATH}/src/rp2_common/hardware_adc/include/hardware/adc.h
 ${PICO_SDK_PATH}/src/rp2_common/hardware_base/include/hardware/address_mapped.h
-${PICO_SDK_PATH}/src/rp2_common/hardware_claim/include/hardware/claim.h
 ${PICO_SDK_PATH}/src/rp2_common/hardware_clocks/include/hardware/clocks.h
 ${PICO_SDK_PATH}/src/rp2_common/hardware_divider/include/hardware/divider.h
 ${PICO_SDK_PATH}/src/rp2_common/hardware_dma/include/hardware/dma.h
@@ -44,7 +44,14 @@ ${PICO_SDK_PATH}/src/rp2_common/hardware_vreg/include/hardware/vreg.h
 ${PICO_SDK_PATH}/src/rp2_common/hardware_watchdog/include/hardware/watchdog.h
 ${PICO_SDK_PATH}/src/rp2_common/hardware_xosc/include/hardware/xosc.h
 ${PICO_SDK_PATH}/src/rp2_common/pico_double/include/pico/double.h
+%exclude double2uint64
+%exclude int2double
+%exclude uint2double
+%exclude int642double
+%exclude uint642double
 ${PICO_SDK_PATH}/src/rp2_common/pico_float/include/pico/float.h
+%exclude float2uint
+%exclude float2uint64
 ${PICO_SDK_PATH}/src/rp2_common/pico_int64_ops/include/pico/int64_ops.h
 ${PICO_SDK_PATH}/src/rp2_common/pico_malloc/include/pico/malloc.h
 ${PICO_SDK_PATH}/src/rp2_common/pico_mem_ops/include/pico/mem_ops.h

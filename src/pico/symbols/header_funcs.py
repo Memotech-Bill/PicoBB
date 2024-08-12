@@ -25,8 +25,10 @@ def Body (sLine):
     return sLine.split (None, 1)[1].strip ()
 
 class Header:
-    def __init__ (self, sIn, fOut, fStub, gldef):
+    def __init__ (self, sIn, fOut, fStub, gldef, sList, nLine):
         self.sIn = sIn
+        self.sList = sList
+        self.nLine = nLine
         nCh = sIn.find ('/include/')
         if ( nCh >= 0 ):
             self.sHeader = sIn[nCh + 9:]
@@ -144,47 +146,52 @@ class Header:
                     self.sPrefix = sLine + ' '
 
     def Parse (self):
-        with open (self.sIn, 'r') as fIn:
-            bInCmnt = False
-            for sLine in fIn:
-                sLine = self.sPrefix + sLine.strip ()
-                self.sPrefix = ''
-                if ( bInCmnt ):
-                    if ( sLine.endswith ('*/') ):
-                        bInCmnt = False
-                elif ( sLine.startswith ('/*') ):
-                    bInCmnt = not sLine.endswith ('*/')
-                elif ( sLine.startswith ('//') ):
-                    pass
-                elif ( sLine.startswith ('#') ):
-                    if ( sLine.endswith ('\\') ):
-                        self.sPrefix = sLine[0:-1]
-                    elif ( sLine.startswith ('#ifdef') ):
-                        self.do_ifdef (sLine)
-                    elif ( sLine.startswith ('#ifndef') ):
-                        self.do_ifndef (sLine)
-                    elif ( sLine.startswith ('#if') ):
-                        self.do_if (sLine)
-                        #self.fOut.write (sLine + ' active = ' + str (self.active[-1][0]) + '\n')
-                    elif ( sLine.startswith ('#elseif') ):
-                        self.do_elseif (sLine)
-                    elif ( sLine.startswith ('#else') ):
-                        self.do_else ()
-                    elif ( sLine.startswith ('#endif') ):
-                        self.do_endif ()
-                    elif ( sLine.startswith ('#define') ):
-                        self.define (sLine)
-                    # self.fOut.write (sLine + ' active = ' + str (self.active[-1][0]) + '\n')
-                elif ( self.active[-1][0] ):
-                    sLine = Clean (sLine)
-                    self.nBrace += sLine.count ('{')
-                    if ( sLine == 'extern "C" {' ):
-                        self.nBrace -= 1
-                    if ( '(' in sLine ):
-                        self.do_func (sLine)
-                    self.nBrace -= sLine.count ('}')
-                    if ( self.nBrace < 0 ):
-                        self.nBrace = 0
+        try:
+            with open (self.sIn, 'r') as fIn:
+                bInCmnt = False
+                for sLine in fIn:
+                    sLine = self.sPrefix + sLine.strip ()
+                    self.sPrefix = ''
+                    if ( bInCmnt ):
+                        if ( sLine.endswith ('*/') ):
+                            bInCmnt = False
+                    elif ( sLine.startswith ('/*') ):
+                        bInCmnt = not sLine.endswith ('*/')
+                    elif ( sLine.startswith ('//') ):
+                        pass
+                    elif ( sLine.startswith ('#') ):
+                        if ( sLine.endswith ('\\') ):
+                            self.sPrefix = sLine[0:-1]
+                        elif ( sLine.startswith ('#ifdef') ):
+                            self.do_ifdef (sLine)
+                        elif ( sLine.startswith ('#ifndef') ):
+                            self.do_ifndef (sLine)
+                        elif ( sLine.startswith ('#if') ):
+                            self.do_if (sLine)
+                            #self.fOut.write (sLine + ' active = ' + str (self.active[-1][0]) + '\n')
+                        elif ( sLine.startswith ('#elseif') ):
+                            self.do_elseif (sLine)
+                        elif ( sLine.startswith ('#else') ):
+                            self.do_else ()
+                        elif ( sLine.startswith ('#endif') ):
+                            self.do_endif ()
+                        elif ( sLine.startswith ('#define') ):
+                            self.define (sLine)
+                        # self.fOut.write (sLine + ' active = ' + str (self.active[-1][0]) + '\n')
+                    elif ( self.active[-1][0] ):
+                        sLine = Clean (sLine)
+                        self.nBrace += sLine.count ('{')
+                        if ( sLine == 'extern "C" {' ):
+                            self.nBrace -= 1
+                        if ( '(' in sLine ):
+                            self.do_func (sLine)
+                        self.nBrace -= sLine.count ('}')
+                        if ( self.nBrace < 0 ):
+                            self.nBrace = 0
+        except FileNotFoundError:
+            sys.stderr.write ('\n*** ERROR: Header file {:s} not found.\n'.format (self.sIn))
+            sys.stderr.write (  '           Referenced by line {:d} in {:s}\n\n'.format (self.nLine, self.sList))
+            sys.exit (1)
 
 def header_list (sOut, sStub, lList):
     gldef = []
@@ -197,28 +204,34 @@ def header_list (sOut, sStub, lList):
                      + ' ' + ' '.join (lList) + '\n// Do not edit\n\n')
         for sList in lList:
             fOut.write ('#\n# Processing file ' + sList + '\n')
-            with open (sList, 'r') as fList:
-                hdr = None
-                for sLine in fList:
-                    sLine = sLine.strip ()
-                    if (( len (sLine) > 0 ) and ( sLine[0] != '#' )):
-                        if ( sLine.startswith ('%global') ):
-                            gldef.append (sLine)
-                        elif ( sLine.startswith ('%define') ):
-                            hdr.define (sLine)
-                        elif ( sLine.startswith ('%exclude') ):
-                            hdr.exclude (sLine)
-                        elif ( sLine.startswith ('%function') ):
-                           lparts = sLine.split ()
-                           fOut.write (lparts[1])
-                           if ( len (lparts) > 2 ):
-                              fOut.write ('\t' + lparts[2] + '\n')
-                           else:
-                              fOut.write ('\n')
-                        else:
-                            if ( hdr is not None ):
-                                hdr.Parse ()
-                            hdr = Header (os.path.expandvars (sLine), fOut, fStub, gldef)
+            try:
+                with open (sList, 'r') as fList:
+                    hdr = None
+                    nLine = 0
+                    for sLine in fList:
+                        nLine += 1
+                        sLine = sLine.strip ()
+                        if (( len (sLine) > 0 ) and ( sLine[0] != '#' )):
+                            if ( sLine.startswith ('%global') ):
+                                gldef.append (sLine)
+                            elif ( sLine.startswith ('%define') ):
+                                hdr.define (sLine)
+                            elif ( sLine.startswith ('%exclude') ):
+                                hdr.exclude (sLine)
+                            elif ( sLine.startswith ('%function') ):
+                               lparts = sLine.split ()
+                               fOut.write (lparts[1])
+                               if ( len (lparts) > 2 ):
+                                  fOut.write ('\t' + lparts[2] + '\n')
+                               else:
+                                  fOut.write ('\n')
+                            else:
+                                if ( hdr is not None ):
+                                    hdr.Parse ()
+                                hdr = Header (os.path.expandvars (sLine), fOut, fStub, gldef, sList, nLine)
+            except FileNotFoundError:
+                sys.stderr.write ('\n*** ERROR: Headers list file {:s} not found.\n\n'.format (sList))
+                sys.exit (1)
             if ( hdr is not None ):
                 hdr.Parse ()
 

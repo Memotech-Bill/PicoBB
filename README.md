@@ -86,6 +86,14 @@ PICO_EXTRAS_PATH and PICO_SDK_PATH respectively to the locations where these are
 Installing the SDK using the script [pico_setup.sh](https://raw.githubusercontent.com/raspberrypi/pico-setup/master/pico_setup.sh)
 will automatically install and configure everything required.
 
+The source has been modified to build with v2.0 of **pico-sdk**. As a result of these modifications
+it will no longer build with any earlier version. If you have an earlier version of the SDK,
+first update this:
+
+     cd pico-sdk
+     git pull
+     git submodule update
+
 Download the source code using:
 
      git clone --recurse-submodules https://github.com/Memotech-Bill/PicoBB.git
