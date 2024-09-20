@@ -60,5 +60,7 @@ uf2merge
 tree
 sympico.h
 sym_*.txt
+asmtest_*.txt
+asmtest
 *_stub.c
 test/
