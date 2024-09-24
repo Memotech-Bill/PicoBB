@@ -40,20 +40,35 @@ int main (int nArg, const char *psArg[])
     uint32_t iFamily = 0;
     uint32_t nBlkSize = 0;
     int iErr = 0;
+    int nFIn = 2;
+    int bIgn = 0;
+    int bFix = 0;
     if ( nArg < 3 )
         {
-        fprintf (stderr, "Usage: %s output.uf2 input1.uf2 input2.uf2...\n", psArg[0]);
+        fprintf (stderr, "Usage: %s [-f | -i] output.uf2 input1.uf2 input2.uf2...\n", psArg[0]);
+        fprintf (stderr, "       -f - Set family of subsequent UF2 files to match first\n");
+        fprintf (stderr, "       -i - Ignore (preserve) different family settings\n");
         exit (1);
         }
-    fi = (FILEINFO *) malloc ((nArg - 2) * sizeof (FILEINFO));
-    pfs = (FILEINFO **) malloc ((nArg - 2) * sizeof (FILEINFO *));
+    if (! strcmp (psArg[1], "-f"))
+        {
+        bFix = 1;
+        nFIn = 3;
+        }
+    else if (! strcmp (psArg[1], "-i"))
+        {
+        bIgn = 1;
+        nFIn = 3;
+        }
+    fi = (FILEINFO *) malloc ((nArg - nFIn) * sizeof (FILEINFO));
+    pfs = (FILEINFO **) malloc ((nArg - nFIn) * sizeof (FILEINFO *));
     if (( fi == NULL ) || ( pfs == NULL ))
         {
         fprintf (stderr, "Memory allocation failure\n");
         exit (1);
         }
     pfi = fi;
-    for (int iArg = 2; iArg < nArg; ++iArg)
+    for (int iArg = nFIn; iArg < nArg; ++iArg)
         {
         fIn = fopen (psArg[iArg], "rb");
         if ( fIn == NULL )
@@ -76,7 +91,7 @@ int main (int nArg, const char *psArg[])
             iErr = 1;
             break;
             }
-        if ( iArg == 2 )
+        if ( iArg == nFIn )
             {
             nBlkSize = iBuff[4];
             if ( iBuff[2] & FLG_FAMILY )
@@ -88,15 +103,21 @@ int main (int nArg, const char *psArg[])
             {
             if ( iBuff[4] != nBlkSize )
                 {
-                fprintf (stderr, "Inconsistent block size in \"%s\"\n", psArg[iArg]);
+                fprintf (stderr, "Inconsistent block size in \"%s\": %d %d\n", psArg[iArg], nBlkSize, iBuff[4]);
                 iErr = 1;
                 break;
                 }
             if ( iFamily != 0 )
                 {
-                if ( ( ( iBuff[2] & FLG_FAMILY ) != FLG_FAMILY ) || ( iBuff[7] != iFamily ) )
+                if ( bFix || (( iBuff[2] & FLG_FAMILY ) == 0 ))
                     {
-                    fprintf (stderr, "Inconsistent family definition in \"%s\"\n", psArg[iArg]);
+                    iBuff[2] |= FLG_FAMILY;
+                    iBuff[7] = iFamily;
+                    }
+                else if ((! bIgn) && ( iBuff[7] != iFamily ))
+                    {
+                    fprintf (stderr, "Inconsistent family definition in \"%s\": 0x%08X 0x%08X\n",
+                        psArg[iArg], iFamily, iBuff[7]);
                     iErr = 1;
                     break;
                     }
@@ -108,7 +129,7 @@ int main (int nArg, const char *psArg[])
             iErr = 1;
             break;
             }
-        pfs[iArg-2] = pfi;
+        pfs[iArg-nFIn] = pfi;
         pfi->iArg     = iArg;
         pfi->nBlocks  = iBuff[6];
         pfi->iAddrMin = iBuff[3];
@@ -122,7 +143,7 @@ int main (int nArg, const char *psArg[])
     while ( ! bSorted )
         {
         bSorted = true;
-        for (int i = 0; i < nArg - 3; ++i)
+        for (int i = 0; i < nArg - nFIn - 1; ++i)
             {
             if ( pfs[i+1]->iAddrMin < pfs[i]->iAddrMin )
                 {
@@ -133,8 +154,8 @@ int main (int nArg, const char *psArg[])
                 }
             }
         }
-    uint32_t nBlocks = ( pfs[nArg-3]->iAddrMax - pfs[0]->iAddrMin ) / nBlkSize;
-    fOut = fopen (psArg[1], "wb");
+    uint32_t nBlocks = ( pfs[nArg-nFIn-1]->iAddrMax - pfs[0]->iAddrMin ) / nBlkSize;
+    fOut = fopen (psArg[nFIn-1], "wb");
     if ( fOut == NULL )
         {
         fprintf (stderr, "Unable to open output file \"%s\"\n", psArg[1]);
@@ -143,7 +164,7 @@ int main (int nArg, const char *psArg[])
     int iBlkOut = 0;
     int iArg = pfs[0]->iArg;
     uint32_t iAddrMax = pfs[0]->iAddrMin;
-    for (int i = 0; i < nArg - 2; ++i)
+    for (int i = 0; i < nArg - nFIn; ++i)
         {
         pfi = pfs[i];
         if ( pfi->iAddrMin < iAddrMax )
@@ -201,9 +222,15 @@ int main (int nArg, const char *psArg[])
                 }
             if ( iFamily != 0 )
                 {
-                if ( ( ( iBuff[2] & FLG_FAMILY ) != FLG_FAMILY ) || ( iBuff[7] != iFamily ) )
+                if ( bFix || (( iBuff[2] & FLG_FAMILY ) == 0 ))
                     {
-                    fprintf (stderr, "Inconsistent family definition in \"%s\"\n", psArg[iArg]);
+                    iBuff[2] |= FLG_FAMILY;
+                    iBuff[7] = iFamily;
+                    }
+                else if ((! bIgn) && ( iBuff[7] != iFamily ))
+                    {
+                    fprintf (stderr, "Inconsistent family definition in \"%s\": 0x%08X 0x%08X\n",
+                        psArg[iArg], iFamily, iBuff[7]);
                     iErr = 1;
                     break;
                     }
@@ -225,7 +252,7 @@ int main (int nArg, const char *psArg[])
             }
         fclose (fIn);
         if ( iErr != 0 ) break;
-        printf ("%3d: 0x%08X - 0x%08X %s\n", iArg - 1, pfi->iAddrMin, pfi->iAddrMax, psArg[iArg]);
+        printf ("%3d: 0x%08X - 0x%08X %s\n", i + 1, pfi->iAddrMin, pfi->iAddrMax, psArg[iArg]);
         }
     fclose (fOut);
     return iErr;

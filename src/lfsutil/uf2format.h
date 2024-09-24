@@ -49,6 +49,7 @@
 #define UF2_FLAG_MD5_PRESENT        0x00004000u
 
 #define RP2040_FAMILY_ID 0xe48bff56
+#define RP2350_FAMILY_ID 0xe48bff57
 
 typedef struct {
     // 32 byte header

@@ -1,0 +1,20 @@
+${PICO_SDK_PATH}/src/rp2_common/pico_aon_timer/include/pico/aon_timer.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_powman/include/hardware/powman.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_sha256/include/hardware/sha256.h
+${PICO_SDK_PATH}/src/rp2_common/pico_sha256/include/pico/sha256.h
+${PICO_SDK_PATH}/src/rp2_common/pico_double/include/pico/double.h
+%exclude double2uint64
+%exclude int2double
+%exclude uint2double
+%exclude int642double
+%exclude uint642double
+%exclude double2fix
+%exclude double2fix64
+%exclude double2int
+%exclude double2int64
+%exclude double2int_z
+%exclude double2ufix
+%exclude double2uint
+${PICO_SDK_PATH}/src/rp2_common/pico_float/include/pico/float.h
+%exclude float2uint
+%exclude float2uint64

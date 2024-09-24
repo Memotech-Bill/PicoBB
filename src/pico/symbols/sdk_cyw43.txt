@@ -7,4 +7,4 @@ ${PICO_SDK_PATH}/src/rp2_common/pico_cyw43_arch/include/pico/cyw43_arch.h
 %exclude cyw43_arch_init_with_country
 %exclude cyw43_arch_deinit
 ${PICO_SDK_PATH}/lib/cyw43-driver/src/cyw43.h
-../../include/network.h
+../../../include/network.h

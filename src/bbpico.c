@@ -28,6 +28,15 @@
 #include <math.h>
 #include "bbccon.h"
 
+#ifndef TOP_OF_STACK_1
+extern char __StackTop;
+#define TOP_OF_MEM ((void *)&__StackTop - 0x1800)   // Reserve 0x1800 space for stack during initialisation
+// #define TOP_OF_MEM  0x20040000
+#endif
+#ifndef BASIC_RAM
+#define BASIC_RAM   0x20000
+#endif
+
 // Attempt to check consistancy of build
 
 #ifdef PICO
@@ -171,13 +180,26 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #define WM_TIMER 275
 #include "lfswrap.h"
 extern char __StackLimit;
+#if PICO == 2
+#if HAVE_CYW43 > 1
+#define PLATFORM "Pico 2W"
+#else
+#define PLATFORM "Pico 2"
+#endif
+#else
 #if HAVE_CYW43 > 1
 #define PLATFORM "Pico W"
 #else
 #define PLATFORM "Pico"
 #endif
+#endif
 #ifdef CAN_SET_RTC
+#if PICO == 1
 #include <hardware/rtc.h>
+#else
+#include <pico/aon_timer.h>
+#include <pico/util/datetime.h>
+#endif
 #endif
 extern void *sysvar;
 #define NCFGVAL     5   // Number of bytes in @picocfg&(
@@ -1506,6 +1528,31 @@ void vldtim (datetime_t *pdt)
     if (( pdt->sec < 0 ) || ( pdt->sec > 59 )) pdt->sec = 0;
     }
 
+#if PICO == 2
+static void rtc_init (void)
+    {
+    struct timespec ts;
+    ts.tv_sec = 946684800;
+    ts.tv_nsec = 0;
+    aon_timer_start (&ts);
+    }
+
+static void rtc_get_datetime (datetime_t *dt)
+    {
+    struct timespec ts;
+    aon_timer_get_time (&ts);
+    time_to_datetime (ts.tv_sec, dt);
+    }
+
+static void rtc_set_datetime (datetime_t *dt)
+    {
+    struct timespec ts;
+    datetime_to_time (dt, &ts.tv_sec);
+    ts.tv_nsec = 0;
+    aon_timer_set_time (&ts);
+    }
+#endif
+
 int getims (void)
     {
 #ifdef CAN_SET_RTC
@@ -1727,8 +1774,11 @@ int oscall (int addr)
 #if PICO_STACK_CHECK & 0x04
 uintptr_t   stk_guard = 0;
 
+// Configure a 512 byte protected region that is installed at least 64 bytes above stack_bottom
+// The stack_trap routine executes with the stack pointer just below this protected region.
 static void install_stack_guard (void *stack_bottom)
     {
+#if PICO == 1
     if ( stack_bottom == NULL )
         {
         mpu_hw->ctrl = 0; // Disable mpu
@@ -1749,11 +1799,11 @@ static void install_stack_guard (void *stack_bottom)
             | (0x7 << 1) // size 2^(7 + 1) = 256
             | (subregion_select & 0xff00)
             | 0x10000000; // XN = disable instruction fetch; no other bits means no permissions
-        mpu_hw->rbar = (stk_guard & (uint)~0xff) + 0x100 | 0x10 | 1; // region 1
+        mpu_hw->rbar = ((stk_guard & (uint)~0xff) + 0x100) | 0x10 | 1; // region 1
         mpu_hw->rasr = 1 // enable region
             | (0x7 << 1) // size 2^(7 + 1) = 256
             | 0x10000000; // XN = disable instruction fetch; no other bits means no permissions
-        mpu_hw->rbar = (stk_guard & (uint)~0xff) + 0x200 | 0x10 | 2; // region 2 - 512 bytes higher
+        mpu_hw->rbar = ((stk_guard & (uint)~0xff) + 0x200) | 0x10 | 2; // region 2 - 512 bytes higher
         if ( stk_guard & 0xE0 )
             {
             mpu_hw->rasr = 1 // enable region
@@ -1776,6 +1826,25 @@ static void install_stack_guard (void *stack_bottom)
       printf ("rbar = 0x%08X, rasr = 0x%08X\n", mpu_hw->rbar, mpu_hw->rasr);
       }
     */
+#elif PICO == 2
+    if ( stack_bottom == NULL )
+        {
+        mpu_hw->ctrl = 0; // Disable mpu
+        stk_guard = 0;
+        }
+    else
+        {
+        // the minimum we can protect is 32 bytes on a 32 byte boundary, so round up which will
+        // just shorten the valid stack range a tad
+        stk_guard = ((uintptr_t) stack_bottom + 95u) & ~31u;
+        // printf ("stk_guard = %p\n", stk_guard);
+
+        mpu_hw->ctrl = 5;   // enable mpu with background default map
+        mpu_hw->rnr = 0;    // Select region 0
+        mpu_hw->rbar = stk_guard  | 0x05;           // Lower limit, Not sharable, Read only, No execute
+        mpu_hw->rlar = (stk_guard + 0x200) | 0x11;  // Upper limit, Execution prohibited, Attribute 0, Enabled
+        }
+#endif
     }
 #endif
 
@@ -2107,7 +2176,6 @@ void osshut (void *chan)
 		error (189, "Couldn't close file");
     }
 
-#ifdef PICO_GUI
 void allocbuf (void)
     {
     void *memptr = userRAM;
@@ -2118,19 +2186,26 @@ void allocbuf (void)
 	keybdq = (char*) memptr; memptr += 0x100;	    // Keyboard queue
 	eventq = (int*) memptr; memptr += 0x200;	    // Event queue
 	filbuf[0] = (int*) memptr; memptr += 0x100 * MAX_FILES;	// File buffers
+#if PICO_SOUND == 3
+	envels = (signed char*) memptr; memptr += 0x100;	// Envelopes
+	waves = (short*) memptr; memptr += 0x800;	// Sound wave buffer
+#endif
 	szLoadDir = (char*) memptr; memptr += 0x100;
 	szLibrary = (char*) memptr; memptr += 0x100;
 	szUserDir = (char*) memptr; memptr += 0x100;
 	szTempDir = (char*) memptr; memptr += 0x100;    // Strings must be allocated on BASIC's heap
+#ifdef PICO_GUI
     usrchr = (char*) memptr;                        // User-defined characters (indirect)
+#endif
 	szCmdLine = (char*) memptr; memptr += 0x100;    // Must be immediately below default progRAM
 	progRAM = memptr;                               // Will be raised if @cmd$ exceeds 255 bytes
+    userTOP = userRAM + BASIC_RAM;
     }
-#endif
 
 // Start interpreter:
 int entry (void *immediate)
     {
+/*
 #ifdef PICO_GUI
     allocbuf ();
 #else
@@ -2146,6 +2221,7 @@ int entry (void *immediate)
 	waves = (short*) (envels + 0x100);	// Sound wave buffer
 #endif
 #endif
+*/
 
 	farray = 1;				// @hfile%() number of dimensions
 	fasize = MAX_PORTS + MAX_FILES + 4;	// @hfile%() number of elements
@@ -2713,7 +2789,7 @@ void *main_init (int argc, char *argv[])
 	if (userRAM + MaximumRAM > (void *)0x20040000) userRAM = 0;
     */
 	userRAM = &__StackLimit;
-    MaximumRAM = (void *)0x20040000 - userRAM;
+    MaximumRAM = TOP_OF_MEM - userRAM;
 /*
   The address 0x20040000 is 8K less than total RAM on the Pico to
   leave space for the current stack when zeroing.  This only works
@@ -2733,11 +2809,12 @@ void *main_init (int argc, char *argv[])
 	platform |= 0x40;
 #endif
 
+/*
 	if (MaximumRAM > DEFAULT_RAM)
 		userTOP = userRAM + DEFAULT_RAM;
 	else
 		userTOP = userRAM + MaximumRAM;
-#ifdef PICO_GUI
+// #ifdef PICO_GUI
     allocbuf ();
 #else
 	progRAM = userRAM + PAGE_OFFSET; // Will be raised if @cmd$ exceeds 255 bytes
@@ -2747,6 +2824,8 @@ void *main_init (int argc, char *argv[])
 	szLibrary = szUserDir - 0x100;
 	szLoadDir = szLibrary - 0x100;
 #endif
+*/
+    allocbuf ();
 
 // Get path to executable:
 

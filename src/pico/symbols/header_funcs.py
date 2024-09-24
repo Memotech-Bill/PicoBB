@@ -190,7 +190,8 @@ class Header:
                             self.nBrace = 0
         except FileNotFoundError:
             sys.stderr.write ('\n*** ERROR: Header file {:s} not found.\n'.format (self.sIn))
-            sys.stderr.write (  '           Referenced by line {:d} in {:s}\n\n'.format (self.nLine, self.sList))
+            sys.stderr.write (  '           Referenced by line {:d} in {:s}\n'.format (self.nLine, self.sList))
+            sys.stderr.write (  '           Working folder: {:s}\n\n'.format (os.getcwd ()))
             sys.exit (1)
 
 def header_list (sOut, sStub, lList):
@@ -236,6 +237,7 @@ def header_list (sOut, sStub, lList):
                 hdr.Parse ()
 
 if ( len (sys.argv) >= 4 ):
+    os.chdir (os.path.dirname (sys.argv[0]))
     header_list (sys.argv[1], sys.argv[2], sys.argv[3:])
 else:
     print ('Usage: header_funcs.py <symbol file> <stubs file> <headers file>...')

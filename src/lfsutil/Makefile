@@ -5,13 +5,13 @@ SOURCES=mklfsimage.c ../lfsmcu.c ../../littlefs/lfs.c ../../littlefs/lfs_util.c
 all: $(TARGETS)
 
 mklfsimage: $(SOURCES)
-	gcc $(CFLAGS) -o mklfsimage $(SOURCES)
+	gcc $(CFLAGS) -g -o mklfsimage $(SOURCES)
 
 uf2conv: uf2conv.c uf2format.h
-	gcc $(CFLAGS) -o uf2conv uf2conv.c uf2format.h
+	gcc $(CFLAGS) -g -o uf2conv uf2conv.c uf2format.h
 
 uf2merge: uf2merge.c uf2format.h
-	gcc $(CFLAGS) -o uf2merge uf2merge.c
+	gcc $(CFLAGS) -g -o uf2merge uf2merge.c
 
 clean:
 	rm -f $(TARGETS)

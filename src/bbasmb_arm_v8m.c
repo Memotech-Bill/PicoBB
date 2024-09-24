@@ -37,6 +37,7 @@ int range0 (char);
 signed char nxt (void);
 
 long long itemi (void);
+VAR item (void);
 long long expri (void);
 VAR expr (void);
 VAR exprs (void);
@@ -68,6 +69,18 @@ void osword (int, void *);
 #define PC (void *) stavar[16]
 #endif
 
+double valuef (void)
+    {
+	VAR v = item () ;
+	if (v.s.t == -1)
+		error (6, NULL) ; // 'Type mismatch'
+	if (v.i.t == 0)
+	    {
+		v.f = v.i.n ;
+	    }
+    return v.f;
+    }
+
 #else
 
 // Dummy definitions for stand-alone testing of the assembler
@@ -95,7 +108,8 @@ char nxt (void);
 void error (int err, const char *ps);
 int itemi (void);
 int expri (void);
-VAR itemf (void);
+VAR item (void);
+double valuef (void);
 static bool address (bool bAlign, int mina, int maxa, int *addr);
 
 #endif
@@ -134,10 +148,10 @@ static void *align (int n)
 	return PC;
     }
 
-static void op16 (uint16_t op)
+static void op16 (int op)
     {
 #ifdef TEST
-    if (pass == 2) fprintf (fOut, "%04X %02X%02X    ", stavar[16], op & 0xFF, op >> 8);
+    if (pass == 2) fprintf (fOut, "%04X %02X%02X    ", stavar[16], (op & 0xFF), (op >> 8) & 0xFF);
     stavar[16] += 2;
 #else
     align (2);
@@ -145,10 +159,10 @@ static void op16 (uint16_t op)
 #endif
     }
 
-static void op32 (uint32_t op)
+static void op32 (int op)
     {
 #ifdef TEST
-    if (pass == 2) fprintf (fOut, "%04X %02X%02X%02X%02X", stavar[16], (op >> 16) & 0xFF, (op >> 24), (op & 0xFF), (op >> 8) & 0xFF);
+    if (pass == 2) fprintf (fOut, "%04X %02X%02X%02X%02X", stavar[16], (op >> 16) & 0xFF, (op >> 24) & 0xFF, (op & 0xFF), (op >> 8) & 0xFF);
     stavar[16] += 4;
 #else
     align (2);
@@ -277,9 +291,9 @@ static int reg (bool bErr)
     return n;
     }
 
-static uint16_t reglist (void) 
+static int reglist (void) 
     {
-	uint16_t regs = 0;
+	int regs = 0;
 	if (nxt () != '{')
         {
 		asmerr (107);   // Invalid register list
@@ -325,7 +339,7 @@ static int it_cc;
 static int it_cm;
 static int it_nc = 0;
 
-static bool op_IT (uint32_t d)
+static bool op_IT (int d)
     {
     if (it_nc > 0) return asmerr (118);    // Not allowed in If/Then block
     int cm = 0x08;
@@ -394,7 +408,7 @@ static bool LastIT (void)
     return true;
     }
 
-static bool op_NoneNW (uint32_t d)
+static bool op_NoneNW (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -410,7 +424,7 @@ static bool op_NoneNW (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_NoneW (uint32_t d)
+static bool op_NoneW (int d)
     {
     InIT ();
     op32 (d);
@@ -422,13 +436,13 @@ static bool op_NoneW (uint32_t d)
 #define RB_PC   (1 << 15)
 
 // Push: d = 0, Pop: d = 1
-static bool op_Stack (uint32_t d)
+static bool op_Stack (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
-    static const uint16_t masks[4] = {RB_PC | RB_SP | 0x1F00, RB_LR | RB_SP | 0x1F00, RB_PC | RB_SP, RB_SP};
+    static const int masks[4] = {RB_PC | RB_SP | 0x1F00, RB_LR | RB_SP | 0x1F00, RB_PC | RB_SP, RB_SP};
     char al = nxt ();
-    uint16_t regs;
+    int regs;
     bool bMulti = true;
     if (al == '{')
         {
@@ -452,12 +466,12 @@ static bool op_Stack (uint32_t d)
         {
         if (!(regs & masks[d]))
             {
-            uint16_t ops[2] = {BW(1011, 0100, 0000, 0000), BW(1011, 1100, 0000, 0000)};
+            int ops[2] = {BW(1011, 0100, 0000, 0000), BW(1011, 1100, 0000, 0000)};
             op16 (ops[d] | (regs & 0xFF) | ((regs & (RB_PC | RB_LR)) ? 0x100 : 0x000));
             }
         else if (!(regs & masks[d+2]))
             {
-            uint32_t opl[2] = {BL(1110, 1001, 0010, 1101, 0000, 0000, 0000, 0000), BL(1110, 1000, 1011, 1101, 0000, 0000, 0000, 0000)};
+            int opl[2] = {BL(1110, 1001, 0010, 1101, 0000, 0000, 0000, 0000), BL(1110, 1000, 1011, 1101, 0000, 0000, 0000, 0000)};
             op32 (opl[d] | regs);
             }
         else
@@ -468,13 +482,13 @@ static bool op_Stack (uint32_t d)
     else
         {
         // Single register
-        uint32_t opr[2] = {BL(1111, 1000, 0100, 1101, 0000, 1101, 0000, 0100), BL(1111, 1000, 0101, 1101, 0000, 1011, 0000, 0100)};
+        int opr[2] = {BL(1111, 1000, 0100, 1101, 0000, 1101, 0000, 0100), BL(1111, 1000, 0101, 1101, 0000, 1011, 0000, 0100)};
         op32 (opr[d] | (regs << 12));
         }
     return TestEnd ();
     }
 
-static bool op_BX (uint32_t d)
+static bool op_BX (int d)
     {
     if (! LastIT ()) return false;
     if (! EndOp ()) return false;
@@ -498,10 +512,10 @@ static bool match (char ch, int err)
 
 static const char *shift[] = { "lsl", "lsr", "asr", "ror", "rrx" };
 
-uint32_t ivalue (void)
+int ivalue (void)
     {
     if (nxt () == '#') ++esi;
-    return (uint32_t) itemi ();
+    return itemi ();
     }
 
 static bool immediate (int minv, int maxv, int *pvalue)
@@ -534,21 +548,21 @@ static bool arg_shift (int *rot)
     return true;
     }
 
-static bool constant (uint32_t *cval, bool bErr)
+static bool constant (int *cval, bool bErr)
     {
     if (nxt () == '#') ++esi;
-    uint32_t c = (uint32_t) itemi ();
+    int c = itemi ();
     *cval = c;
-    if (c <= 0xFF) return true;
+    if ((c >= 0) && (c <= 0xFF)) return true;
     int lz = __builtin_clz (c);
-    uint32_t mask = 0xFF << (24 - lz);
+    int mask = 0xFF << (24 - lz);
     if ((c & mask) == c)
         {
         int mv = lz + 8;
         *cval = ((c >> (24 - lz)) & 0x7F) | ((mv & 0x10) << 22) | ((mv & 0x0E) << 11) | ((mv & 0x01) << 7);
         return true;
         }
-    uint32_t t = c & 0xFF;
+    int t = c & 0xFF;
     if (c == ((t << 16) | t))
         {
         *cval = (1 << 12) | t;
@@ -573,8 +587,9 @@ static bool constant (uint32_t *cval, bool bErr)
 static bool address (bool bAlign, int mina, int maxa, int *addr)
     {
     void *dest = (void *) (size_t) expri ();
-    void *base = PC + 4;
-    if (bAlign) base &= 0xFFFFFFFC;
+    void *base;
+    if (bAlign) base = (void *)((uint32_t)(PC + 4) & 0xFFFFFFFC);
+    else base = PC + 4;
     *addr = dest - base;
     if ( *addr & 0x01 ) return asmerr (120);    // 'Invalid alignment'
     if ((*addr < mina) || (*addr > maxa)) return asmerr (8);
@@ -582,7 +597,7 @@ static bool address (bool bAlign, int mina, int maxa, int *addr)
     }
 #endif
 
-static bool op_CMP (uint32_t d)
+static bool op_CMP (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -614,7 +629,7 @@ static bool op_CMP (uint32_t d)
     else
         {
         // Compare immediate
-        uint32_t c;
+        int c;
         if (! constant (&c, true) ) return false;
         if (bWide || (r1 > 7) || (c > 0xFF))
             {
@@ -629,7 +644,7 @@ static bool op_CMP (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_TST (uint32_t d)
+static bool op_TST (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -656,7 +671,7 @@ static bool op_TST (uint32_t d)
     else
         {
         // Compare immediate
-        uint32_t c;
+        int c;
         if (r1 == 15) return asmerr (103);  // Invalid register
         if (! constant (&c, true) ) return false;
         op32 (BL(1111, 0000, 0001, 0000, 0000, 1111, 0000, 0000) | (d & 0x01000000) | (r1 << 16) | c);
@@ -664,7 +679,7 @@ static bool op_TST (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_REV (uint32_t d)
+static bool op_REV (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -702,7 +717,7 @@ static bool arg_ROR (int *amount)
     return true;
     }
 
-static bool op_EXT (uint32_t d)
+static bool op_EXT (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -738,7 +753,7 @@ static bool IsSF (void)
 
 #define BIT_SF  (1 << 20)
 
-static bool op_MVN (uint32_t d)
+static bool op_MVN (int d)
     {
     bool bSF = IsSF ();
     bool bIT = InIT ();
@@ -764,7 +779,7 @@ static bool op_MVN (uint32_t d)
         }
     else
         {
-        uint32_t c;
+        int c;
         if ((r1 == 13) || (r1 == 15))  return asmerr (103);  // Invalid register
         if (! constant (&c, true) ) return false;
         op32 (BL(1111, 0000, 0110, 1111, 0000, 0000, 0000, 0000) | (bSF ? BIT_SF : 0) | (r1 << 8) | c);
@@ -772,7 +787,7 @@ static bool op_MVN (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_ADD_SUB (uint32_t d)
+static bool op_ADD_SUB (int d)
     {
     bool bImmC = true;
     if (d & 1) bImmC = false;
@@ -785,7 +800,7 @@ static bool op_ADD_SUB (uint32_t d)
     if (! match (',', 5)) return false;
     int r2 = reg (false);
     int r3 = -1;
-    uint32_t c = 0;
+    int c = 0;
     if (r2 >= 0)
         {
         if (match (',', 0))
@@ -881,7 +896,7 @@ static bool op_ADD_SUB (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_Shift (uint32_t d)
+static bool op_Shift (int d)
     {
     bool bSF = IsSF ();
     bool bIT = InIT ();
@@ -942,7 +957,7 @@ static bool op_Shift (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_MUL (uint32_t d)
+static bool op_MUL (int d)
     {
     bool bSF = IsSF ();
     bool bIT = InIT ();
@@ -977,7 +992,7 @@ static bool op_MUL (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_Logic (uint32_t d)
+static bool op_Logic (int d)
     {
     bool bSF = IsSF ();
     bool bIT = InIT ();
@@ -988,7 +1003,7 @@ static bool op_Logic (uint32_t d)
     if (! match (',', 5)) return false;
     int r2 = reg (false);
     int r3 = -1;
-    uint32_t c = 0;
+    int c = 0;
     if (r2 >= 0)
         {
         if (match (',', 0))
@@ -1055,7 +1070,7 @@ static bool arg_LSL (int *pc)
    7    Has special 16-bit form: Rd, [PC, #]
  */
 
-static bool op_LD_ST (uint32_t d)
+static bool op_LD_ST (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -1164,7 +1179,7 @@ static bool op_LD_ST (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_MOV (uint32_t d)
+static bool op_MOV (int d)
     {
     bool bImmC = true;
     if ((*esi == 'W') || (*esi == 'w'))
@@ -1182,7 +1197,7 @@ static bool op_MOV (uint32_t d)
     int r2 = reg (false);
     int r3 = -1;
     int rr = 0;
-    uint32_t c = 0;
+    int c = 0;
     if (r2 >= 0)
         {
         if (match (',', 0))
@@ -1220,7 +1235,7 @@ static bool op_MOV (uint32_t d)
             }
         if (! bImmC)
             {
-            if (bSF || (c >= 0x10000)) return asmerr (111);   // Immediate out of range
+            if (bSF  || (c < 0) || (c >= 0x10000)) return asmerr (111);   // Immediate out of range
             }
         }
     if (r3 >= 0)
@@ -1231,7 +1246,7 @@ static bool op_MOV (uint32_t d)
             }
         else
             {
-            static const uint16_t shftop[] = {BW(0100, 0000, 1000, 0000), BW(0100, 0000, 1100, 0000), BW(0100, 0010, 0000, 000), BW(0100, 0001, 1100, 0000)};
+            static const int shftop[] = {BW(0100, 0000, 1000, 0000), BW(0100, 0000, 1100, 0000), BW(0100, 0010, 0000, 000), BW(0100, 0001, 1100, 0000)};
             op16 (shftop[rr] | (r1 << 3) | r3);
             }
         }
@@ -1270,7 +1285,7 @@ static bool op_MOV (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_Bit (uint32_t d)
+static bool op_Bit (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1284,7 +1299,7 @@ static bool op_Bit (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_TT (uint32_t d)
+static bool op_TT (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1298,7 +1313,7 @@ static bool op_TT (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_EXT16 (uint32_t d)
+static bool op_EXT16 (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1314,7 +1329,7 @@ static bool op_EXT16 (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_Arith (uint32_t d)
+static bool op_Arith (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1346,7 +1361,7 @@ static bool op_Arith (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_MulAcc (uint32_t d)
+static bool op_MulAcc (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1374,7 +1389,7 @@ static bool op_MulAcc (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_LDA_STL (uint32_t d)
+static bool op_LDA_STL (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1390,7 +1405,7 @@ static bool op_LDA_STL (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_STLEX (uint32_t d)
+static bool op_STLEX (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1410,7 +1425,7 @@ static bool op_STLEX (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_PKH (uint32_t d)
+static bool op_PKH (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1454,7 +1469,7 @@ static bool op_PKH (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_PL (uint32_t d)
+static bool op_PL (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1516,7 +1531,7 @@ static bool op_PL (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_XTAB (uint32_t d)
+static bool op_XTAB (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1552,7 +1567,7 @@ static bool op_XTAB (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_LDT_STT (uint32_t d)
+static bool op_LDT_STT (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1575,7 +1590,7 @@ static bool op_LDT_STT (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_LDRD_STRD (uint32_t d)
+static bool op_LDRD_STRD (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1621,7 +1636,7 @@ static bool op_LDRD_STRD (uint32_t d)
     op32 (d | puw | (r1 << 12) | (r2 << 8) | (r3 << 16) | (c >> 2));
     }
 
-static bool op_STREX (uint32_t d)
+static bool op_STREX (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1645,7 +1660,7 @@ static bool op_STREX (uint32_t d)
     op32 (d | (r1 << 8) | (r2 << 12) | (r3 << 16) | (c >> 2));
     }
 
-static bool op_TEQ (uint32_t d)
+static bool op_TEQ (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1663,7 +1678,7 @@ static bool op_TEQ (uint32_t d)
     else
         {
         // Compare immediate
-        uint32_t c;
+        int c;
         if (r1 == 15) return asmerr (103);  // Invalid register
         if (! constant (&c, true) ) return false;
         op32 (BL(1111, 0000, 1001, 0000, 0000, 1111, 0000, 0000) | (r1 << 16) | c);
@@ -1671,7 +1686,7 @@ static bool op_TEQ (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_RSB (uint32_t d)
+static bool op_RSB (int d)
     {
     bool bSF = IsSF ();
     bool bIT = InIT ();
@@ -1710,7 +1725,7 @@ static bool op_RSB (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_TB (uint32_t d)
+static bool op_TB (int d)
     {
     if (! LastIT ()) return false;
     if (! EndOp ()) return false;
@@ -1735,7 +1750,7 @@ static bool op_TB (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_LDM (uint32_t d)
+static bool op_LDM (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -1762,7 +1777,7 @@ static bool op_LDM (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_STM (uint32_t d)
+static bool op_STM (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -1785,7 +1800,7 @@ static bool op_STM (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_STMDB (uint32_t d)
+static bool op_STMDB (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -1808,7 +1823,7 @@ static bool op_STMDB (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_LDMDB (uint32_t d)
+static bool op_LDMDB (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1823,7 +1838,7 @@ static bool op_LDMDB (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_CPS (uint32_t d)
+static bool op_CPS (int d)
     {
     if (InIT ()) return asmerr (118);   // Not allowed inIf/Then block
     if (! EndOp ()) return false;
@@ -1843,7 +1858,7 @@ static bool op_CPS (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_DBG (uint32_t d)
+static bool op_DBG (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1853,7 +1868,7 @@ static bool op_DBG (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_Barrier (uint32_t d)
+static bool op_Barrier (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -1866,7 +1881,7 @@ static bool op_Barrier (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_UDF (uint32_t d)
+static bool op_UDF (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -1884,7 +1899,7 @@ static bool op_UDF (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_BKPT (uint32_t d)
+static bool op_BKPT (int d)
     {
     bool bWide = IsWide ();
     if (! EndOp ()) return false;
@@ -1894,7 +1909,7 @@ static bool op_BKPT (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_B (uint32_t d)
+static bool op_B (int d)
     {
     int cc = -1;
     if (it_nc > 0)
@@ -1942,7 +1957,7 @@ static bool op_B (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_BL (uint32_t d)
+static bool op_BL (int d)
     {
     if (! LastIT ()) return false;
     if (! EndOp ()) return false;
@@ -1955,7 +1970,7 @@ static bool op_BL (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_RRX (uint32_t d)
+static bool op_RRX (int d)
     {
     InIT ();
     bool bSF = IsSF ();
@@ -1972,7 +1987,7 @@ static bool op_RRX (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_ADR (uint32_t d)
+static bool op_ADR (int d)
     {
     InIT ();
     bool bWide = IsWide ();
@@ -2004,7 +2019,7 @@ static bool op_ADR (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_CBZ (uint32_t d)
+static bool op_CBZ (int d)
     {
     if (InIT ()) return asmerr (118);   // Not allowed in If/Then block
     if (! EndOp ()) return false;
@@ -2019,7 +2034,7 @@ static bool op_CBZ (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_MOVT (uint32_t d)
+static bool op_MOVT (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -2033,7 +2048,7 @@ static bool op_MOVT (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_SAT (uint32_t d)
+static bool op_SAT (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -2066,7 +2081,7 @@ static bool op_SAT (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_BitField (uint32_t d)
+static bool op_BitField (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -2134,18 +2149,18 @@ static bool IsFloat (void)
     return false;
     }
 
-static bool fimmediate (uint32_t *imm)
+static bool fimmediate (int *imm)
     {
     if (nxt () == '#') ++esi;
     *imm = 0;
-    VAR v = itemf ();
+    double f = valuef ();
     union
         {
         float       f;
-        uint32_t    u;
+        int    u;
         } bits;
-    bits.f = v.f;
-    if ((double) bits.f != v.f) return asmerr (122);        // Invalid FP constant
+    bits.f = f;
+    if ((double) bits.f != f) return asmerr (122);        // Invalid FP constant
     if ((bits.u & 0x0007FFFF) != 0) return asmerr (122);    // Invalid FP constant
     int e = bits.u & 0x7E000000;
     if ((e != 0x3E000000) && (e != 0x40000000)) return asmerr (122);   // Invalid FP constant
@@ -2153,7 +2168,7 @@ static bool fimmediate (uint32_t *imm)
     return true;
     }
 
-static bool op_VMOV (uint32_t d)
+static bool op_VMOV (int d)
     {
     InIT ();
     if (! IsFloat ()) return false;
@@ -2214,7 +2229,7 @@ static bool op_VMOV (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_VCMP (uint32_t d)
+static bool op_VCMP (int d)
     {
     InIT ();
     if (! IsFloat ()) return false;
@@ -2229,14 +2244,14 @@ static bool op_VCMP (uint32_t d)
     else
         {
         match ('#', 0);
-        VAR v = itemf ();
-        if (v.f != 0.0) return asmerr (122);    // Invalid FP constatnt
+        double f = valuef ();
+        if (f != 0.0) return asmerr (122);    // Invalid FP constatnt
         op32 (BL(1110, 1110, 1011, 0101, 0000, 1010, 0100, 0000) | d | ((r1 & 0x01) << 22) | ((r1 & 0x1E) << 11));
         }
     return TestEnd ();
     }
 
-static bool op_VOne (uint32_t d)
+static bool op_VOne (int d)
     {
     InIT ();
     if (! IsFloat ()) return false;
@@ -2249,7 +2264,7 @@ static bool op_VOne (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_VCVT (uint32_t d)
+static bool op_VCVT (int d)
     {
     InIT ();
     if (*esi != '.') return asmerr (101);
@@ -2289,7 +2304,7 @@ static bool op_VCVT (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_VCVTX (uint32_t d)
+static bool op_VCVTX (int d)
     {
     if (InIT ()) return asmerr (118);   // Not allowed in If/Then block
     int t1 = lookup (types, count (types));
@@ -2313,7 +2328,7 @@ static bool op_VCVTX (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_VArith (uint32_t d)
+static bool op_VArith (int d)
     {
     InIT ();
     if (! IsFloat ()) return false;
@@ -2337,7 +2352,7 @@ static bool op_VArith (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_VLD_VST (uint32_t d)
+static bool op_VLD_VST (int d)
     {
     InIT ();
     if (! IsFloat ()) return false;
@@ -2368,7 +2383,7 @@ static bool op_VLD_VST (uint32_t d)
     return TestEnd ();
     }
 
-static uint32_t sreglist (void)
+static int sreglist (void)
     {
     if (! match ('{', 16)) return 0;
     int r1 = sreg (true);
@@ -2385,17 +2400,17 @@ static uint32_t sreglist (void)
     return ((r1 & 0x01) << 22) | ((r1 & 0x1E) << 11) | (r2 + 1 - r1);
     }
 
-static bool op_VStack (uint32_t d)
+static bool op_VStack (int d)
     {
     InIT ();
     if (! IsFloat ()) return false;
-    uint32_t sl = sreglist ();
+    int sl = sreglist ();
     if (sl == 0) return false;
     op32 (d | sl);
     return TestEnd ();
     }
 
-static bool op_VMulti (uint32_t d)
+static bool op_VMulti (int d)
     {
     InIT ();
     if (! IsFloat ()) return false;
@@ -2404,13 +2419,13 @@ static bool op_VMulti (uint32_t d)
     bool bWB = match ('!', 0);
     if ((d & 0x200000) && (! bWB)) return asmerr (16);  // Syntax error
     if (! match (',', 5)) return false;
-    uint32_t sl = sreglist ();
+    int sl = sreglist ();
     if (sl == 0) return false;
     op32 (d | (bWB ? 0x200000 : 0) | (r1 << 16) | sl);
     return TestEnd ();
     }
 
-static bool op_VLazy (uint32_t d)
+static bool op_VLazy (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -2418,7 +2433,7 @@ static bool op_VLazy (uint32_t d)
     if (r1 < 0) return false;
     if (match (',', 0))
         {
-        uint32_t sl = sreglist ();
+        int sl = sreglist ();
         if (sl == 0) return false;
         }
     op32 (d | (r1 << 16));
@@ -2469,7 +2484,7 @@ static const char *spec_reg[] = {
     "PAC_KEY_U_3_NS" 	// 0b10100111
     };
 
-static const uint32_t spec_idx[] = {
+static const int spec_idx[] = {
     0b00000000,		// APSR
     0b00000001,		// IAPSR
     0b00000010,		// EAPSR
@@ -2513,7 +2528,7 @@ static const uint32_t spec_idx[] = {
     0b10100111 		// PAC_KEY_U_3_NS
     };
 
-static bool op_MRS (uint32_t d)
+static bool op_MRS (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -2530,7 +2545,7 @@ static bool op_MRS (uint32_t d)
 
 static const char *srmask[] = {"_g", "_nzcvq", "_nzcvqg"};
 
-static bool op_MSR (uint32_t d)
+static bool op_MSR (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -2551,7 +2566,7 @@ static bool op_MSR (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_VMRS (uint32_t d)
+static bool op_VMRS (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -2572,7 +2587,7 @@ static bool op_VMRS (uint32_t d)
     return TestEnd ();
     }
 
-static bool op_VMSR (uint32_t d)
+static bool op_VMSR (int d)
     {
     InIT ();
     if (! EndOp ()) return false;
@@ -2593,13 +2608,13 @@ static bool op_VMSR (uint32_t d)
     return TestEnd ();
     }
 
-static bool po_OPT (uint32_t d)
+static bool po_OPT (int d)
     {
     liston = (liston & 0x0F) | (expri () << 4);
     return TestEnd ();
     }
 
-static bool po_DB (uint32_t d)
+static bool po_DB (int d)
     {
 #ifndef TEST
     VAR v = expr ();
@@ -2617,14 +2632,14 @@ static bool po_DB (uint32_t d)
     return TestEnd ();
     }
 
-static bool po_EQUB (uint32_t d)
+static bool po_EQUB (int d)
     {
     int n = expri ();
     poke (&n, 1);
     return TestEnd ();
     }
 
-static bool po_EQUW (uint32_t d)
+static bool po_EQUW (int d)
     {
     align (2);
     int n = expri ();
@@ -2632,7 +2647,17 @@ static bool po_EQUW (uint32_t d)
     return TestEnd ();
     }
 
-static bool po_EQUD (uint32_t d)
+#ifndef TEST
+static const char *oslist[] = {
+    "osrdch", "oswrch", "oskey", "osline", "oscli", "osopen", "osbyte", "osword",
+    "osshut", "osbget", "osbput", "getptr", "setptr", "getext" };
+
+static const void *osfunc[] = {
+    osrdch, oswrch, oskey, osline, oscli, osopen, osbyte, osword, 
+    osshut, osbget, osbput, getptr, setptr, getext };
+#endif
+
+static bool po_EQUD (int d)
     {
 #ifndef TEST
     VAR v = expr ();
@@ -2666,7 +2691,7 @@ static bool po_EQUD (uint32_t d)
     return TestEnd ();
     }
 
-static bool po_EQUS (uint32_t d)
+static bool po_EQUS (int d)
     {
 #ifndef TEST
     VAR v = exprs ();
@@ -2677,7 +2702,7 @@ static bool po_EQUS (uint32_t d)
     return TestEnd ();
     }
 
-static bool po_ALIGN (uint32_t d)
+static bool po_ALIGN (int d)
     {
     align (4);
     if ((nxt() >= '1') && (*esi <= '9'))
@@ -2685,7 +2710,7 @@ static bool po_ALIGN (uint32_t d)
         int n = expri ();
         if ((n & (n - 1)) || (n & 0xFFFFFF03) || (n == 0))
             asmerr (105); // 'invalid alignment'
-        uint16_t nop = BW(1011, 1111, 0000, 0000);
+        int nop = BW(1011, 1111, 0000, 0000);
         while (stavar[16] & (n - 1))
             poke (&nop, 2); 
         }
@@ -2695,8 +2720,8 @@ static bool po_ALIGN (uint32_t d)
 typedef struct
     {
     char        s[8];
-    bool        (*f)(uint32_t);
-    uint32_t    d;
+    bool        (*f)(int);
+    int    d;
     }
     op_def;
 
@@ -3085,6 +3110,15 @@ static int lookup_opcode (void)
     }
 
 #ifndef TEST
+static void tabit (int x)
+{
+	if (vcount == x) 
+		return ;
+	if (vcount > x)
+		crlf () ;
+	spaces (x - vcount) ;
+}
+
 static void listasm (void *oldpc, signed char *oldesi)
     {
     void *p;
@@ -3324,9 +3358,8 @@ int expri (void)
     return itemi ();
     }
 
-VAR itemf (void)
+double valuef (void)
     {
-    VAR v;
     char sNum[20];
     bool bDP = false;
     int n = 0;
@@ -3357,7 +3390,7 @@ VAR itemf (void)
             }
         }
     sNum[n] = '\0';
-    v.f = atof (sNum);
+    return atof (sNum);
     }
 
 static bool address (bool bAlign, int mina, int maxa, int *addr)

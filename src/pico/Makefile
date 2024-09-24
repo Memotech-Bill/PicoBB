@@ -2,6 +2,7 @@ BUILD_DIR := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))/build
 BBC_SRC?=../../BBCSDL
 USB_CON?=0
 NET_HEAP?=0
+STACK_CHECK?=4
 
 EXAMPLE_FILES = ../../BBCSDL/lib/*.bbc \
 		../../BBCSDL/tests/*.bbc \
@@ -141,7 +142,8 @@ SOURCES= \
     ../../src/pico/picoser.c \
 	../../src/pico/stack_trap.c \
 	../../src/pico/crctab.c \
-	../../src/pico/bbc_pico.ld \
+	../../src/pico/picobb_2040.ld \
+	../../src/pico/picobb_2350.ld \
 	../../include/ffconf.h \
 	../../include/lfswrap.h \
 	../../include/sconfig.h \
@@ -149,8 +151,6 @@ SOURCES= \
 	../../include/crctab.h \
 	../../include/zmodem.h \
     ../../m0FaultDispatch/m0FaultDispatch.c \
-	build/sympico.h \
-	build/pico_stub.c \
     $(EXEC_SOURCES) \
     $(LFS_SOURCES) \
     $(FAT_SOURCES) \
@@ -158,6 +158,8 @@ SOURCES= \
     $(GUI_SOURCES) \
 	$(DEV_SOURCES) \
 	$(NET_SOURCES)
+#	build/sympico.h \
+#	build/pico_stub.c \
 
 ifneq ("$(wildcard ../../BBCSDL/pico_examples.cfg)", "")
 BASIC_EXAMPLES = ../../pico_examples.cfg ../../BBCSDL/pico_examples.cfg
@@ -184,16 +186,16 @@ build: Makefile ../../src/pico/Makefile ../../src/pico/CMakeLists.txt
 	rm -rf build
 	mkdir -p build
 
-build/sympico.h build/pico_stub.c: build $(SDK_HEADERS)
-	cd ../../src/pico && symbols/header_funcs.py $(BUILD_DIR)/symbols_sdk.txt $(BUILD_DIR)/pico_stub.c \
-		$(SDK_HEADERS)
-	../../src/pico/symbols/merge_funcs.py build/sympico.h build/symbols_sdk.txt
+# build/sympico.h build/pico_stub.c: build $(SDK_HEADERS)
+#  	cd ../../src/pico && symbols/header_funcs.py $(BUILD_DIR)/symbols_sdk.txt $(BUILD_DIR)/pico_stub.c \
+#  		$(SDK_HEADERS)
+#  	../../src/pico/symbols/merge_funcs.py build/sympico.h build/symbols_sdk.txt
 
-build/Makefile: build build/sympico.h build/pico_stub.c
+build/Makefile: build # build/sympico.h build/pico_stub.c
 	rm -rf build/picobb.ld
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
-			-DSTACK_CHECK=4 -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
+			-DSTACK_CHECK=$(STACK_CHECK) -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
 			-DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) -DGRAPH=$(GRAPH) -DOS_RAM=$(OS_RAM) -DUSB_CON=$(USB_CON) \
 			-DNET_HEAP=$(NET_HEAP) $(TRACE) --no-warn-unused-cli -S ../../../src/pico -B .
 
@@ -208,15 +210,16 @@ endif
 bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) ../../src/pico/symbols/library_functions.txt build/Makefile
 	cd build && make
 	../../src/pico/symbols/map_funcs.py build/bbcbasic.elf.map build/symbols_map.txt
-	../../src/pico/symbols/merge_funcs.py build/sympico.h build/symbols_sdk.txt build/symbols_map.txt \
-		../../src/pico/symbols/library_functions.txt
+	rm -f build/sympico.h
+#	../../src/pico/symbols/merge_funcs.py build/sympico.h build/symbols_sdk.txt build/symbols_map.txt \
+#		../../src/pico/symbols/library_functions.txt
 	cd build && make
 	cp build/bbcbasic.uf2 bbcbasic$(SUFFIX).uf2
 	cp build/bbcbasic.elf bbcbasic$(SUFFIX).elf
 
 ifeq ($(LFS), Y)
 bbcbasic+filesystem$(SUFFIX).uf2: bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2 ../../src/lfsutil/uf2merge
-	../../src/lfsutil/uf2merge bbcbasic+filesystem$(SUFFIX).uf2 bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2
+	../../src/lfsutil/uf2merge -f bbcbasic+filesystem$(SUFFIX).uf2 bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2
 
 ../../src/lfsutil/uf2merge: ../../src/lfsutil/uf2merge.c
 	cd ../../src/lfsutil && make uf2merge

@@ -1,0 +1,10 @@
+${PICO_SDK_PATH}/src/rp2_common/hardware_rtc/include/hardware/rtc.h
+${PICO_SDK_PATH}/src/rp2_common/pico_double/include/pico/double.h
+%exclude double2uint64
+%exclude int2double
+%exclude uint2double
+%exclude int642double
+%exclude uint642double
+${PICO_SDK_PATH}/src/rp2_common/pico_float/include/pico/float.h
+%exclude float2uint
+%exclude float2uint64

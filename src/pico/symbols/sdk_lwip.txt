@@ -7,4 +7,3 @@ ${PICO_SDK_PATH}/lib/lwip/src/include/lwip/udp.h
 ${PICO_SDK_PATH}/lib/lwip/src/include/lwip/ip4_addr.h
 %define LWIP_IPV4           1
 ${PICO_SDK_PATH}/lib/lwip/src/include/lwip/pbuf.h
-../../include/network.h

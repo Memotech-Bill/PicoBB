@@ -15,9 +15,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/../../boards)
-# if(DEFINED ENV{picotool_DIR})
-#   set(picotool_DIR $ENV{picotool_DIR})
-# endif()
 if(DEFINED ENV{PICO_SDK_PATH})
   include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 else()
@@ -48,19 +45,37 @@ endif()
 message(STATUS "BBC BASIC Upstream source from ${BBC_SRC}")
 
 if (TARGET tinyusb_device)
-  add_executable(bbcbasic 
+  add_executable(bbcbasic)
+
+  add_subdirectory(symbols)
+  set_source_files_properties(${CMAKE_BINARY_DIR}/pico_stub.c PROPERTIES GENERATED TRUE)
+  set_source_files_properties(${CMAKE_BINARY_DIR}/sympico.h PROPERTIES GENERATED TRUE)
+  add_dependencies(bbcbasic
+    stub_file
+    sym_file
+    )
+
+  target_sources(bbcbasic PRIVATE
     ${BBC_SRC}/src/bbdata_arm_32.s
     ${BBC_SRC}/src/bbmain.c
     ${BBC_SRC}/src/bbccos.c
     ../../src/bbpico.c
     ../../src/picocli.c
-    ../../src/bbasmb_arm_v6m.c 
     ../../src/lfswrap.c 
     ../../src/fault.c
     ../../src/pico/sympico.c
     ../../src/pico/crctab.c
     ${CMAKE_BINARY_DIR}/pico_stub.c
     )
+  if (${PICO_CHIP} STREQUAL "rp2350")
+    target_sources(bbcbasic PRIVATE
+      ../../src/bbasmb_arm_v8m.c
+      )
+  else()
+    target_sources(bbcbasic PRIVATE
+      ../../src/bbasmb_arm_v6m.c
+      )
+  endif()
   if (${MIN_STACK} STREQUAL "X")
     message(STATUS "Expression evaluation revised to reduce stack usage")
     target_compile_definitions(bbcbasic PUBLIC -DMIN_STACK=2)
@@ -113,7 +128,7 @@ if (TARGET tinyusb_device)
     hardware_pio
     hardware_pll
     hardware_pwm
-    hardware_rtc
+    hardware_resets
     hardware_spi
     hardware_sync
     hardware_timer
@@ -128,6 +143,7 @@ if (TARGET tinyusb_device)
     pico_multicore
     pico_printf
     pico_printf_headers
+    pico_rand
     pico_stdio
     pico_stdio_uart
     pico_stdlib
@@ -136,8 +152,26 @@ if (TARGET tinyusb_device)
     pico_unique_id
     pico_util
     )
+  if (${PICO_CHIP} STREQUAL "rp2350")
+    target_compile_definitions(bbcbasic PUBLIC
+      PICO=2
+      PICO_INCLUDE_RTC_DATETIME
+      )
+    target_link_libraries(bbcbasic
+      hardware_powman
+      hardware_sha256
+      pico_aon_timer
+      pico_sha256
+      )
+  else()
+    target_compile_definitions(bbcbasic PUBLIC
+      PICO=1
+      )
+    target_link_libraries(bbcbasic
+      hardware_rtc
+      )
+  endif()
   target_compile_definitions(bbcbasic PUBLIC
-    PICO
     CAN_SET_RTC
     PICO_STACK_CHECK=${STACK_CHECK}
     PICO_PANIC_FUNCTION=sys_panic
@@ -152,14 +186,14 @@ if (TARGET tinyusb_device)
   if( DEFINED CYW43 )
     if( "${CYW43}" STREQUAL "NONE" )
       message(STATUS "No Pico W support")
-      set(CYW43_LINK 0)
+      set(OS_SIZE 24)
     elseif( "${CYW43}" STREQUAL "GPIO" )
       message(STATUS "Pico W GPIO (LED) only support")
       target_link_libraries(bbcbasic
         pico_cyw43_arch_none
         )
       target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=1)
-      set(CYW43_LINK 0)
+      set(OS_SIZE 24)
     elseif( "${CYW43}" STREQUAL "POLL" )
       message(STATUS "Pico W CYW43 poll support")
       target_sources(bbcbasic PRIVATE ../../src/pico/network_cyw43.c)
@@ -168,13 +202,13 @@ if (TARGET tinyusb_device)
         pico_lwip
         pico_lwip_nosys)
       target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=2)
-      set(CYW43_LINK 1)
+      set(OS_SIZE 72)
     elseif( CYW43 )
       message(STATUS "Pico W CYW43 background support")
       target_sources(bbcbasic PRIVATE ../../src/pico/network_cyw43.c)
       target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=3)
       if (${NET_HEAP} GREATER 0)
-        set(CYW43_LINK 2)
+        set(OS_SIZE 34)
         add_subdirectory(../lwip ${CMAKE_CURRENT_BINARY_DIR}/lwip)
         target_sources(bbcbasic PRIVATE ../../src/heap.c)
         target_compile_definitions(bbcbasic PUBLIC NET_HEAP=${NET_HEAP})
@@ -183,7 +217,7 @@ if (TARGET tinyusb_device)
           picobb_lwip
           picobb_lwip_nosys)
       else()
-        set(CYW43_LINK 1)
+        set(OS_SIZE 72)
         target_link_libraries(bbcbasic
           pico_cyw43_arch_lwip_threadsafe_background
           pico_lwip
@@ -191,7 +225,7 @@ if (TARGET tinyusb_device)
       endif()
     endif()
   else()
-    set(CYW43_LINK 0)
+    set(OS_SIZE 24)
     target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=0)
   endif()
 
@@ -227,8 +261,20 @@ if (TARGET tinyusb_device)
     message(STATUS "Including LFS filesystem for flash storage")
     target_compile_definitions(bbcbasic PUBLIC
       -DHAVE_LFS
-      -DROOT_SIZE=0x100000
-      -DROOT_OFFSET=0x100000
+      )
+    if(${PICO_CHIP} STREQUAL "rp2350")
+      target_compile_definitions(bbcbasic PUBLIC
+        -DROOT_SIZE=0x100000
+        -DROOT_OFFSET=0x300000
+        )
+    else()
+      target_compile_definitions(bbcbasic PUBLIC
+        -DROOT_SIZE=0x100000
+        -DROOT_OFFSET=0x100000
+        )
+    endif()
+    # Set location of storage used by Bluetooth
+    target_compile_definitions(bbcbasic PUBLIC
       -DPICO_FLASH_BANK_TOTAL_SIZE=0x2000           # = 2 * FLASH_SECTOR_SIZE
       -DPICO_FLASH_BANK_STORAGE_OFFSET=0x0FE000     # = ROOT_OFFSET - PICO_FLASH_BANK_TOTAL_SIZE
       )
@@ -372,68 +418,35 @@ if (TARGET tinyusb_device)
     endif()
   endif()
 
+  if(${PICO_CHIP} STREQUAL "rp2350")
+    set(MEM_SIZE 520)
+    set(LINK_FILE picobb_2350.ld)
+  else()
+    set(MEM_SIZE 264)
+    set(LINK_FILE picobb_2040.ld)
+  endif()
+
   if (NOT ("${OS_RAM}" STREQUAL "" ))
     message(STATUS "Link with custom ${OS_RAM}kB of OS RAM storage")
-    add_custom_command(
-      OUTPUT ${CMAKE_BINARY_DIR}/picobb.ld
-      COMMAND ${CMAKE_SOURCE_DIR}/memmap.py ${CMAKE_BINARY_DIR}/picobb.ld ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld $(OS_RAM)
-      )
-    add_custom_target(link_file ALL DEPENDS ${CMAKE_BINARY_DIR}/picobb.ld)
-    add_dependencies(bbcbasic link_file)
-    pico_set_linker_script(bbcbasic ${CMAKE_BINARY_DIR}/picobb.ld)
-    string(CONCAT stk_expr "1024*(262-" ${OS_RAM} ")")
-    math(EXPR stk_size "${stk_expr}" OUTPUT_FORMAT HEXADECIMAL)
-    target_compile_definitions(bbcbasic PUBLIC
-      PICO_STACK_SIZE=${stk_size}
-      PICO_CORE1_STACK_SIZE=0x800
-      )
+    set(OS_SIZE ${OS_RAM})
   elseif (( "${STDIO}" STREQUAL "PICO" ) OR ( ${GRAPH} ))
-    if( ${CYW43_LINK} EQUAL 2)
-      message(STATUS "Link with space for VGA video, CYW43 driver and optimised LWIP")
-      target_compile_definitions(bbcbasic PUBLIC
-        PICO_STACK_SIZE=0x2F800
-        PICO_CORE1_STACK_SIZE=0x800
-        )
-      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico_net2.ld)
-    elseif( ${CYW43_LINK} )
-      message(STATUS "Link with space for VGA video and CYW43 driver")
-      target_compile_definitions(bbcbasic PUBLIC
-        PICO_STACK_SIZE=0x21800
-        PICO_CORE1_STACK_SIZE=0x800
-        )
-      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico_net.ld)
-    else()
-      message(STATUS "Link with space for VGA video")
-      target_compile_definitions(bbcbasic PUBLIC
-        PICO_STACK_SIZE=0x2B800
-        PICO_CORE1_STACK_SIZE=0x800
-        )
-      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/../pico_gui/gui_pico.ld)
-    endif()
-  else()
-    if( ${CYW43_LINK} EQUAL 2)
-      message(STATUS "Link with space for CYW43 driver and optimised LWIP")
-      target_compile_definitions(bbcbasic PUBLIC
-        PICO_STACK_SIZE=0x39000
-        PICO_CORE1_STACK_SIZE=0x800
-        )
-      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_net2_mc.ld)
-    elseif( ${CYW43_LINK} )
-      message(STATUS "Link with space for CYW43 driver")
-      target_compile_definitions(bbcbasic PUBLIC
-        PICO_STACK_SIZE=0x2F800
-        PICO_CORE1_STACK_SIZE=0x800
-        )
-      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_net_mc.ld)
-    else()
-      message(STATUS "Link with 2KB multicore stack")
-      target_compile_definitions(bbcbasic PUBLIC
-        PICO_STACK_SIZE=0x3B800
-        PICO_CORE1_STACK_SIZE=0x800
-        )
-      pico_set_linker_script(bbcbasic ${CMAKE_SOURCE_DIR}/bbc_pico_mc.ld)
-    endif()
+    string(CONCAT stk_expr ${OS_SIZE} "+64")
+    math(EXPR OS_SIZE "${stk_expr}")
   endif()
+  
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/picobb.ld
+    COMMAND ${CMAKE_SOURCE_DIR}/memmap.py ${CMAKE_BINARY_DIR}/picobb.ld ${CMAKE_SOURCE_DIR}/${LINK_FILE} ${MEM_SIZE} ${OS_SIZE}
+    )
+  add_custom_target(link_file ALL DEPENDS ${CMAKE_BINARY_DIR}/picobb.ld)
+  add_dependencies(bbcbasic link_file)
+  pico_set_linker_script(bbcbasic ${CMAKE_BINARY_DIR}/picobb.ld)
+  string(CONCAT stk_expr "1024*(" ${MEM_SIZE} "-" ${OS_SIZE} "-2)")
+  math(EXPR stk_size "${stk_expr}" OUTPUT_FORMAT HEXADECIMAL)
+  target_compile_definitions(bbcbasic PUBLIC
+    PICO_STACK_SIZE=${stk_size}
+    PICO_CORE1_STACK_SIZE=0x800
+    )
 
   target_compile_definitions(bbcbasic PUBLIC -DUSB_CON=${USB_CON})
   if (${USB_CON} GREATER_EQUAL 4)
