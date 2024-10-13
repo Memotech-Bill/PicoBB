@@ -32,8 +32,13 @@ endif()
 project(bbcbasic C CXX ASM)
 pico_sdk_init()
 
-if ( NOT DEFINED STDIO )
+if(NOT DEFINED STDIO)
   set(STDIO "USB+UART")
+endif()
+
+# Work around for SDK v1.x
+if(NOT DEFINED PICO_CHIP)
+  set(PICO_CHIP "rp2040")
 endif()
 
 string(TOUPPER ${STDIO} STDIO)
