@@ -1,5 +1,6 @@
 set(SDK_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/sdk_headers.txt
+  ${CMAKE_CURRENT_SOURCE_DIR}/sdk_v${PICO_SDK_VERSION_MAJOR}.txt
   )
 
 if(NOT ("${STDIO}" STREQUAL "PICO"))
@@ -8,7 +9,7 @@ if(NOT ("${STDIO}" STREQUAL "PICO"))
     )
 endif()
 
-if (${PICO_CHIP} STREQUAL "rp2350")
+if("${PICO_CHIP}" STREQUAL "rp2350")
   list(APPEND SDK_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/sdk_2350.txt
     )

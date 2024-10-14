@@ -1,0 +1,19 @@
+# Header file locations specific to SDK v1.x
+${PICO_SDK_PATH}/src/common/pico_base/include/pico/config.h
+${PICO_SDK_PATH}/src/common/pico_base/include/pico/error.h
+${PICO_SDK_PATH}/src/common/pico_base/include/pico.h
+${PICO_SDK_PATH}/src/common/pico_base/include/pico/types.h
+${PICO_SDK_PATH}/src/common/pico_bit_ops/include/pico/bit_ops.h
+${PICO_SDK_PATH}/src/common/pico_divider/include/pico/divider.h
+${PICO_SDK_PATH}/src/common/pico_stdlib/include/pico/stdlib.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_claim/include/hardware/claim.h
+${PICO_SDK_PATH}/src/rp2_common/hardware_rtc/include/hardware/rtc.h
+${PICO_SDK_PATH}/src/rp2_common/pico_double/include/pico/double.h
+%exclude double2uint64
+%exclude int2double
+%exclude uint2double
+%exclude int642double
+%exclude uint642double
+${PICO_SDK_PATH}/src/rp2_common/pico_float/include/pico/float.h
+%exclude float2uint
+%exclude float2uint64
