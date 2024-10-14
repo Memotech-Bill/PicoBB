@@ -32,7 +32,7 @@ const char *psName;
 void error (const char *psErr)
     {
     fprintf (stderr, "%s", psErr);
-    fprintf (stderr, "USAGE: %s [-d 2040|2350] [-f <id>] file.bin file.uf2 [address]\n", psName);
+    fprintf (stderr, "USAGE: %s [-d ABSOLUTE|2040|DATA|2350[_ASM_S]|2350_RISCV|2350_ARM_NS] [-f <id>] file.bin file.uf2 [address]\n", psName);
     exit (1);
     }
 
@@ -49,8 +49,13 @@ int main(int argc, char** argv) {
         switch (flag)
             {
             case 'd':
-                if (! strcmp (argv[i], "2040")) family = RP2040_FAMILY_ID;
-                else if (! strcmp (argv[i], "2350")) family = RP2040_FAMILY_ID;
+                if (! strcasecmp (argv[i], "ABSOLUTE"))         family = ABSOLUTE_FAMILY_ID;
+                else if (! strcasecmp (argv[i], "2040"))        family = RP2040_FAMILY_ID;
+                else if (! strcasecmp (argv[i], "DATA"))        family = DATA_FAMILY_ID;
+                else if (! strcasecmp (argv[i], "2350"))        family = RP2350_ARM_S_FAMILY_ID;
+                else if (! strcasecmp (argv[i], "2350_ARM_S"))  family = RP2350_ARM_S_FAMILY_ID;
+                else if (! strcasecmp (argv[i], "2350_RISCV"))  family = RP2350_RISCV_FAMILY_ID;
+                else if (! strcasecmp (argv[i], "2350_ARM_NS")) family = RP2350_ARM_NS_FAMILY_ID;
                 else error ("Unrecognised device\n");
                 flag = '\0';
                 break;

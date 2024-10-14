@@ -20,6 +20,8 @@ Usage: uf2merge output.uf2 input1.uf2 input2.uf2
 #define MAGIC_1     0x9E5D5157
 #define MAGIC_2     0x0AB16F30
 #define FLG_FAMILY  0x00002000
+#define SECTOR_SIZE 4096
+#define SECTOR_MASK (~(SECTOR_SIZE - 1))
 
 typedef struct
     {
@@ -27,6 +29,8 @@ typedef struct
     uint32_t    nBlocks;
     uint32_t    iAddrMin;
     uint32_t    iAddrMax;
+    uint32_t    iAddrBegin;
+    uint32_t    iAddrEnd;
     } FILEINFO;
 
 int main (int nArg, const char *psArg[])
@@ -154,7 +158,26 @@ int main (int nArg, const char *psArg[])
                 }
             }
         }
-    uint32_t nBlocks = ( pfs[nArg-nFIn-1]->iAddrMax - pfs[0]->iAddrMin ) / nBlkSize;
+    uint32_t nBlocks = 0;
+    pfs[0]->iAddrBegin = pfs[0]->iAddrMin & SECTOR_MASK;
+    for (int i = 0; i < nArg - nFIn - 1; ++i)
+        {
+        if ( pfs[i+1]->iAddrMin < pfs[i]->iAddrMax )
+            {
+            fprintf (stderr, "File \"%s\" overlaps file \"%s\".", psArg[pfs[i]->iArg], psArg[pfs[i+1]->iArg]);
+            return 1;
+            }
+        pfs[i]->iAddrEnd = (pfs[i]->iAddrMax + SECTOR_SIZE - 1) & SECTOR_MASK;
+        pfs[i+1]->iAddrBegin = pfs[i+1]->iAddrMin & SECTOR_MASK;
+        if (pfs[i+1]->iAddrBegin < pfs[i]->iAddrEnd)
+            {
+            pfs[i]->iAddrEnd = pfs[i]->iAddrMax;
+            pfs[i+1]->iAddrBegin = pfs[i]->iAddrMax;
+            }
+        nBlocks += (pfs[i]->iAddrEnd - pfs[i]->iAddrBegin) / nBlkSize;
+        }
+    pfs[nArg - nFIn - 1]->iAddrEnd = (pfs[nArg - nFIn - 1]->iAddrMax + SECTOR_SIZE - 1) & SECTOR_MASK;
+    nBlocks += (pfs[nArg - nFIn - 1]->iAddrEnd - pfs[nArg - nFIn - 1]->iAddrBegin) / nBlkSize;
     fOut = fopen (psArg[nFIn-1], "wb");
     if ( fOut == NULL )
         {
@@ -163,18 +186,13 @@ int main (int nArg, const char *psArg[])
         }
     int iBlkOut = 0;
     int iArg = pfs[0]->iArg;
-    uint32_t iAddrMax = pfs[0]->iAddrMin;
     for (int i = 0; i < nArg - nFIn; ++i)
         {
         pfi = pfs[i];
-        if ( pfi->iAddrMin < iAddrMax )
+        uint32_t iAddrMax = pfi->iAddrBegin;
+        if ( pfi->iAddrMin > pfi->iAddrBegin )
             {
-            fprintf (stderr, "File \"%s\" overlaps file \"%s\".", psArg[pfs[i]->iArg], psArg[iArg]);
-            return 1;
-            }
-        else if ( pfi->iAddrMin > iAddrMax )
-            {
-            int nPad = ( pfi->iAddrMin - iAddrMax ) / nBlkSize;
+            int nPad = ( pfi->iAddrMin - pfi->iAddrBegin ) / nBlkSize;
             iBuff[4] = nBlkSize;
             iBuff[6] = nBlocks;
             if ( iFamily == 0 ) iBuff[7] = nBlocks * nBlkSize;
@@ -251,6 +269,29 @@ int main (int nArg, const char *psArg[])
             ++iBlkOut;
             }
         fclose (fIn);
+        if ( iErr != 0 ) break;
+        if ( pfi->iAddrEnd > pfi->iAddrMax )
+            {
+            int nPad = ( pfi->iAddrEnd - pfi->iAddrMax ) / nBlkSize;
+            iBuff[4] = nBlkSize;
+            iBuff[6] = nBlocks;
+            if ( iFamily == 0 ) iBuff[7] = nBlocks * nBlkSize;
+            memset (&iBuff[8], 0, nBlkSize);
+            for (int i = 0; i < nPad; ++i)
+                {
+                iBuff[3] = iAddrMax;
+                iBuff[5] = iBlkOut;
+                // printf ("Pad block: 0x%08X 0x%08X 0x%08X 0x%08X\n", iBuff[3], iBuff[4], iBuff[5], iBuff[6]);
+                if ( fwrite (iBuff, 1, BLK_SIZE, fOut) != BLK_SIZE )
+                    {
+                    fprintf (stderr, "Write error on \"%s\"\n", psArg[1]);
+                    iErr = 1;
+                    break;
+                    }
+                ++iBlkOut;
+                iAddrMax += nBlkSize;
+                }
+            }
         if ( iErr != 0 ) break;
         printf ("%3d: 0x%08X - 0x%08X %s\n", i + 1, pfi->iAddrMin, pfi->iAddrMax, psArg[iArg]);
         }
