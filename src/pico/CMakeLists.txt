@@ -114,8 +114,10 @@ if (TARGET tinyusb_device)
   pico_set_printf_implementation(bbcbasic compiler)
   # Registers r10 and r11 are defined as BASIC Program and Stack pointers in BBC.h
   # target_compile_options(bbcbasic PUBLIC -ffixed-r10 -ffixed-r11)
-  # Work around a bug in panic.c in v2.0 Pico SDK
-  target_compile_options(bbcbasic PUBLIC -include pico/platform/compiler.h)
+  # Work around a bug in panic.c in v2.0.0 Pico SDK
+  if("${PICO_SDK_VERSION_MAJOR}.${PICO_SDK_VERSION_MINOR}.${PICO_SDK_VERSION_REVISION}" STREQUAL "2.0.0")
+    target_compile_options(bbcbasic PUBLIC -include pico/platform/compiler.h)
+  endif()
   target_compile_options(bbcbasic PRIVATE -O1 -g)
   target_link_options(bbcbasic PRIVATE -g)
   target_link_libraries(bbcbasic
