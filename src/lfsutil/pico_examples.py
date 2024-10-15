@@ -75,8 +75,12 @@ def Build (cfg):
     if make:
         for ex in examples:
             ex.Copy (cfg.tree)
-        os.system (os.path.join (os.path.dirname (sys.argv[0]), 'mklfsimage') + ' -o ' + cfg.output
+        err = os.system (os.path.join (os.path.dirname (sys.argv[0]), 'mklfsimage') + ' -o ' + cfg.output
                    + ' ' + cfg.tree)
+        err = os.waitstatus_to_exitcode (err)
+        if err != 0:
+            sys.stderr.write ('ERROR: Failed to create LFS filesystem\n')
+            sys.exit (err)
 
 def Run ():
     if ( len (sys.argv) == 1 ):
