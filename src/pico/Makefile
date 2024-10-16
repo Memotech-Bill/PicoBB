@@ -182,17 +182,9 @@ bbcbasic: build bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf
 .PHONY: filesystem
 filesystem:	bbcbasic+filesystem$(SUFFIX).uf2 filesystem$(SUFFIX).uf2
 
-build: Makefile ../../src/pico/Makefile ../../src/pico/CMakeLists.txt
+build/Makefile: Makefile ../../src/pico/Makefile ../../src/pico/CMakeLists.txt
 	rm -rf build
 	mkdir -p build
-
-# build/sympico.h build/pico_stub.c: build $(SDK_HEADERS)
-#  	cd ../../src/pico && symbols/header_funcs.py $(BUILD_DIR)/symbols_sdk.txt $(BUILD_DIR)/pico_stub.c \
-#  		$(SDK_HEADERS)
-#  	../../src/pico/symbols/merge_funcs.py build/sympico.h build/symbols_sdk.txt
-
-build/Makefile: build # build/sympico.h build/pico_stub.c
-	rm -rf build/picobb.ld
 	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
 			-DSTACK_CHECK=$(STACK_CHECK) -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
@@ -207,12 +199,14 @@ endif
 ../../littlefs/lfs.h:
 	git submodule update --remote --recursive
 
-bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) ../../src/pico/symbols/library_functions.txt build/Makefile
+build/bbcbasic.map : $(SOURCES) build/Makefile
+	rm -rf build/picobb.ld
 	cd build && make
-	../../src/pico/symbols/map_funcs.py build/bbcbasic.elf.map build/symbols_map.txt
+	cp build/bbcbasic.elf.map build/bbcbasic.map
+
+bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) build/bbcbasic.map ../../src/pico/symbols/library_functions.txt build/Makefile
+	../../src/pico/symbols/map_funcs.py build/bbcbasic.map build/symbols_map.txt
 	rm -f build/sympico.h
-#	../../src/pico/symbols/merge_funcs.py build/sympico.h build/symbols_sdk.txt build/symbols_map.txt \
-#		../../src/pico/symbols/library_functions.txt
 	cd build && make
 	cp build/bbcbasic.uf2 bbcbasic$(SUFFIX).uf2
 	cp build/bbcbasic.elf bbcbasic$(SUFFIX).elf
