@@ -77,8 +77,11 @@ def Build (cfg):
             ex.Copy (cfg.tree)
         err = os.system (os.path.join (os.path.dirname (sys.argv[0]), 'mklfsimage') + ' -o ' + cfg.output
                    + ' ' + cfg.tree)
-        err = os.waitstatus_to_exitcode (err)
         if err != 0:
+            if err & 0x7F == 0:
+                err >>= 8
+            else:
+                err = -(err & 0x7F)
             sys.stderr.write ('ERROR: Failed to create LFS filesystem\n')
             sys.exit (err)
 
