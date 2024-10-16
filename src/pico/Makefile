@@ -177,7 +177,7 @@ all: bbcbasic
 endif
 
 .PHONY: bbcbasic
-bbcbasic: build bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf
+bbcbasic: build/Makefile bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf
 
 .PHONY: filesystem
 filesystem:	bbcbasic+filesystem$(SUFFIX).uf2 filesystem$(SUFFIX).uf2
