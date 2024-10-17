@@ -215,7 +215,7 @@ bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) build/bbcbasic.map ../.
 
 ifeq ($(LFS), Y)
 bbcbasic+filesystem$(SUFFIX).uf2: bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2 ../../src/lfsutil/uf2merge
-	../../src/lfsutil/uf2merge -f bbcbasic+filesystem$(SUFFIX).uf2 bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2
+	../../src/lfsutil/uf2merge -f -o bbcbasic+filesystem$(SUFFIX).uf2 bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2
 
 ../../src/lfsutil/uf2merge: ../../src/lfsutil/uf2merge.c
 	cd ../../src/lfsutil && make uf2merge
