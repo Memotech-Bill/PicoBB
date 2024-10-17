@@ -28,6 +28,8 @@ void message (const char *psFmt, ...);
 #include "lfsmcu.h"
 lfs_t lfs_root;
 lfs_bbc_t lfs_root_context;
+extern uint32_t __flash_binary_end;
+#define BINARY_END  ((uint32_t *)& __flash_binary_end)
 #endif
 
 #if defined(HAVE_FAT) && defined(HAVE_LFS)
@@ -1042,6 +1044,9 @@ static struct lfs_config lfs_root_cfg = {
     .block_cycles = 256
     };
 
+static const uint8_t    lfs_head[] = {0xf0, 0x0f, 0xff, 0xf7, 0x6c, 0x69, 0x74, 0x74, 0x6c, 0x65, 0x66, 0x73, 0x2f, 0xe0, 0x00, 0x10};
+
+/*
 #ifdef PICO
 #include <pico/binary_info.h>
 bi_decl(bi_block_device(
@@ -1052,18 +1057,67 @@ bi_decl(bi_block_device(
                            NULL,
                            BINARY_INFO_BLOCK_DEV_FLAG_READ | BINARY_INFO_BLOCK_DEV_FLAG_WRITE));
 #endif
+*/
 #endif
 
+extern void waitconsole (void);
+extern void text (const char *psMsg);
 extern void syserror (const char *psMsg);
 int mount (void)
     {
     int istat = 0;
 #ifdef HAVE_LFS
-    struct lfs_bbc_config lfs_bbc_cfg =
 #ifdef PICO
+    struct lfs_bbc_config lfs_bbc_cfg;
+    lfs_bbc_cfg.buffer = (void *)(((intptr_t) BINARY_END) & (~ (FLASH_SECTOR_SIZE-1)));
+    waitconsole ();
+    while (true)
         {
-        .buffer= (uint8_t *)XIP_BASE+ROOT_OFFSET
-        };
+        lfs_bbc_cfg.buffer += FLASH_SECTOR_SIZE;
+        // printf ("buffer = %p:", lfs_bbc_cfg.buffer);
+        // for (int i = 0; i < 20; ++i) printf (" %02X", *((uint8_t *)lfs_bbc_cfg.buffer+i));
+        // printf ("%s", "\n");
+        if (((*((uint8_t *)lfs_bbc_cfg.buffer + 4) & 0x7F) == (lfs_head[0] & 0x7F))
+            && (! memcmp (lfs_bbc_cfg.buffer + 5, &lfs_head[1], 11))
+            && ((*((uint8_t *)lfs_bbc_cfg.buffer + 16) & 0x7F) == (lfs_head[12] & 0x7F))
+            && (! memcmp (lfs_bbc_cfg.buffer + 17, &lfs_head[13], 3))
+                ) break;
+        if (lfs_bbc_cfg.buffer >= (void *)(XIP_BASE + PICO_FLASH_SIZE_BYTES))
+            {
+            syserror ("Unable to locate LittleFS image");
+            return 2;
+            }
+        }
+    uint32_t    lfs_ver = *((uint32_t *)(lfs_bbc_cfg.buffer + 20));
+    uint32_t    lfs_bsz = *((uint32_t *)(lfs_bbc_cfg.buffer + 24));
+    uint32_t    lfs_bct = *((uint32_t *)(lfs_bbc_cfg.buffer + 28));
+    char    sTxt[20];
+    text ("LittleFS image v");
+    sprintf (sTxt, "%d.%d", lfs_ver >> 16, lfs_ver & 0xFFFF);
+    text (sTxt);
+    text (", Size = ");
+    sprintf (sTxt, "%d", lfs_bsz * lfs_bct / 1024);
+    text (sTxt);
+    text ("KB, Origin = 0x");
+    sprintf (sTxt, "%08X", lfs_bbc_cfg.buffer);
+    text (sTxt);
+    text ("\r\n");
+    if (lfs_ver != LFS_DISK_VERSION)
+        {
+        syserror ("Invalid VFS version");
+        return 2;
+        }
+    if (lfs_bsz != FLASH_SECTOR_SIZE)
+        {
+        syserror ("Invalid flash sector size");
+        return 2;
+        }
+    if (lfs_bbc_cfg.buffer + lfs_bsz * lfs_bct > (void *)(XIP_BASE + PICO_FLASH_SIZE_BYTES))
+        {
+        syserror ("LittleFS image too large");
+        return 2;
+        }
+    lfs_root_cfg.block_count = lfs_bct;
 #else
 #error Define location of LFS storage
 #endif

@@ -78,7 +78,7 @@ int lfs_bbc_prog(const struct lfs_config *cfg, lfs_block_t block,
 
 	// check that data was erased? only needed for testing
 	for (lfs_off_t i = 0; i < size; i++) {
-		LFS_ASSERT(bd->buffer[block*cfg->block_size + off + i] == 0);
+		LFS_ASSERT(bd->buffer[block*cfg->block_size + off + i] == 0xFF);
 	}
 
 	// program data
@@ -129,7 +129,7 @@ int lfs_bbc_erase(const struct lfs_config *cfg, lfs_block_t block) {
 #endif
 #else
 	memset(&bd->buffer[block*cfg->block_size],
-		0, cfg->block_size);
+		0xFF, cfg->block_size);
 #endif
 
 	LFS_BBC_TRACE("lfs_bbc_erase -> %d", 0);

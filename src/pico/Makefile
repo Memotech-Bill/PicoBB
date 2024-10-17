@@ -3,6 +3,8 @@ BBC_SRC?=../../BBCSDL
 USB_CON?=0
 NET_HEAP?=0
 STACK_CHECK?=4
+LFS_ORIG?=1024
+LFS_SIZE?=1024
 
 EXAMPLE_FILES = ../../BBCSDL/lib/*.bbc \
 		../../BBCSDL/tests/*.bbc \
@@ -189,7 +191,7 @@ build/Makefile: Makefile ../../src/pico/Makefile ../../src/pico/CMakeLists.txt
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
 			-DSTACK_CHECK=$(STACK_CHECK) -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
 			-DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) -DGRAPH=$(GRAPH) -DOS_RAM=$(OS_RAM) -DUSB_CON=$(USB_CON) \
-			-DNET_HEAP=$(NET_HEAP) $(TRACE) --no-warn-unused-cli -S ../../../src/pico -B .
+			-DNET_HEAP=$(NET_HEAP) -DLFS_ORIG=$(LFS_ORIG) $(TRACE) --no-warn-unused-cli -S ../../../src/pico -B .
 
 ifeq ($(BBC_SRC), ../../BBCSDL)
 $(BBC_SRC)/include/version.h:
@@ -219,7 +221,7 @@ bbcbasic+filesystem$(SUFFIX).uf2: bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2 
 	cd ../../src/lfsutil && make uf2merge
 
 filesystem$(SUFFIX).uf2: filesystem$(SUFFIX).lfs ../../src/lfsutil/uf2conv
-	../../src/lfsutil/uf2conv filesystem$(SUFFIX).lfs filesystem$(SUFFIX).uf2 0x10100000
+	../../src/lfsutil/uf2conv filesystem$(SUFFIX).lfs filesystem$(SUFFIX).uf2 $(LFS_ORIG)K
 
 ../../src/lfsutil/uf2conv: ../../src/lfsutil/uf2conv.c
 	cd ../../src/lfsutil && make uf2conv
@@ -230,14 +232,14 @@ filesystem$(SUFFIX).uf2: filesystem$(SUFFIX).lfs ../../src/lfsutil/uf2conv
 ifdef FILESYS
 filesystem$(SUFFIX).lfs: $(FILESYS) ../../src/lfsutil/mklfsimage
 	rm -f filesystem.lfs
-	./mklfsimage -o filesystem$(SUFFIX).lfs $(FILESYS)
+	../../src/lfsutil/mklfsimage -o filesystem$(SUFFIX).lfs $(FILESYS)
 else
 filesystem$(SUFFIX).lfs: $(BASIC_EXAMPLES) $(EXAMPLE_FILES) ../../src/lfsutil/pico_examples.py ../../src/lfsutil/mklfsimage
 	rm -rf build/tree
-	../../src/lfsutil/pico_examples.py -o filesystem$(SUFFIX).lfs -t build/tree $(DEVICE) $(BUILD) $(BASIC_EXAMPLES)
+	../../src/lfsutil/pico_examples.py -o filesystem$(SUFFIX).lfs -s $(LFS_SIZE)K -t build/tree $(DEVICE) $(BUILD) $(BASIC_EXAMPLES)
 endif
 
-../../src/lfsutil/mklfsimage: ../../src/lfsutil/mklfsimage.c
+../../src/lfsutil/mklfsimage: ../../src/lfsutil/mklfsimage.c ../../src/lfsmcu.c ../../littlefs/lfs.c ../../littlefs/lfs_util.c
 	cd ../../src/lfsutil && make mklfsimage
 endif
 

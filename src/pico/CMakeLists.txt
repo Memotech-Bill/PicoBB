@@ -281,9 +281,11 @@ if (TARGET tinyusb_device)
         )
     endif()
     # Set location of storage used by Bluetooth
+    string(CONCAT flash_expr "1024*(" ${LFS_ORIG} "-8)")
+    math(EXPR flash_orig "${flash_expr}" OUTPUT_FORMAT HEXADECIMAL)
     target_compile_definitions(bbcbasic PUBLIC
-      -DPICO_FLASH_BANK_TOTAL_SIZE=0x2000           # = 2 * FLASH_SECTOR_SIZE
-      -DPICO_FLASH_BANK_STORAGE_OFFSET=0x0FE000     # = ROOT_OFFSET - PICO_FLASH_BANK_TOTAL_SIZE
+      -DPICO_FLASH_BANK_TOTAL_SIZE=0x2000               # = 2 * FLASH_SECTOR_SIZE
+      -DPICO_FLASH_BANK_STORAGE_OFFSET=${flash_orig}    # = ROOT_OFFSET - PICO_FLASH_BANK_TOTAL_SIZE
       )
     target_sources(bbcbasic PRIVATE
       ../../src/lfsmcu.c

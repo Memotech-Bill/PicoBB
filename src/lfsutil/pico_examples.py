@@ -76,7 +76,7 @@ def Build (cfg):
         for ex in examples:
             ex.Copy (cfg.tree)
         err = os.system (os.path.join (os.path.dirname (sys.argv[0]), 'mklfsimage') + ' -o ' + cfg.output
-                   + ' ' + cfg.tree)
+                   + ' -s ' + cfg.size + ' ' + cfg.tree)
         if err != 0:
             if err & 0x7F == 0:
                 err >>= 8
@@ -89,11 +89,12 @@ def Run ():
     if ( len (sys.argv) == 1 ):
         sys.argv.append ('-h')
     parser = argparse.ArgumentParser (description = 'Collect BASIC example programs into directory tree')
-    parser.add_argument ('-v', '--version', action = 'version', version = '%(prog)s v230319')
+    parser.add_argument ('-v', '--version', action = 'version', version = '%(prog)s v241017')
     parser.add_argument ('-d', '--device', action = 'append', help = 'Device to assemble files for')
     parser.add_argument ('-b', '--build', action = 'append', help = 'PicoBB build to assemble files for')
     parser.add_argument ('-t', '--tree', action = 'store', help = 'Folder for examples directory tree')
     parser.add_argument ('-o', '--output', action = 'store', help = 'Name of file to receive LFS image')
+    parser.add_argument ('-s', '--size', action = 'store', help = 'Size of LFS image')
     parser.add_argument ('config_file', nargs = '*', help = 'Configuration file, lists programs to include')
     Build (parser.parse_args ())
 

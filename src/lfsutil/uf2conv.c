@@ -27,6 +27,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define XIP_BASE    0x10000000
+
+
+
 const char *psName;
 
 void error (const char *psErr)
@@ -34,6 +38,25 @@ void error (const char *psErr)
     fprintf (stderr, "%s", psErr);
     fprintf (stderr, "USAGE: %s [-d ABSOLUTE|2040|DATA|2350[_ASM_S]|2350_RISCV|2350_ARM_NS] [-f <id>] file.bin file.uf2 [address]\n", psName);
     exit (1);
+    }
+
+uint32_t parse_address (const char *ps)
+    {
+    uint32_t addr = 0;
+    while (*ps)
+        {
+        if ((*ps >= '0') && (*ps <= '9')) addr = 10 * addr + *ps - '0';
+        else break;
+        ++ps;
+        }
+    if ((*ps == 'K') || (*ps == 'k')) {addr *= 1024; ++ps;}
+    else if ((*ps == 'M') || (*ps == 'm')) {addr *= 1024 * 1024; ++ps;}
+    if ((*ps) || (addr == 0))
+        {
+        fprintf (stderr, "Invalid Address\n");
+        exit (1);
+        }
+    return  addr + XIP_BASE;
     }
 
 int main(int argc, char** argv) {
@@ -73,7 +96,7 @@ int main(int argc, char** argv) {
                     {
                     if (nArg == 0) psIn = argv[i];
                     else if (nArg == 1) psOut = argv[i];
-                    else if (nArg == 2) address = strtoul(argv[i], NULL, 0);
+                    else if (nArg == 2) address = parse_address (argv[i]);
                     else error ("Too many arguments\n");
                     ++nArg;
                     }
