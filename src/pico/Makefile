@@ -220,8 +220,8 @@ bbcbasic+filesystem$(SUFFIX).uf2: bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2 
 ../../src/lfsutil/uf2merge: ../../src/lfsutil/uf2merge.c
 	cd ../../src/lfsutil && make uf2merge
 
-filesystem$(SUFFIX).uf2: filesystem$(SUFFIX).lfs ../../src/lfsutil/uf2conv
-	../../src/lfsutil/uf2conv filesystem$(SUFFIX).lfs filesystem$(SUFFIX).uf2 $(LFS_ORIG)K
+filesystem$(SUFFIX).uf2: filesystem$(SUFFIX).lfs bbcbasic$(SUFFIX).uf2 ../../src/lfsutil/uf2conv
+	../../src/lfsutil/uf2conv -m bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).lfs filesystem$(SUFFIX).uf2 $(LFS_ORIG)K
 
 ../../src/lfsutil/uf2conv: ../../src/lfsutil/uf2conv.c
 	cd ../../src/lfsutil && make uf2conv

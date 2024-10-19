@@ -38,7 +38,10 @@ endif()
 
 # Work around for SDK v1.x
 if(NOT DEFINED PICO_CHIP)
+  message(STATUS "PICO_CHIP not defined, assumming rp2040")
   set(PICO_CHIP "rp2040")
+else()
+  message(STATUS "PICO_CHIP set to ${PICO_CHIP}")
 endif()
 
 string(TOUPPER ${STDIO} STDIO)
