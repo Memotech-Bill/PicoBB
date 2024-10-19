@@ -130,7 +130,13 @@ int main(int argc, char** argv) {
             return 1;
             }
         fclose (f);
+        if ((bl.magicStart0 != UF2_MAGIC_START0) || (bl.magicStart1 != UF2_MAGIC_START1))
+            {
+            fprintf(stderr, "Reference file is not a valid UF2: %s\n", psRef);
+            }
         if (bl.flags & UF2_FLAG_FAMILY_ID_PRESENT) family = bl.fileSize;
+        else bl.fileSize = 0;
+        bl.flags &= UF2_FLAG_FAMILY_ID_PRESENT;
         }
     else
         {
