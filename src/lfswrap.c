@@ -1085,39 +1085,48 @@ int mount (void)
         if (lfs_bbc_cfg.buffer >= (void *)(XIP_BASE + PICO_FLASH_SIZE_BYTES))
             {
             syserror ("Unable to locate LittleFS image");
-            return 2;
+            lfs_bbc_cfg.buffer = 0;
+            break;
             }
         }
-    uint32_t    lfs_ver = *((uint32_t *)(lfs_bbc_cfg.buffer + 20));
-    uint32_t    lfs_bsz = *((uint32_t *)(lfs_bbc_cfg.buffer + 24));
-    uint32_t    lfs_bct = *((uint32_t *)(lfs_bbc_cfg.buffer + 28));
-    char    sTxt[20];
-    text ("LittleFS image v");
-    sprintf (sTxt, "%d.%d", lfs_ver >> 16, lfs_ver & 0xFFFF);
-    text (sTxt);
-    text (", Size = ");
-    sprintf (sTxt, "%d", lfs_bsz * lfs_bct / 1024);
-    text (sTxt);
-    text ("KB, Origin = 0x");
-    sprintf (sTxt, "%08X", lfs_bbc_cfg.buffer);
-    text (sTxt);
-    text ("\r\n");
-    if (lfs_ver != LFS_DISK_VERSION)
+    if (lfs_bbc_cfg.buffer > 0)
         {
-        syserror ("Invalid VFS version");
-        return 2;
+        uint32_t    lfs_ver = *((uint32_t *)(lfs_bbc_cfg.buffer + 20));
+        uint32_t    lfs_bsz = *((uint32_t *)(lfs_bbc_cfg.buffer + 24));
+        uint32_t    lfs_bct = *((uint32_t *)(lfs_bbc_cfg.buffer + 28));
+        char    sTxt[20];
+        text ("LittleFS image v");
+        sprintf (sTxt, "%d.%d", lfs_ver >> 16, lfs_ver & 0xFFFF);
+        text (sTxt);
+        text (", Size = ");
+        sprintf (sTxt, "%d", lfs_bsz * lfs_bct / 1024);
+        text (sTxt);
+        text ("KB, Origin = 0x");
+        sprintf (sTxt, "%08X", lfs_bbc_cfg.buffer);
+        text (sTxt);
+        text ("\r\n");
+        if (lfs_ver != LFS_DISK_VERSION)
+            {
+            syserror ("Invalid VFS version");
+            return 2;
+            }
+        if (lfs_bsz != FLASH_SECTOR_SIZE)
+            {
+            syserror ("Invalid flash sector size");
+            return 2;
+            }
+        if (lfs_bbc_cfg.buffer + lfs_bsz * lfs_bct > (void *)(XIP_BASE + PICO_FLASH_SIZE_BYTES))
+            {
+            syserror ("LittleFS image too large");
+            return 2;
+            }
+        lfs_root_cfg.block_count = lfs_bct;
         }
-    if (lfs_bsz != FLASH_SECTOR_SIZE)
+    else
         {
-        syserror ("Invalid flash sector size");
-        return 2;
+        lfs_bbc_cfg.buffer = XIP_BASE + ROOT_OFFSET;
+        lfs_root_cfg.block_count = ROOT_SIZE;
         }
-    if (lfs_bbc_cfg.buffer + lfs_bsz * lfs_bct > (void *)(XIP_BASE + PICO_FLASH_SIZE_BYTES))
-        {
-        syserror ("LittleFS image too large");
-        return 2;
-        }
-    lfs_root_cfg.block_count = lfs_bct;
 #else
 #error Define location of LFS storage
 #endif
