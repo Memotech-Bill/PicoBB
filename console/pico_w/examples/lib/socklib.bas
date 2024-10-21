@@ -1,3 +1,4 @@
+REM Socket library for BBC BASIC for Pico, Memotech-Bill, based upon
 REM Socket library for BBC BASIC for SDL 2.0, R.T.Russell, v2.3, 25-Aug-2020
 REM UDP support additions adapted from proposals by R.P.D (Phil) 30-Nov-2017
 REM Principal public routines are:
@@ -43,10 +44,10 @@ SYS "memmove", d%%, s%%, HIMEM - s%%
 HIMEM = d%% + HIMEM - s%%
 ENDPROC
 
-REM Initialise the BBCSDL Sockets interface
-DEF PROC_initsockets(N%)
-DEF PROC_initsockets : LOCAL N% : N% = 2
-LOCAL chan%, err%, hsize%
+REM Locate or reserve space for network heap
+DEF PROC__socklib_initheap(N%)
+DEF PROC__socklib_initheap : LOCAL N% : N% = 2
+LOCAL hsize%
 SYS "net_heap_size", N% TO hsize%
 LOCAL HeapPos{} : DIM HeapPos{bot%,top%}
 IF hsize% > 0 THEN
@@ -60,6 +61,13 @@ HeapPos.bot% = HIMEM
 ENDIF
 ENDIF
 SYS "net_init", HeapPos.bot%, HeapPos.top%
+ENDPROC
+
+REM Initialise the BBCSDL Sockets interface
+DEF PROC_initsockets(N%)
+DEF PROC_initsockets : LOCAL N% : N% = 2
+LOCAL chan%, err%
+PROC__socklib_initheap(N%)
 chan% = OPENIN("wifi.cfg")
 IF chan% = 0 THEN
 LOCAL ccode$, cc1%, cc2%

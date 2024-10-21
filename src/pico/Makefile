@@ -91,7 +91,8 @@ SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 NET_SOURCES = ../../include/network.h \
 	../../src/pico/network_cyw43.c \
-	../../src/heap.c
+	../../src/heap.c \
+	../../src/lwip/memp.c
 SDL_EXAMPLES = ../../BBCSDL/examples/general/client.bbc \
 	../../BBCSDL/examples/general/server.bbc
 EXAMPLE_FILES += 	../../console/pico_w/examples/* \
@@ -102,7 +103,8 @@ SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 NET_SOURCES = ../../include/network.h \
 	../../src/pico/network_cyw43.c \
-	../../src/heap.c
+	../../src/heap.c \
+	../../src/lwip/memp.c
 SDL_EXAMPLES = ../../BBCSDL/examples/general/client.bbc \
 	../../BBCSDL/examples/general/server.bbc
 EXAMPLE_FILES += 	../../console/pico_w/examples/* \
@@ -113,7 +115,8 @@ SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_lwip.txt
 NET_SOURCES = ../../include/network.h \
 	../../src/pico/network_cyw43.c \
-	../../src/heap.c
+	../../src/heap.c \
+	../../src/lwip/memp.c
 SDL_EXAMPLES = ../../BBCSDL/examples/general/client.bbc \
 	../../BBCSDL/examples/general/server.bbc
 EXAMPLE_FILES += 	../../console/pico_w/examples/* \
