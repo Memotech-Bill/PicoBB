@@ -122,7 +122,9 @@ static inline void net_wait (void)
 static absolute_time_t net_tend;
 static inline bool net_continue (void)
     {
-    return ( absolute_time_diff_us (net_tend, get_absolute_time ()) < 0 );
+    if ( absolute_time_diff_us (net_tend, get_absolute_time ()) < 0 ) return true;
+    DPRINT ("Timeout: net_tend = %ld\n", net_tend);
+    return false;
     }
 
 typedef struct s_scan_cb_result
@@ -372,17 +374,21 @@ intptr_t net_tcp_connect (const ip_addr_t *ipaddr, uint32_t port, uint32_t timeo
         {
         net_wait ();
         }
+    DPRINT ("conn->err = %d\n", conn->err);
     if ( conn->err != STATE_COMPLETED )
         {
+        DPRINT ("Abort: conn = %p\n", conn);
         err_t err = conn->err;
         cyw43_arch_lwip_begin();
         tcp_abort (conn->pcb);
         cyw43_arch_lwip_end();
         tcp_conn_free (conn);
-        if ( conn->err == STATE_WAITING ) return net_error (ERR_TIMEOUT);
-        return err;
+        DPRINT ("conn->err = %d\n", conn->err);
+        if ( err == STATE_WAITING ) return net_error (ERR_TIMEOUT);
+        return net_error (err);
         }
     tcp_recv (conn->pcb, net_tcp_receive_cb);
+    DPRINT ("Connected: conn = %p\n", conn);
     return  (intptr_t) conn;
     }
 
@@ -504,10 +510,14 @@ int net_tcp_write (intptr_t connin, uint32_t len, void *data, uint32_t timeout)
                 }
             if ( conn->err != STATE_COMPLETED )
                 {
+                DPRINT ("Abort: conn = %p\n", conn);
+                err_t err = conn->err;
                 cyw43_arch_lwip_begin();
                 tcp_abort (conn->pcb);
                 cyw43_arch_lwip_end();
-                return net_error (conn->err);
+                DPRINT ("conn->err = %d\n", conn->err);
+                if ( err == STATE_WAITING ) return net_error (ERR_TIMEOUT);
+                return net_error (err);
                 }
             data += nsend;
             len -= nsend;
