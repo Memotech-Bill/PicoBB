@@ -622,7 +622,7 @@ int net_dns_get_ip (const char *host, uint32_t timeout, ip_addr_t *ipaddr)
     if ( timeout == 0 ) net_tend = at_the_end_of_time;
     else                net_tend = make_timeout_time_ms (timeout);
     err_t err = dns_gethostbyname (host, &fip.ipaddr, net_dns_found_cb, &fip);
-    if ( err != ERR_OK ) return net_error (err);
+    if (( err != ERR_OK ) && ( err != ERR_INPROGRESS )) return net_error (err);
     while (( ! fip.found ) && ( net_continue () ))
         {
         net_wait ();
