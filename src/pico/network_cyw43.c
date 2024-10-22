@@ -21,7 +21,7 @@
 #define MALLOC_OVERHEAD     8
 
 #ifndef DIAG
-#define DIAG    1
+#define DIAG    0
 #endif
 #if DIAG
 #define DPRINT  printf
