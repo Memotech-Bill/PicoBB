@@ -21,7 +21,7 @@
 #define MALLOC_OVERHEAD     8
 
 #ifndef DIAG
-#define DIAG    0
+#define DIAG    1
 #endif
 #if DIAG
 #define DPRINT  printf
@@ -353,7 +353,7 @@ static err_t net_tcp_receive_cb (void *connin, struct tcp_pcb *pcb, struct pbuf 
 
 intptr_t net_tcp_connect (const ip_addr_t *ipaddr, uint32_t port, uint32_t timeout)
     {
-    DPRINT ("net_tcp_connect (%p, %d, %d)\n", ipaddr, port, timeout);
+    DPRINT ("net_tcp_connect (%s (0x%08X), %d, %d)\n", ipaddr_ntoa (ipaddr), *ipaddr, port, timeout);
     tcp_conn_t *conn = tcp_conn_alloc ();
     if ( conn == NULL ) return net_error (ERR_MEM);
     conn->pcb = tcp_new ();
@@ -613,7 +613,7 @@ void net_tcp_peer (intptr_t connin, ip_addr_t *ipaddr, uint32_t *port)
 
 typedef struct s_find_ip
     {
-    bool        found;
+    int         err;
     ip_addr_t   ipaddr;
     } find_ip_t;
 
@@ -621,28 +621,51 @@ void net_dns_found_cb (const char *host, const ip_addr_t *addr, void *pfipin)
     {
     DPRINT ("net_dns_found_cb (%s, %p, %p)\n", host, addr, pfipin);
     find_ip_t *pfip = (find_ip_t *) pfipin;
-    pfip->ipaddr = *addr;
-    pfip->found = true;
+    if (addr != NULL)
+        {
+        DPRINT ("ipaddr = %s (0x%08X)\n", ipaddr_ntoa (addr), *addr);
+        pfip->ipaddr = *addr;
+        pfip->err = ERR_OK;
+        }
+    else
+        {
+        pfip->err = ERR_CLSD;
+        }
     }
 
 int net_dns_get_ip (const char *host, uint32_t timeout, ip_addr_t *ipaddr)
     {
     DPRINT ("net_dns_get_ip (%s, %d, %p)\n", host, timeout, ipaddr);
-    find_ip_t   fip = { false, 0 };
+    find_ip_t   fip = { STATE_WAITING, 0 };
     if ( timeout == 0 ) net_tend = at_the_end_of_time;
     else                net_tend = make_timeout_time_ms (timeout);
     err_t err = dns_gethostbyname (host, &fip.ipaddr, net_dns_found_cb, &fip);
-    if (( err != ERR_OK ) && ( err != ERR_INPROGRESS )) return net_error (err);
-    while (( ! fip.found ) && ( net_continue () ))
+    DPRINT ("err = %d\n", err);
+    if ( err == ERR_INPROGRESS )
         {
-        net_wait ();
+        while (( fip.err == STATE_WAITING ) && ( net_continue () ))
+            {
+            net_wait ();
+            }
+        if ( fip.err == STATE_WAITING )
+            {
+            DPRINT ("net_dns_get_ip: Timeout = %d\n", timeout);
+            return net_error (ERR_TIMEOUT);
+            }
+        else if ( fip.err != ERR_OK )
+            {
+            DPRINT ("net_dns_get_ip: failed = %d\n", fip.err);
+            return net_error (fip.err);
+            }
         }
-    if ( fip.found )
+    else if ( err != ERR_OK )
         {
-        memcpy (ipaddr, &fip.ipaddr, sizeof (ip_addr_t));
-        return ERR_OK;
+        DPRINT ("net_dns_get_ip: err = %d\n", err);
+        return net_error (err);
         }
-    return net_error (ERR_TIMEOUT);
+    memcpy (ipaddr, &fip.ipaddr, sizeof (ip_addr_t));
+    DPRINT ("net_dns_get_ip: ipaddr = %s (0x%08X)\n", ipaddr_ntoa (ipaddr), *ipaddr);
+    return ERR_OK;
     }
 
 typedef struct s_udp_msg
