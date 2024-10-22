@@ -395,7 +395,8 @@ timer_t UserTimerID;
 unsigned int palette[256];
 void *TTFcache[1];
 #ifdef PICO
-void *libtop;
+extern heapptr libase;		// Base of libraries 
+void *libtop;               // Top of installed libraries
 #endif
 
 // Array of VDU command lengths:
@@ -1789,7 +1790,7 @@ static void install_stack_guard (void *stack_bottom)
         // the minimum we can protect is 32 bytes on a 32 byte boundary, so round up which will
         // just shorten the valid stack range a tad
         stk_guard = ((uintptr_t) stack_bottom + 95u) & ~31u;
-        // printf ("stk_guard = %p\n", stk_guard);
+        // printf ("stk_guard = %p - %p\n", stk_guard, stk_guard + 512);
 
         // mask is 1 bit per 32 bytes of the 256 byte range... clear the bit for the segment we want
         uint32_t subregion_select = 0xff0000ffu << ((stk_guard >> 5u) & 7u);
@@ -1872,7 +1873,7 @@ heapptr oshwm (void *addr, int settop)
 			userTOP = addr;
 #if PICO_STACK_CHECK & 0x04
         // printf ("oshwm (%p, %d)\n", addr, settop);
-        install_stack_guard (addr);
+        install_stack_guard (addr > (void *) libase ? addr : libtop);
 #endif
 		return (size_t) addr;
 	    }
