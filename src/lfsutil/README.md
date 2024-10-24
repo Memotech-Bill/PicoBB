@@ -8,7 +8,7 @@ Usage: `mklfsimage [options] <directories>...`
 
 where the options are:
 
-**-h** - Display a usage summary and exit.
+**`-h`** - Display a usage summary and exit.
 
 **`-o <filename>`** - Specifies the filename of the LFS image. The file
 is created if it does not exist or added to if already an LFS image.
@@ -34,14 +34,14 @@ where the options are:
 **`-d <device_type>`** - One of the following options to select the UF2
 family ID:
 
-* **ABSOLUTE** - Write to a fixed location in flash.
-* **RP2040** - Code or data intended for an RP2040 (this is the only
+* **`ABSOLUTE`** - Write to a fixed location in flash.
+* **`RP2040`** - Code or data intended for an RP2040 (this is the only
 ID recognised by the RP2040 chip).
-* **DATA** - Arbitrary data.
-* **RP2350_ARM_S** - Bootable secure ARM code for the RP2350.
-* **RP2350** - Abbreviation for **RP2350_ARM_S**
-* **RP2350_RISCV** - Bootable RISCV code for the RP2350.
-* **RP2350_ARM_NS** - ARM non-secure mode code for the RP2350
+* **`DATA`** - Arbitrary data.
+* **`RP2350_ARM_S`** - Bootable secure ARM code for the RP2350.
+* **`RP2350`** - Abbreviation for **RP2350_ARM_S**
+* **`RP2350_RISCV`** - Bootable RISCV code for the RP2350.
+* **`RP2350_ARM_NS`** - ARM non-secure mode code for the RP2350
 
 **`-f <family-id>`** - Specifies the family ID in numeric form in decimal
 (beginning `1`-`9`), hex (beginning `0x`) or octal (beginning `0`).
@@ -51,7 +51,7 @@ use it for the created file.
 
 **`<source_file>`** - Name of the file to convert to UF2 format.
 
-**<uf2_file>** - Name of the UF2 file to create.
+**`<uf2_file>`** - Name of the UF2 file to create.
 
 **`<address>`** - Start address in flash to load the UF2 data.The address may
 be given in bytes, kilo-bytes (1024 bytes) if followed by a **K**, or
