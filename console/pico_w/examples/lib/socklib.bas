@@ -141,7 +141,6 @@ IPaddress.host% = FN_sethost(host$)
 IF IPaddress.host% = FALSE OR IPaddress.host% = TRUE THEN = -1
 IPaddress.port% = FN_setport(port$)
 IF IPaddress.port% = 0 THEN = -1
-PRINT "ipaddr = ";~IPaddress.host%;" ^ipaddr = ";~^IPaddress.host%
 SYS "net_tcp_connect", ^IPaddress.host%, IPaddress.port%, 10000 TO S%
 = S%
 
@@ -231,7 +230,6 @@ SYS "net_error_desc", e% TO e%
 
 REM Set the host address
 DEF FN_sethost(host$)
-PRINT "host = ";host$
 LOCAL H%,I%,P%, IPaddress{} : DIM IPaddress{host%, port%}
 IF VAL(host$) THEN
 FOR I% = 1 TO 4
@@ -243,7 +241,6 @@ ELSE
 SYS "net_dns_get_ip", PTR(host$), 10000, ^IPaddress.host% TO I%
 IF I% = 0 THEN H% = IPaddress.host% ELSE H% = FALSE
 ENDIF
-PRINT "H% = ";~H%
 = H%
 
 REM Set the port number
