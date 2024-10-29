@@ -3,7 +3,7 @@ set(SDK_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/sdk_v${PICO_SDK_VERSION_MAJOR}.txt
   )
 
-if(NOT ("${STDIO}" STREQUAL "PICO"))
+if ( "USB" IN_LIST STDIO_LIST )
   list(APPEND SDK_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/sdk_stdio_usb.txt
     )

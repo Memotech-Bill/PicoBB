@@ -27,9 +27,6 @@
 #if USE_INTERP
 #include "hardware/interp.h"
 #endif
-#include "bsp/board.h"
-#include "tusb.h"
-#include "class/hid/hid.h"
 #include "fbufvdu.h"
 #include <stdio.h>
 #include "bbccon.h"
