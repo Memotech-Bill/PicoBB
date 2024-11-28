@@ -10,6 +10,12 @@
 // For board detection
 #define RASPBERRYPI_PICO_PW
 
+// CMake does not read these from included header files
+
+// pico_cmake_set PICO_PLATFORM        = rp2040
+// pico_cmake_set PICO_CYW43_SUPPORTED = 1
+// pico_cmake_set_default PICO_FLASH_SIZE_BYTES = (2 * 1024 * 1024)
+
 // --- LED ---
 #ifndef PICO_DEFAULT_LED_PIN
 #define PICO_DEFAULT_LED_PIN 25

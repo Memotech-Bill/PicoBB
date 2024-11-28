@@ -70,6 +70,12 @@
 #define PICO_VGA_BOARD_SD
 
 // vgaboard has a Pico on it, so default anything we haven't set above
+
+// CMake does not read these from included header files
+
+// pico_cmake_set PICO_PLATFORM        = rp2040
+// pico_cmake_set_default PICO_FLASH_SIZE_BYTES = (2 * 1024 * 1024)
+
 #include "boards/pico.h"
 
 // pico.h defines a default UART which is not available on the VGA board

@@ -10,6 +10,13 @@
 // For board detection
 #define RASPBERRYPI_PICO2_PW
 
+// CMake does not read these from included header files
+
+// pico_cmake_set PICO_PLATFORM=rp2350
+// pico_cmake_set PICO_CYW43_SUPPORTED = 1
+// pico_cmake_set_default PICO_FLASH_SIZE_BYTES = (4 * 1024 * 1024)
+// pico_cmake_set_default PICO_RP2350_A2_SUPPORTED = 1
+
 // --- LED ---
 #ifndef PICO_DEFAULT_LED_PIN
 #define PICO_DEFAULT_LED_PIN 25
