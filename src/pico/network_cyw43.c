@@ -3,14 +3,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "BBC.h"
-#include "network.h"
 #include <pico/cyw43_arch.h>
 #include <pico/time.h>
 #include <hardware/sync.h>
 #include <lwip/tcp.h>
 #include <lwip/ip_addr.h>
 #include <lwip/dns.h>
+#include "BBC.h"
+#include "network.h"
 
 #if CYW43_LWIP != 1
 #error  CYW43 Support not enabled
