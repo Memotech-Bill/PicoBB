@@ -26,6 +26,7 @@ Usage: uf2merge output.uf2 input1.uf2 input2.uf2
 typedef struct
     {
     int         iArg;
+    uint32_t    nStart;
     uint32_t    nBlocks;
     uint32_t    iAddrMin;
     uint32_t    iAddrMax;
@@ -61,6 +62,7 @@ int main (int nArg, const char *psArg[])
     int bEra = 0;
     int bIgn = 0;
     int bFix = 0;
+    int iE10 = 0;
     int i = 1;
     while (i < nArg)
         {
@@ -107,7 +109,7 @@ int main (int nArg, const char *psArg[])
         }
     if (nFIn == 0)
         {
-        fprintf (stderr, "No input fils.\n");
+        fprintf (stderr, "No input files.\n");
         help (psArg[0]);
         }
     fi = (FILEINFO *) malloc (nFIn * sizeof (FILEINFO));
@@ -149,6 +151,18 @@ int main (int nArg, const char *psArg[])
             fprintf (stderr, "Read error on \"%s\"\n", psArg[pfi->iArg]);
             iErr = 1;
             break;
+            }
+        if ( ( iBuff[0] == MAGIC_0 ) && ( iBuff[1] == MAGIC_1 ) && ( iBuff[BLK_END] == MAGIC_2 )
+            && ( iBuff[7] == 0xE48BFF57 ) && ( iBuff[6] == 2 ) )
+            {
+            iE10 = pfi->iArg;
+            nByte = fread (iBuff, 1, BLK_SIZE, fIn);
+            if ( nByte < BLK_SIZE )
+                {
+                fprintf (stderr, "Read error on \"%s\"\n", psArg[pfi->iArg]);
+                iErr = 1;
+                break;
+                }
             }
         if ( ( iBuff[0] != MAGIC_0 ) || ( iBuff[1] != MAGIC_1 ) || ( iBuff[BLK_END] != MAGIC_2 ) )
             {
@@ -198,7 +212,7 @@ int main (int nArg, const char *psArg[])
         pfi->nBlocks  = iBuff[6];
         pfi->iAddrMin = iBuff[3];
         pfi->iAddrMax = iBuff[3] + iBuff[6] * iBuff[4];
-        // printf ("%s 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X\n", psArg[iArg], iBuff[3], iBuff[4], iBuff[6], pfi->iAddrMin, pfi->iAddrMax);
+        // printf ("%s 0x%08X 0x%08X 0x%08X 0x%08X 0x%08X\n", psArg[pfi->iArg], iBuff[3], iBuff[4], iBuff[6], pfi->iAddrMin, pfi->iAddrMax);
         fclose (fIn);
         ++pfi;
         }
@@ -244,6 +258,28 @@ int main (int nArg, const char *psArg[])
         fprintf (stderr, "Unable to open output file \"%s\"\n", psOut);
         return 1;
         }
+    if ( iE10 > 0 )
+        {
+        fIn = fopen (psArg[iE10], "rb");
+        if ( fIn == NULL )
+            {
+            fprintf (stderr, "Unable to open input file \"%s\"\n", psArg[iE10]);
+            return 1;
+            }
+        size_t nByte = fread (iBuff, 1, BLK_SIZE, fIn);
+        if ( nByte < BLK_SIZE )
+            {
+            fprintf (stderr, "Read error on \"%s\"\n", psArg[iE10]);
+            return 1;
+            }
+        if ( fwrite (iBuff, 1, BLK_SIZE, fOut) != BLK_SIZE )
+            {
+            fprintf (stderr, "Write error on \"%s\"\n", psOut);
+            return 1;
+            }
+        printf ("%3d: 0x%08X - 0x%08X (0x%08X - 0x%08X) %s\n", 0, iBuff[3], iBuff[3] + iBuff[4],
+            iBuff[3], iBuff[3] + iBuff[4], "RP2350-E10 Work-around");
+        }
     int iBlkOut = 0;
     int iArg = pfs[0]->iArg;
     for (int i = 0; i < nFIn; ++i)
@@ -282,6 +318,16 @@ int main (int nArg, const char *psArg[])
             break;
             }
         int iBlkIn = 0;
+        if ( iArg == iE10 )
+            {
+            size_t nByte = fread (iBuff, 1, BLK_SIZE, fIn);
+            if ( nByte < BLK_SIZE )
+                {
+                fprintf (stderr, "Read error on \"%s\"\n", psArg[iArg]);
+                iErr = 1;
+                break;
+                }
+            }
         while (true)
             {
             size_t nByte = fread (iBuff, 1, BLK_SIZE, fIn);
@@ -313,6 +359,13 @@ int main (int nArg, const char *psArg[])
                     break;
                     }
                 }
+            if ( iBuff[3] != iAddrMax )
+                {
+                fprintf (stderr, "Data out of order in \"%s\": 0x%08X 0x%08X\n",
+                    psArg[iArg], iAddrMax, iBuff[3]);
+                iErr = 1;
+                break;
+                }
             iBuff[4] = nBlkSize;
             iBuff[5] = iBlkOut;
             iBuff[6] = nBlocks;
@@ -321,7 +374,7 @@ int main (int nArg, const char *psArg[])
             // printf ("Data block: 0x%08X 0x%08X 0x%08X 0x%08X\n", iBuff[3], iBuff[4], iBuff[5], iBuff[6]);
             if ( fwrite (iBuff, 1, BLK_SIZE, fOut) != BLK_SIZE )
                 {
-                fprintf (stderr, "Write error on \"%s\"\n", psArg[1]);
+                fprintf (stderr, "Write error on \"%s\"\n", psOut);
                 iErr = 1;
                 break;
                 }
