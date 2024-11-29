@@ -396,7 +396,7 @@ unsigned int palette[256];
 void *TTFcache[1];
 #ifdef PICO
 extern heapptr libase;		// Base of libraries 
-void *libtop;               // Top of installed libraries
+extern void *libtop;        // Top of installed libraries
 #endif
 
 // Array of VDU command lengths:
