@@ -5,6 +5,7 @@ NET_HEAP?=0
 STACK_CHECK?=4
 LFS_ORIG?=1024
 LFS_SIZE?=1024
+OPTIMISE?=-O1
 
 EXAMPLE_FILES = ../../BBCSDL/lib/*.bbc \
 		../../BBCSDL/tests/*.bbc \
@@ -194,7 +195,7 @@ build/Makefile: Makefile ../../src/pico/Makefile ../../src/pico/CMakeLists.txt
 		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
 			-DSTACK_CHECK=$(STACK_CHECK) -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
 			-DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) -DGRAPH=$(GRAPH) -DOS_RAM=$(OS_RAM) -DUSB_CON=$(USB_CON) \
-			-DNET_HEAP=$(NET_HEAP) -DLFS_ORIG=$(LFS_ORIG) $(TRACE) --no-warn-unused-cli -S ../../../src/pico -B .
+			-DNET_HEAP=$(NET_HEAP) -DLFS_ORIG=$(LFS_ORIG) -DOPTIMISE=$(OPTIMISE) --no-warn-unused-cli -S ../../../src/pico -B .
 
 ifeq ($(BBC_SRC), ../../BBCSDL)
 $(BBC_SRC)/include/version.h:

@@ -36,6 +36,10 @@ if(NOT DEFINED STDIO)
   set(STDIO "USB+UART")
 endif()
 
+if(NOT DEFINED OPTIMISE)
+  set(OPTIMISE "-O1")
+endif()
+
 # Work around for SDK v1.x
 if(NOT DEFINED PICO_CHIP)
   message(STATUS "PICO_CHIP not defined, assumming rp2040")
@@ -121,7 +125,7 @@ if (TARGET tinyusb_device)
   if("${PICO_SDK_VERSION_MAJOR}.${PICO_SDK_VERSION_MINOR}.${PICO_SDK_VERSION_REVISION}" STREQUAL "2.0.0")
     target_compile_options(bbcbasic PUBLIC -include pico/platform/compiler.h)
   endif()
-  target_compile_options(bbcbasic PRIVATE -O1 -g)
+  target_compile_options(bbcbasic PRIVATE ${OPTIMISE} -g)
   target_link_options(bbcbasic PRIVATE -g)
   target_link_libraries(bbcbasic
     hardware_adc
