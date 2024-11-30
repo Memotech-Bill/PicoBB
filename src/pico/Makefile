@@ -5,7 +5,6 @@ NET_HEAP?=0
 STACK_CHECK?=4
 LFS_ORIG?=1024
 LFS_SIZE?=1024
-OPTIMISE?=-O1
 
 EXAMPLE_FILES = ../../BBCSDL/lib/*.bbc \
 		../../BBCSDL/tests/*.bbc \

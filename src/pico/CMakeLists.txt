@@ -36,10 +36,6 @@ if(NOT DEFINED STDIO)
   set(STDIO "USB+UART")
 endif()
 
-if(NOT DEFINED OPTIMISE)
-  set(OPTIMISE "-O1")
-endif()
-
 # Work around for SDK v1.x
 if(NOT DEFINED PICO_CHIP)
   message(STATUS "PICO_CHIP not defined, assumming rp2040")
@@ -47,6 +43,15 @@ if(NOT DEFINED PICO_CHIP)
 else()
   message(STATUS "PICO_CHIP set to ${PICO_CHIP}")
 endif()
+
+if(NOT OPTIMISE)
+  if((${CMAKE_C_COMPILER_VERSION} VERSION_GREATER_EQUAL "12.2.1") AND (${PICO_CHIP} STREQUAL "rp2350"))
+    set(OPTIMISE "-Oz")
+  else()
+    set(OPTIMISE "-O1")
+  endif()
+endif()
+message(STATUS "Compiling using optimisation level ${OPTIMISE}")
 
 string(TOUPPER ${STDIO} STDIO)
 string(REPLACE "+" ";" STDIO_LIST ${STDIO})
