@@ -34,7 +34,11 @@ extern char __StackTop;
 // #define TOP_OF_MEM  0x20040000
 #endif
 #ifndef BASIC_RAM
+#if PICO == 2
+#define BASIC_RAM   0x50000
+#else
 #define BASIC_RAM   0x20000
+#endif
 #endif
 
 // Attempt to check consistancy of build
