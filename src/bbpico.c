@@ -173,7 +173,11 @@ BOOL WINAPI K32EnumProcessModules (HANDLE, HMODULE*, DWORD, LPDWORD);
 #include <pico/time.h>
 #include <pico/binary_info.h>
 #if PICO_STACK_CHECK & 0x04
+#if PICO == 1
 #include <hardware/structs/mpu.h>
+#elif PICO == 2
+#include <hardware/structs/m33.h>
+#endif
 #endif
 #ifdef STDIO_USB
 #include <tusb.h>
@@ -1779,11 +1783,11 @@ int oscall (int addr)
 #if PICO_STACK_CHECK & 0x04
 uintptr_t   stk_guard = 0;
 
-// Configure a 512 byte protected region that is installed at least 64 bytes above stack_bottom
-// The stack_trap routine executes with the stack pointer just below this protected region.
-static void install_stack_guard (void *stack_bottom)
+void install_stack_guard (void *stack_bottom)
     {
 #if PICO == 1
+// Configure a 512 byte protected region that is installed at least 64 bytes above stack_bottom
+// The stack_trap routine executes with the stack pointer just below this protected region.
     if ( stack_bottom == NULL )
         {
         mpu_hw->ctrl = 0; // Disable mpu
@@ -1832,6 +1836,33 @@ static void install_stack_guard (void *stack_bottom)
       }
     */
 #elif PICO == 2
+#if 1
+    // Use stack limit register for overrun protection
+    // Since the UsageFault exception is not enabled,
+    // a stack overrun will cause a HardFault instead.
+    if ( stack_bottom == NULL )
+        {
+        stk_guard = 0;
+        asm volatile(
+            "msr msplim, %0"
+            :
+            : "r" (stk_guard)
+            );
+        m33_hw->ccr &=  ~ M33_CCR_STKOFHFNMIGN_BITS;
+        }
+    else
+        {
+        stk_guard = ((uintptr_t) stack_bottom + 95u) & ~31u;
+        asm volatile(
+            "msr msplim, %0"
+            :
+            : "r" (stk_guard)
+            );
+        // Allow HardFault handler to ignore stack limit register
+        m33_hw->ccr |=  M33_CCR_STKOFHFNMIGN_BITS;
+        }
+#else
+    // Use MMU for overrun protection
     if ( stack_bottom == NULL )
         {
         mpu_hw->ctrl = 0; // Disable mpu
@@ -1849,6 +1880,7 @@ static void install_stack_guard (void *stack_bottom)
         mpu_hw->rbar = stk_guard  | 0x05;           // Lower limit, Not sharable, Read only, No execute
         mpu_hw->rlar = (stk_guard + 0x200) | 0x11;  // Upper limit, Execution prohibited, Attribute 0, Enabled
         }
+#endif
 #endif
     }
 #endif
@@ -2205,6 +2237,7 @@ void allocbuf (void)
 	szCmdLine = (char*) memptr; memptr += 0x100;    // Must be immediately below default progRAM
 	progRAM = memptr;                               // Will be raised if @cmd$ exceeds 255 bytes
     userTOP = userRAM + BASIC_RAM;
+    install_stack_guard (userTOP);
     }
 
 // Start interpreter:

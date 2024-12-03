@@ -37,6 +37,7 @@ the stack pointer is reset above the guard region.
 extern uintptr_t stk_guard;
 void text (const char *psTxt);
 void error (int err, const char *msg);
+void install_stack_guard (void *stack_bottom);
 
 static void hex_report (int iVal)
     {
@@ -55,6 +56,8 @@ static void hex_report (int iVal)
 
 void crash_report (int *pReport)
     {
+    // uintptr_t save_guard = stk_guard;
+    // install_stack_guard ((void *) 0);
     bool bHaveFrame = ( pReport[5] == pReport[9] ) && ( pReport[6] == pReport[10] )
         && ( pReport[7] == pReport[11] ) && ( pReport[8] == pReport[12] );
     text ("\r\nR0 = ");
@@ -87,7 +90,7 @@ void crash_report (int *pReport)
     if ( bHaveFrame ) hex_report (pReport[2]);
     else hex_report (pReport[14]);
     text ("\r\nR7 = ");
-    hex_report (pReport[21]);
+    hex_report (pReport[22]);
     text ("  PC  = ");
     if ( bHaveFrame ) hex_report (pReport[3]);
     else text ("????????");
@@ -96,6 +99,7 @@ void crash_report (int *pReport)
     text ("  PSP = ");
     if ( bHaveFrame ) hex_report (pReport[4]);
     else text ("????????");
+    // if (save_guard != 0) install_stack_guard ((void *)(save_guard - 95u));
     if (( pReport[0] >= stk_guard ) && ( pReport[0] < stk_guard + 0x200 ))
         {
         error (255, "\r\nStack overrun");
@@ -110,13 +114,19 @@ void __attribute__((used,naked)) stack_trap(void)
     {
 	asm volatile(
         "   push    {r0-r3}         \n\t"   // Save R0-R3 on original stack
+#if PICO == 2
+        "   mov     r0, #0          \n\t"   // Reset stack limit
+        "   msr     msplim, r0      \n\t"
+#endif
         "   mov     r0, sp          \n\t"   // Get stack pointer
         "   adr     r1, 2f          \n\t"   // Address of data block
         "   ldm     r1!, {r2}       \n\t"   // Load address of stk_guard
+#if PICO == 1
         "   ldr     r2, [r2]        \n\t"   // Load value of stack_guard
         "   cmp     r2, #0          \n\t"   // Test for stack_guard set
         "   beq     1f              \n\t"   // Jump if not set
         "   mov     sp, r2          \n\t"   // Set stack pointer to bottom of guard
+#endif
         "1: push    {r4-r7}         \n\t"   // Save R4-R7
         "   mov     r4, r8          \n\t"   // Copy R8-R11 to R4-R7
         "   mov     r5, r9          \n\t"
@@ -151,3 +161,18 @@ void __attribute__((used,naked)) stack_trap(void)
         );
     }
     
+#if PICO == 2
+// The definition "xeq=pico_xeq" is forced into the compilation of bbmain.c
+// so that the xeq() call in basic() calls here instead.
+
+#include <stddef.h>
+#include "BBC.h"
+
+VAR xeq (void);
+
+VAR pico_xeq (void)
+    {
+    if (stk_guard != 0) install_stack_guard ((void *)(stk_guard - 95u));
+    return xeq ();
+    }
+#endif

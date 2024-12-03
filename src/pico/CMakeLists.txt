@@ -88,6 +88,8 @@ if (TARGET tinyusb_device)
     target_sources(bbcbasic PRIVATE
       ../../src/bbasmb_arm_v8m.c
       )
+    set_source_files_properties(${BBC_SRC}/src/bbmain.c
+        PROPERTIES COMPILE_DEFINITIONS xeq=pico_xeq)
   else()
     target_sources(bbcbasic PRIVATE
       ../../src/bbasmb_arm_v6m.c
