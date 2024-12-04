@@ -47,11 +47,11 @@
       <li><a href="#vdu">VDU commands</a></li>
     </ul>
       <h2 id="intro">Introduction</h2>
-    <p><b>PicoBB</b> implements a version of BBC BASIC on the Raspberry Pi Pico and Pico W.
+    <p><b>PicoBB</b> implements a version of BBC BASIC on the Raspberry Pi Pico family.
       It is derived (with permission) from Richard Russell's
       <a href="https://www.bbcbasic.co.uk/bbcsdl/index.html">BBCSDL</a>. It should be noted
       that PicoBB is not an emulation of the BBC Micro, it is a native implementation of the
-      BBC BASIC language on the ARM cores of the RP2040 chip.</p>
+      BBC BASIC language on the ARM cores of the RP2040 or RP2350 chips.</p>
     <p>Richard has produced
       <a href="https://www.bbcbasic.co.uk/bbcsdl/manual/index.html">extensive documentation</a>
       for BBC BASIC as implemented by BBCSDL. No attempt is made to replace or reproduce that
@@ -82,12 +82,12 @@
         GPIO pins for interfacing by either not using the lsb of the video output or omitting
         either sound or SD card connections.</dd>
     </dl>
-    <p>Either of these major versions may be on either a Pico or a Pico W. The latter introduces
-      the possibility of providing wireless networking. The builds which include network support
-      have slightly less memory available to BASIC. It is possible to run either a with or
-      without networking build on either a Pico or Pico W, although clearly networking will only
-      actually work with a network enabled build on a Pico W.</p>
-    <p>As well as the four builds resulting from Console / GUI and with / without networking
+    <p>Either of these major versions may be on boaards with or without a CYW43 wirless chip.
+      The CYW43 introduces the possibility of providing wireless networking. The builds which
+      include network support have slightly less memory available to BASIC. It is possible to
+      run either a with or without networking build on either a board with or without the CYW43
+      chip, although clearly networking will only actually work if the CYW43 is presentW.</p>
+    <p>As well as the four build options resulting from Console / GUI and with / without networking
       there a a number of compilation options to enable or disable features giving a large number
       of potentially different builds. For build instructions see the
       <a href="https://github.com/Memotech-Bill/PicoBB">README.md</a> file in the repository.
@@ -159,16 +159,20 @@
       first FAT partition on the card is used. The contents of the SD card will appear under
       the folder <b>/sdcard/</b>.</p>
     <h2 id="sysvar">System Variables & System Identification</h2>
-    <p>The low byte of the system variable <code>@platform%</code> identifies the system on which a
-      program is running. For any of the Pico builds this will have the value 6. If running on a
-      standard Pico, the other three bytes will be zero. If running on a Pico W, the second byte
-      (bits 8-15) will have one of the following values:</p>
-    <ol>
-      <li> - No Pico W support (LED on Pico W unaccesable).</li>
-      <li> - Pico W GPIO support only (LED on Pico W accessible).</li>
-      <li> - Pico W network support using polling.</li>
-      <li> - Pico W network support using background processing.</li>
-    </ol>
+    <p>The low byte (bits 0-7) of the system variable <code>@platform%</code> identifies the
+      system on which a program is running. For any of the Pico builds this will have the
+      value 6. Bits 12-15 of <code>@platform%</code> identify the processor:</p>
+    <ul>
+      <li>0 - RP2040 (ARM M0+ cores).</li>
+      <li>2 - RP2350 (ARM M33 cores).</li>
+    </ul>
+    <p>Bits 8-11 of <code>@platform%</code> specify the support for the CYW43 network chip:</p>
+    <ul>
+      <li>0 - No CYW43 support (LED on Pico W unaccesable).</li>
+      <li>1 - CYW43 GPIO support only (LED on CYW43 accessible).</li>
+      <li>2 - CYW43 network support using polling.</li>
+      <li>3 - CYW43 network support using background processing.</li>
+    </ul>
     <p>The same information can be obtained using SYS to call the C function <code>is_pico_w</code>.</p>
     <p>The standard builds nominally for the Pico actually have Pico W GPIO support as that will
       also run on a Pico, and does not change the amount of RAM available to BASIC. As a result they
@@ -199,11 +203,12 @@
           <li>2 - Two serial devices (<code>dev/uart0</code>, <code>/dev/uart1</code>).</li>
           <li>0xFF - GUI build, One serial device (<code>/dev/serial</code>), used by VDU printer commands.</li>
           </ul></li>
-      <li><code>@picocfg&(4)</code> - Pico W support (only usable if running on Pico W):<ul>
-          <li>0 - No Pico W support (LED on Pico W unaccesable).</li>
-          <li>1 - Pico W GPIO support only (LED on Pico W accessible).</li>
-          <li>2 - Pico W network support using polling.</li>
-          <li>3 - Pico W network support using background interrupts.</li>
+      <li><code>@picocfg&(4)</code> - Processor and CYW43 support:<ul>
+          <li>0 - No CYW43 support (LED on CYW43 unaccesable).</li>
+          <li>1 - CYW43 GPIO support only (LED on CYW43 accessible).</li>
+          <li>2 - CYW43 network support using polling.</li>
+          <li>3 - CYW43 network support using background interrupts.</li>
+          <li>+64 - RP2350.</li>
           </ul></li></ul>
     <p>This may be extended in the future if more capabilities are added.</p>
     <p>All the other system variables from BBCSDL should exist although some of them are meaningless

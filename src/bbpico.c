@@ -259,6 +259,9 @@ static const struct
             0,
 #endif
             HAVE_CYW43
+#if PICO == 2
+            + 0x20
+#endif
             }
         };
     
@@ -428,7 +431,9 @@ static const unsigned char xkey[64] = {
 #endif
 
 #if HAVE_CYW43
+#ifndef PICO_DEFAULT_LED_PIN
 #define PICO_DEFAULT_LED_PIN    25
+#endif
 #define PICO_ERROR_NO_CYW43     -257        // No support
 int iCyw = PICO_ERROR_NO_CYW43;
 void net_clear (void);
@@ -2820,7 +2825,11 @@ void *main_init (int argc, char *argv[])
 #endif
 
 #ifdef PICO
+#if PICO == 1
 	platform = 6 + ( is_pico_w () << 8 );
+#elif PICO == 2
+	platform = 0x2006 + ( is_pico_w () << 8 );
+#endif
     /*
 	MaximumRAM = MINIMUM_RAM;
 	userRAM = &__StackLimit;
