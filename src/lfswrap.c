@@ -1124,7 +1124,7 @@ int mount (void)
         }
     else
         {
-        lfs_bbc_cfg.buffer = XIP_BASE + ROOT_OFFSET;
+        lfs_bbc_cfg.buffer = (void *)(XIP_BASE + ROOT_OFFSET);
         lfs_root_cfg.block_count = ROOT_SIZE;
         }
 #else

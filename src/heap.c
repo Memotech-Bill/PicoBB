@@ -7,6 +7,8 @@
 #include "BBC.h"
 #include "heap.h"
 
+void error (int err, const char *msg);
+
 #ifndef DIAG
 #define DIAG    0
 #endif
@@ -115,7 +117,7 @@ void *heap_malloc (size_t size)
         else
             {
             hptr = ((h_last == NULL) ? h_top : h_last) - (size + sizeof (H_MEM));
-            if (hptr < h_base ) error (0, NULL);
+            if (hptr < (H_MEM *)h_base ) error (0, NULL);
             }
         hptr->next = h_last;
         h_last = hptr;

@@ -60,6 +60,7 @@ static const char *psError[] =
 
 // Allocate storage on the BASIC heap
 #include "heap.h"
+void memp_size (int *count, int *size);
 
 #else
 
