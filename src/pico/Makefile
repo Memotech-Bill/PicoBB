@@ -1,4 +1,6 @@
-BUILD_DIR := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))/build
+BUILD_DIR = build$(SUFFIX)
+BUILD_PATH := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))/$(BUILD_DIR)
+ADDON?=
 BBC_SRC?=../../BBCSDL
 USB_CON?=0
 NET_HEAP?=0
@@ -10,7 +12,7 @@ EXAMPLE_FILES = ../../BBCSDL/lib/*.bbc \
 		../../BBCSDL/tests/*.bbc \
 		../../BBCSDL/examples/general/*.bbc \
 		../../console/pico/examples/* \
-		../../console/pico/lib/*
+		../../console/pico/examples/lib/*
 
 ifeq ($(MIN_STACK), Y)
 EXEC_SOURCES = \
@@ -80,7 +82,7 @@ GUI_SOURCES = ../../src/pico/zmodem.c
 SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
 	../../src/pico/symbols/sdk_stdio_usb.txt
 endif
-MAP_FILE := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))/build/bbcbasic.elf.map
+MAP_FILE := $(BUILD_PATH)/bbcbasic.elf.map
 
 NET_SOURCES =
 ifeq ($(CYW43), GPIO)
@@ -95,8 +97,8 @@ NET_SOURCES = ../../include/network.h \
 	../../src/lwip/memp.c
 SDL_EXAMPLES = ../../BBCSDL/examples/general/client.bbc \
 	../../BBCSDL/examples/general/server.bbc
-EXAMPLE_FILES += 	../../console/pico_w/examples/* \
-		../../console/pico_w/examples/lib/*
+EXAMPLE_FILES += 	../../console/pico/examples_w/* \
+		../../console/pico/examples_w/lib/*
 else ifeq ($(CYW43), BACKGROUND)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_cyw43_background.txt \
@@ -107,8 +109,8 @@ NET_SOURCES = ../../include/network.h \
 	../../src/lwip/memp.c
 SDL_EXAMPLES = ../../BBCSDL/examples/general/client.bbc \
 	../../BBCSDL/examples/general/server.bbc
-EXAMPLE_FILES += 	../../console/pico_w/examples/* \
-		../../console/pico_w/examples/lib/*
+EXAMPLE_FILES += 	../../console/pico/examples_w/* \
+		../../console/pico/examples_w/lib/*
 else ifeq ($(CYW43), Y)
 SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 	../../src/pico/symbols/sdk_cyw43_background.txt \
@@ -119,8 +121,8 @@ NET_SOURCES = ../../include/network.h \
 	../../src/lwip/memp.c
 SDL_EXAMPLES = ../../BBCSDL/examples/general/client.bbc \
 	../../BBCSDL/examples/general/server.bbc
-EXAMPLE_FILES += 	../../console/pico_w/examples/* \
-		../../console/pico_w/examples/lib/*
+EXAMPLE_FILES += 	../../console/pico/examples_w/* \
+		../../console/pico/examples_w/lib/*
 endif
 
 ifneq ($(SERIAL_DEV), 0)
@@ -163,8 +165,8 @@ SOURCES= \
     $(GUI_SOURCES) \
 	$(DEV_SOURCES) \
 	$(NET_SOURCES)
-#	build/sympico.h \
-#	build/pico_stub.c \
+#	$(BUILD_DIR)/sympico.h \
+#	$(BUILD_DIR)/pico_stub.c \
 
 ifneq ("$(wildcard ../../BBCSDL/pico_examples.cfg)", "")
 BASIC_EXAMPLES = ../../pico_examples.cfg ../../BBCSDL/pico_examples.cfg
@@ -182,16 +184,16 @@ all: bbcbasic
 endif
 
 .PHONY: bbcbasic
-bbcbasic: build/Makefile bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf
+bbcbasic: $(BUILD_DIR)/Makefile bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf
 
 .PHONY: filesystem
 filesystem:	bbcbasic+filesystem$(SUFFIX).uf2 filesystem$(SUFFIX).uf2
 
-build/Makefile: Makefile ../../src/pico/Makefile ../../src/pico/CMakeLists.txt
-	rm -rf build
-	mkdir -p build
-	cd build && PICO_SDK_PATH=$(PICO_SDK_PATH) \
-		cmake -DPICO_BOARD=$(BOARD) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
+$(BUILD_DIR)/Makefile: Makefile ../../src/pico/Makefile ../../src/pico/CMakeLists.txt
+	rm -rf $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
+	cd $(BUILD_DIR) && PICO_SDK_PATH=$(PICO_SDK_PATH) \
+		cmake -DPICO_BOARD=$(BOARD) -DADDON=$(ADDON) -DSTDIO=$(STDIO) -DLFS=$(LFS) -DFAT=$(FAT) -DSOUND=$(SOUND) \
 			-DSTACK_CHECK=$(STACK_CHECK) -DMIN_STACK=$(MIN_STACK) -DPRINTER=$(PRINTER) -DSERIAL_DEV=$(SERIAL_DEV) \
 			-DCYW43=$(CYW43) -DBBC_SRC=$(BBC_SRC) -DGRAPH=$(GRAPH) -DOS_RAM=$(OS_RAM) -DUSB_CON=$(USB_CON) \
 			-DNET_HEAP=$(NET_HEAP) -DLFS_ORIG=$(LFS_ORIG) -DOPTIMISE=$(OPTIMISE) --no-warn-unused-cli -S ../../../src/pico -B .
@@ -204,17 +206,17 @@ endif
 ../../littlefs/lfs.h:
 	git submodule update --remote --recursive
 
-build/bbcbasic.map : $(SOURCES) build/Makefile
-	rm -rf build/picobb.ld
-	cd build && make
-	cp build/bbcbasic.elf.map build/bbcbasic.map
+$(BUILD_DIR)/bbcbasic.map : $(SOURCES) $(BUILD_DIR)/Makefile
+	rm -rf $(BUILD_DIR)/picobb.ld
+	cd $(BUILD_DIR) && make
+	cp $(BUILD_DIR)/bbcbasic.elf.map $(BUILD_DIR)/bbcbasic.map
 
-bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) build/bbcbasic.map ../../src/pico/symbols/library_functions.txt build/Makefile
-	../../src/pico/symbols/map_funcs.py build/bbcbasic.map build/symbols_map.txt
-	rm -f build/sympico.h
-	cd build && make
-	cp build/bbcbasic.uf2 bbcbasic$(SUFFIX).uf2
-	cp build/bbcbasic.elf bbcbasic$(SUFFIX).elf
+bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) $(BUILD_DIR)/bbcbasic.map ../../src/pico/symbols/library_functions.txt $(BUILD_DIR)/Makefile
+	../../src/pico/symbols/map_funcs.py $(BUILD_DIR)/bbcbasic.map $(BUILD_DIR)/symbols_map.txt
+	rm -f $(BUILD_DIR)/sympico.h
+	cd $(BUILD_DIR) && make
+	cp $(BUILD_DIR)/bbcbasic.uf2 bbcbasic$(SUFFIX).uf2
+	cp $(BUILD_DIR)/bbcbasic.elf bbcbasic$(SUFFIX).elf
 
 ifeq ($(LFS), Y)
 bbcbasic+filesystem$(SUFFIX).uf2: bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2 ../../src/lfsutil/uf2merge
@@ -238,8 +240,8 @@ filesystem$(SUFFIX).lfs: $(FILESYS) ../../src/lfsutil/mklfsimage
 	../../src/lfsutil/mklfsimage -o filesystem$(SUFFIX).lfs $(FILESYS)
 else
 filesystem$(SUFFIX).lfs: $(BASIC_EXAMPLES) $(EXAMPLE_FILES) ../../src/lfsutil/pico_examples.py ../../src/lfsutil/mklfsimage
-	rm -rf build/tree
-	../../src/lfsutil/pico_examples.py -o filesystem$(SUFFIX).lfs -s $(LFS_SIZE)K -t build/tree $(DEVICE) $(BUILD) $(BASIC_EXAMPLES)
+	rm -rf $(BUILD_DIR)/tree
+	../../src/lfsutil/pico_examples.py -o filesystem$(SUFFIX).lfs -s $(LFS_SIZE)K -t $(BUILD_DIR)/tree $(DEVICE) $(BUILD) $(BASIC_EXAMPLES)
 endif
 
 ../../src/lfsutil/mklfsimage: ../../src/lfsutil/mklfsimage.c ../../src/lfsmcu.c ../../littlefs/lfs.c ../../littlefs/lfs_util.c
@@ -247,6 +249,6 @@ endif
 endif
 
 clean:
-	rm -rf build
+	rm -rf build*
 	rm -f bbcbasic*.* filesystem*.* *.uf2
 	cd ../../src/lfsutil && make clean

@@ -14,11 +14,11 @@
 //       SHOULD ONLY CONSIST OF PREPROCESSOR DIRECTIVES
 // -----------------------------------------------------
 
-#ifndef _BOARDS_VGABOARD_H
-#define _BOARDS_VGABOARD_H
+#ifndef _ADDON_VGABOARD_H
+#define _ADDON_VGABOARD_H
 
 // For board detection
-#define RASPBERRYPI_VGABOARD_SD
+#define VGABOARD_SD
 
 // Audio pins. I2S BCK, LRCK are on the same pins as PWM L/R.
 // - When outputting I2S, PWM sees BCK and LRCK, which should sound silent as
@@ -69,19 +69,10 @@
 
 #define PICO_VGA_BOARD_SD
 
-// vgaboard has a Pico on it, so default anything we haven't set above
-
-// CMake does not read these from included header files
-
-// pico_cmake_set PICO_PLATFORM        = rp2040
-// pico_cmake_set_default PICO_FLASH_SIZE_BYTES = (2 * 1024 * 1024)
-
-#include "boards/pico.h"
-
 // pico.h defines a default UART which is not available on the VGA board
 
-#undef PICO_DEFAULT_UART
-#undef PICO_DEFAULT_UART_TX_PIN
-#undef PICO_DEFAULT_UART_RX_PIN
+#define PICO_DEFAULT_UART           -1
+#define PICO_DEFAULT_UART_TX_PIN    -1
+#define PICO_DEFAULT_UART_RX_PIN    -1
 
 #endif

@@ -1,5 +1,10 @@
 # PicoBB - Pico BBC BASIC
 
+> [!IMPORTANT]
+> **19 December 2024**
+> The folder layout and build instructions have changed to better support Pico2.
+> Please read the details below before attempting to build.
+
 For the original BBCSDL please go to https://github.com/rtrussell/BBCSDL
 
 This project is part of an attempt to implement BBC Basic on a Raspberry Pi Pico.
@@ -16,23 +21,31 @@ It includes work by:
 
 Apologies to anyone else I omitted.
 
-There are currently four standard builds, see Releases for pre-built UF2 files:
+There are currently four standard builds:
 
-### Console version: bbcbasic_pkc in folder console/pico
+### Pico Console version: bbcbasic_console_pico_w in folder console/pico
 
-* Inteded to be able to use the Pico as a microcontroller programmed in BBC Basic.
+* Will run on a Pico or Pico W.
+* Intended to be able to use the Pico as a microcontroller programmed in BBC Basic.
 * User interaction (if any) is via a console interface over USB or serial.
 * Includes program storage in Pico flash.
 * High quality sound (as per BCSDL) is available as PWM from two GPIO pins.
-* Has 238KB of RAM available, shared between BASIC and the machine stack.
+* Support for networking over the built in WiFi on a Pico W.
+* Has 228KB of RAM available, shared between BASIC and the machine stack.
 
-### Console version with WiFi: bbcbasic_pwc in folder console/pico_w
+### Pico2 Console version: bbcbasic_console_pico2_w in folder console/pico
 
-* As per the console version but with support for networking over the built in WiFi on a Pico W.
-* Has 228KB (previously 190KB) of RAM available, shared between BASIC and the machine stack.
+* Will run on a Pico2 or Pico2 W.
+* Intended to be able to use the Pico2 as a microcontroller programmed in BBC Basic.
+* User interaction (if any) is via a console interface over USB or serial.
+* Includes program storage in Pico flash.
+* High quality sound (as per BCSDL) is available as PWM from two GPIO pins.
+* Support for networking over the built in WiFi on a Pico2 W.
+* Has 494KB of RAM available, shared between BASIC and the machine stack.
 
-### GUI version: bbcbasic_pkg in folder bin/pico
+### Pico GUI version: bbcbasic_gui_pico_w in folder bin/pico
 
+* Will run on a Pico or Pico W.
 * Uses the Pico as a computer programmable in BBC Basic with input by an attached USB keyboard,
   and display on an attached VGA monitor.
 * The GUI version has been designed to run on a Pico attached to a VGA demonstration board as per
@@ -41,16 +54,25 @@ There are currently four standard builds, see Releases for pre-built UF2 files:
   or the commercial version
   [Pimoroni Pico VGA Demo Base](https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base).
 * Includes program and data storage either in Pico flash and SD card on the VGA demo board.
+* Support for networking over the built in WiFi on a Pico W.
 * Sound is low quality (as per BBC Micro) available via the PWM output.
-* Has 174KB of RAM available, shared between BASIC and the machine stack.
+* Has 164KB of RAM available, shared between BASIC and the machine stack.
 
-### GUI version with WiFi: bbcbasic_pwg in folder bin/pico_w
 
-* As per the GUI version but with support for networking over the built in WiFi on a Pico W.
-* Has 172KB (previously 134KB) of RAM available, shared between BASIC and the machine stack.
+### Pico GUI version: bbcbasic_gui_pico_w in folder bin/pico
 
-Any of the four builds will run on either a Pico or a Pico W (and probably most other RP2040 boards)
-but clearly the networking will only actually work on a Pico W.
+* Will run on a Pico or Pico W.
+* Uses the Pico as a computer programmable in BBC Basic with input by an attached USB keyboard,
+  and display on an attached VGA monitor.
+* The GUI version has been designed to run on a Pico attached to a VGA demonstration board as per
+  chapter 3 of
+  [Hardware design with RP2040](https://datasheets.raspberrypi.org/rp2040/hardware-design-with-rp2040.pdf)
+  or the commercial version
+  [Pimoroni Pico VGA Demo Base](https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base).
+* Includes program and data storage either in Pico flash and SD card on the VGA demo board.
+* Support for networking over the built in WiFi on a Pico W.
+* Sound is low quality (as per BBC Micro) available via the PWM output.
+* Has 420KB of RAM available, shared between BASIC and the machine stack.
 
 Many other custom builds are available by specifying options on the make command line.
 
@@ -62,13 +84,11 @@ The following limitations are noted:
     resolve this by lowering HIMEM. It may, however, be possible for the situation to go unnoticed
     in which case the Pico may crash and have to be reset.
 
-2.  HIMEM-PAGE=128K with additional space reserved for CALL and INSTALL libraries and the CPU stack.
-
-3.  Programs in tests and the root filesystem have been tested and appear to work.
+2.  Programs in tests and the root filesystem have been tested and appear to work.
     However, any remaining bugs are more likely to be related to the Pico port. As always
     this is open source with expressly no warranty provided.
 
-4.  There is are known buffer overflows in the wrappers appearing in lfswrap.c which are
+3.  There is are known buffer overflows in the wrappers appearing in lfswrap.c which are
     triggered when a filename path grows to be greater than 256 characters. Please don't do that.
 
 This project includes source from various locations with difference licenses. See the
@@ -86,37 +106,140 @@ PICO_EXTRAS_PATH and PICO_SDK_PATH respectively to the locations where these are
 Installing the SDK using the script [pico_setup.sh](https://raw.githubusercontent.com/raspberrypi/pico-setup/master/pico_setup.sh)
 will automatically install and configure everything required.
 
-The source has been modified to build with v2.0 of **pico-sdk**. As a result of these modifications
-it will no longer build with any earlier version. If you have an earlier version of the SDK,
-first update this:
-
-     cd pico-sdk
-     git pull
-     git submodule update
-
 Download the source code using:
 
      git clone --recurse-submodules https://github.com/Memotech-Bill/PicoBB.git
 
 Ensure that the environment variable PICO_SDK_PATH points to the path where the SDK is installed.
-Select the folder for the required build then type:
 
-     make
+### Console Versions
+
+Select the console/pico folder then type one of:
+
+     make BOARD=pico
+     make BOARD=pico_w
+     make BOARD=pico2
+     make BOARD=pico_w
+
+Note that there is little advantage in building the non WiFi versions. The with WiFi versions of
+the software will run on a board without the WiFi chip (although clearly networking will not work).
+The without WiFi software version does make a very small amount of extra memory available to BASIC.
+
+To build a version for a third-party (not Raspberry Pi) board, use the command:
+
+     make BOARD=<board_name> TYPE=<pico_type>
+
+where <board_name> is the name of the third-party board, and <pico_type> selects the basic properties
+as per the following table:
+
+| pico_type | Processor | Has CYW43 chip |
+|:---------:|:---------:|:--------------:|
+|   pico    |  RP2040   |       N        |
+|  pico_w   |  RP2040   |       Y        |
+|   pico2   |  RP2350   |       N        |
+|  pico2_w  |  RP2350   |       Y        |
 
 Having completed the make, the following files should be in the folder:
 
-* bbcbasic_xxx.uf2 - The BBC BASIC interpreter.
-* filesystem_xxx.uf2 - An image for the flash file system.
-* bbcbasic+filesystem_xxx.uf2 - A combination of the above two.
+* bbcbasic_console_xxx.uf2 - The BBC BASIC interpreter.
+* filesystem_console_xxx.uf2 - An image for the flash file system.
+* bbcbasic+filesystem_console_xxx.uf2 - A combination of the above two.
 
-where "_xxx" is replaced by the suffix appropriate to the build.
+where "_xxx" is replaced by the name of the selected board.
 
-To install, plug a Pico or Pico W into the USB port while holding the boot button and then copy the
+#### GUI Versions
+
+The GUI version has been designed to run on a Pico attached to a VGA demonstration board as per
+chapter 3 of
+[Hardware design with RP2040](https://datasheets.raspberrypi.org/rp2040/hardware-design-with-rp2040.pdf)
+or the commercial version
+[Pimoroni Pico VGA Demo Base](https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base).
+
+The Pico SDK provides a single board definition file (vgaboard.h) for this configuration.
+However this does not completely describe all the hardware configurations. Therefore this
+repository includes three custom board definition files (in the boards/ folder):
+
+#### vgaboard_sd
+
+As supplied from Pimoroni, with no soldering, the Pico on the VGA board may be used with:
+
+* VGA display
+* USB port
+* Sound via either I2S or PWM
+* SD card in 4-bit, 1-bit or SPI modes.
+
+However there is no UART serial connection. This configuration is described by the
+vgaboard_sd configuration file.
+
+This needs to `undef` the default UART. However this file is processed before the one defining
+the fitted pico board. Therefore this file sets the default uart and pins to -1, and modified
+versions of the `pico*.h` files have been created, which undefines the UART values if set to -1.
+
+If using third-party RP* boards on a vgaboard it will probably be necessary to similarly
+modify the board file for the third-party board.
+
+#### vgaboard_serial
+
+If a 3x2 header is soldered to the VGA board at the location labelled "SD Jumpers", then three
+of the pins may be used to connect to one of the Pico UARTs. However with a serial device is
+connected here the SD card can no longer be used. This configuration is described by the
+vgaboard_serial configuration file.
+
+If the header is solderd in, but no serial device is attached then the configuration is
+still described by the vgaboard_sd configuration file.
+
+#### vgaboard_cut
+
+If, in adddition to attaching the 3x2 header, the tracks on the under-side of the board,
+joining the pads GP20 to SD01 and GP21 to SD02 are cut, then it is possible to use both
+the UART and the SD card, but the SD card can only be used in 1-bit or SPI modes. This
+configuration is described by the vgaboard_cut configuration file.
+
+If jumpers are used to reconnect GP20 to SD01 and GP21 to SD02, then 4-bit SD mode may
+be used and this configuration is described by the original vgaboard_sd configuration file.
+
+
+Any of the vgaboard configurations may have any of the Pico types (or third party boards)
+installed. This results in a potentially large number of different board definitions,
+A couple of issues ([2112](https://github.com/raspberrypi/pico-sdk/issues/2112) and
+[2114](https://github.com/raspberrypi/pico-sdk/issues/2114)) with the v2.0 SDK prevents
+the use of nested include files to separately describe the processor board and the board
+it is attached to. Therefore a way has been found to separate these definitions. The BOARD
+parameter is used to specify the Pico processor board and ADDON is used to specify the base
+board that provides pin connections for video, sound, SD card and serial.
+
+Thus to build a GUI version use:
+
+        cd bin/pico
+        make BOARD=<pico_name> ADDON=<base_name>
+
+Where <pico_name> is one of pico, pico_w, pico2 or pico2_w, and <base_name> is one of
+vgaboard_sd, vgaboard_serial or vgaboard_cut (or another file specifying the pi connections).
+
+For third-party processor boards, identify the actual board using BOARD and specify the chip
+and WiFi using TYPE as for the console builds above, so that the commands to build are:
+
+        cd bin/pico
+        make BOARD=<board_name> TYPE=<pico_type> ADDON=<base_name>
+
+Having completed the make, the following files should be in the folder:
+
+* bbcbasic_gui_ppp_aaa.uf2 - The BBC BASIC interpreter.
+* filesystem_gui_ppp_aaa.uf2 - An image for the flash file system.
+* bbcbasic+filesystem_gui_ppp_aaa.uf2 - A combination of the above two.
+
+where "ppp" is replaced by the name of the processor board and "aaa" by the name of the addon board.
+        
+## Installation
+
+To install, plug a Pico device into the USB port while holding the boot button and then copy the
 required file onto the device using a command such as:
 
-     cp -v bbcbasic_xxx.uf2 /media/pi/RPI-RP2
+     cp -v bbcbasic_console_pico_w.uf2 /media/pi/RPI-RP2
 
-Repeat the process for filesystem.uf2
+or:
+
+     picotool install -f bbcbasic_console_pico2_w.uf2
 
 ## Usage Notes
 
@@ -128,9 +251,12 @@ of **BBCSDL** are suumerised [here](https://memotech-bill.github.io/PicoBB/).
 
 ### Connecting to the Console versions (from Raspberry Pi)
 
-If using USB, connect as
+If using USB the Pico device may appear as any of `/dev/ttyACMn`, where n is a small
+integer. To avid this, the [tools folder](tree/master/tools) contains a udev rule
+which creates a link `/dev/pico` to the current connection. With this rule in place,
+connect using:
 
-      picocom /dev/ttyACM0
+      picocom /dev/pico
 
 Or if using Raspberry Pi serial port, connect as
 
@@ -170,9 +296,9 @@ be used to navigate the folder structure.
 If SD card support has been included then the contents of the SD card appear under the /sdcard
 folder. A SD or SDHC card may be used and it should be FAT formatted.
 
-### Thumb Assembler
+### RP2040 Thumb Assembler
 
-There is a built-in assembler for the ARM v6M instruction set as supported by the Pico.
+The Pico builds include an assembler for the ARM v6M instruction set as supported by the RP2040.
 By default the assembler uses "Unified" syntax. However including the following pseudo-op
 
    syntax d
@@ -186,6 +312,11 @@ enables the following extensions to the allowed syntax:
 The extensions may be disabled again by specifying:
 
     syntax u
+
+### RP2350 Thumb Assembler
+
+The Pico2 builds include an assembler for most of the ARM v8M instructions supported by the RP2350.
+This assembler only supports "Unified" syntax.
 
 ### Sound
 
@@ -314,16 +445,20 @@ Alternately, some builds may allow file transfer via the network or an SD card.
 
 ### System Identification
 
-As per BBC BASIC standard, the low byte of the system variable **@platform%** will have the
-value 6 for any of the Pico implementations.
+As per BBC BASIC standard, the low byte (bits 0-7) of the system variable **@platform%** will
+have the value 6 for any of the Pico implementations.
 
-If running on a standard Pico, the other three bytes will be zero. If running on a Pico W,
-the second byte (bits 8-15) will have one of the following values:
+Bits 8-11 of this variable will have one of these values:
 
-* 1 - No Pico W support (LED on Pico W unaccesable).
-* 2 - Pico W GPIO support only (LED on Pico W accessible).
-* 3 - Pico W network support using polling.
-* 4 - Pico W network support using background interrupts.
+* 0 - No Pico W support (LED on Pico W unaccesable).
+* 1 - Pico W GPIO support only (LED on Pico W accessible).
+* 2 - Pico W network support using polling.
+* 3 - Pico W network support using background interrupts.
+
+And bits 12-15 will have one of:
+
+* 0 - RP2040 processor.
+* 2 - RP2350 processor.
 
 The same information can be obtained using SYS to call the C function `is_pico_w`.
 
@@ -347,11 +482,15 @@ provides more details of the specific configuration:
   * 3 - High quality sound using PWM
 * **@picocfg&(3)** - Number of serial devices
   * 0xFF - GUI build, /dev/serial, used by VDU printer commands
-* **@picocfg&(4)** - Pico W support (only usable if running on Pico W):
-  * 0 - No Pico W support (LED on Pico W unaccesable).
-  * 1 - Pico W GPIO support only (LED on Pico W accessible).
-  * 2 - Pico W network support using polling.
-  * 3 - Pico W network support using background interrupts.
+* **@picocfg&(4)** - Chip support:
+  * Bits 0-3:
+    * 0 - No CYW43 support (LED on CYW43 unaccesable).
+    * 1 - CYW43 GPIO support only (LED on CYW43 accessible).
+    * 2 - CYW43 network support using polling.
+    * 3 - CYW43 network support using background interrupts.
+  * Bits 4-7:
+    * 0 - RP2040 (two M0+ cores).
+    * 2 - RP2350 (two M33 cores).
 
 This may be extended in the future if more capabilities are added.
 
@@ -362,31 +501,22 @@ USB or UART serial connection, but which is able to display text and graphics
 on a separate VGA display.
 
 This capability is not included in any of the standard builds. To enable this
-feature use one of the following make commands
-
-In **console/pico**:
+feature build using a command of the form:
 
 ````
-make BOARD=vgaboard_sd CYW43=NONE STDIO=USB SERIAL_DEV=0 GRAPH=Y SOUND=I2S
+cd console/pico
+make BOARD=<board_name> ADDON=<base_name>  STDIO=USB SERIAL_DEV=0 GRAPH=Y SOUND=<snd_type> SUFFIX=_<suffix>
 ````
 
-or:
+where:
 
-````
-make BOARD=vgaboard_sd CYW43=NONE STDIO=USB SERIAL_DEV=0 GRAPH=Y SOUND=PWM
-````
-
-In **console/pico_w**:
-
-````
-make BOARD=vgaboard_sd_w STDIO=USB SERIAL_DEV=0 GRAPH=Y SOUND=I2S
-````
-
-or:
-
-````
-make BOARD=vgaboard_sd_w STDIO=USB SERIAL_DEV=0 GRAPH=Y SOUND=PWM
-````
+* `<board_name>` = One of pico, pico_w, pico2 or pico2_w. If using a third party board
+  then specify its name here and also include `TYPE=<pico_type>`.
+* `<base_name>` = One of vgaboard_sd, vgaboard_serial, vgaboard_cut or a custom board
+  definition specifying the pin usage.
+* `<snd_type>` = One of PWM or I2S.
+* `<suffix>` = A string to append to the name of the build folder and file names to
+  identify the build.
 
 To use the feature use the `*output` command to specify the display device
 
@@ -510,8 +640,13 @@ by adding parameters to `make` command.
 
 `make` supports the following options;
 
-* BOARD=... to specify a board other than the default "pico". If using the Pimoroni VGA
-  Demo board see the discussion on board definition files below.
+* BOARD=... to specify a board other than the default "pico".
+* TYPE=... for third party boards to characterise processor and WiFi.
+* ADDON=... to specify a file extending or overriding processor board default pin allocations.
+  Typically one of vgaboard_sd, vgaboard_serial, vgaboard_cut. The corresponding header file
+  must be located in `PicoBB/boards`.
+* SUFFIX=... to specify a string to append to the build folder name and the resulting
+  buuild files.
 * STDIO=... to select the user interface devices. A list from the following, with options
   separated by plus signs:
   * USB for the basic console on USB.
@@ -564,8 +699,10 @@ directly running CMake to build the software is not straightforward.
 
 The options supported by the CMake script are similar to those for `make`:
 
-* -DPICO_BOARD=... to specify a board other than the default "pico". If using the Pimoroni VGA
-  Demo board see the discussion on board definition files below.
+* -DPICO_BOARD=... to specify a board other than the default "pico".
+* -DADDON=... to specify a file extending or overriding processor board default pin allocations.
+  Typically one of vgaboard_sd, vgaboard_serial, vgaboard_cut. The corresponding header file
+  must be located in `PicoBB/boards`.
 * -DSTDIO=... to select the user interface:
   * -DSTDIO=PICO for the GUI version with input via USB keyboard and output via VGA monitor.
   * -DSTDIO=... to select a list from the following, with options separated by plus signs:
@@ -621,109 +758,3 @@ Note: In a non-default build, if bit 2 of the STACK_CHECK option is not set then
 `m0FaultDispatch` is optionally linked. The license for this library is free for hobby
 and other non-commercial products.  If you wish to create a commercial version of the
 program contained here, please add -DFREE to the CMakeLists.txt file.
-
-### Standard builds
-
-The configurations for the standard builds are:
-
-Pico Console:
-
-    BOARD=pico_w
-    CYW43=GPIO
-    STDIO=USB+UART
-    LFS=Y
-    FAT=N
-    SOUND=SDL
-    SERIAL_DEV=1
-    MIN_STACK=Y
-    SUFFIX=_pkc
-
-Pico W Console:
-
-    BOARD=pico_w
-    CYW43=BACKGROUND
-    NET_HEAP=1
-    STDIO=USB+UART
-    LFS=Y
-    FAT=N
-    SOUND=SDL
-    SERIAL_DEV=1
-    MIN_STACK=Y
-    SUFFIX=_pwc
-
-Pico GUI:
-
-    BOARD=vgaboard_sd_w
-    CYW43=GPIO
-    STDIO=PICO
-    LFS=Y
-    FAT=Y
-    SOUND=PWM
-    SERIAL_DEV=0
-    PRINTER=N
-    MIN_STACK=Y
-    SUFFIX=_pkg
-
-Pico W GUI
-
-    BOARD=vgaboard_sd_w
-    CYW43=BACKGROUND
-    NET_HEAP=1
-    STDIO=PICO
-    LFS=Y
-    FAT=Y
-    SOUND=PWM
-    SERIAL_DEV=0
-    PRINTER=N
-    MIN_STACK=Y
-    SUFFIX=_pwg
-
-### Board definition
-
-The GUI version has been designed to run on a Pico attached to a VGA demonstration board as per
-chapter 3 of
-[Hardware design with RP2040](https://datasheets.raspberrypi.org/rp2040/hardware-design-with-rp2040.pdf)
-or the commercial version
-[Pimoroni Pico VGA Demo Base](https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base).
-
-The Pico SDK provides a single board definition file (vgaboard.h) for this configuration.
-However this does not completely describe all the hardware configurations. Therefore this
-repository includes three custom board definition files (in the boards/ folder):
-
-#### vgaboard_sd
-
-As supplied from Pimoroni, with no soldering, the Pico on the VGA board may be used with:
-
-* VGA display
-* USB port
-* Sound via either I2S or PWM
-* SD card in 4-bit, 1-bit or SPI modes.
-
-However there is no UART serial connection. This configuration is described by the
-vgaboard_sd configuration file.
-
-#### vgaboard_serial
-
-If a 3x2 header is soldered to the VGA board at the location labelled "SD Jumpers", then three
-of the pins may be used to connect to one of the Pico UARTs. However with a serial device is
-connected here the SD card can no longer be used. This configuration is described by the
-vgaboard_serial configuration file.
-
-If the header is solderd in, but no serial device is attached then the configuration is
-still described by the vgaboard_sd configuration file.
-
-#### vgaboard_cut
-
-If, in adddition to attaching the 3x2 header, the tracks on the under-side of the board,
-joining the pads GP20 to SD01 and GP21 to SD02 are cut, then it is possible to use both
-the UART and the SD card, but the SD card can only be used in 1-bit or SPI modes. This
-configuration is described by the vgaboard_cut configuration file.
-
-If jumpers are used to reconnect GP20 to SD01 and GP21 to SD02, then 4-bit SD mode may
-be used and this configuration is described by the original vgaboard_sd configuration file.
-
-#### Pico W support
-
-In addition to the above three board definitions there is also *vgaboard_sd_w*,
-*vgaboard_serial_w*, and *vgaboard_cut_w* for use if a Pico W is used on the VGA board
-instead of a standard Pico.

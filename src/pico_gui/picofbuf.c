@@ -29,6 +29,7 @@
 #endif
 #include "fbufvdu.h"
 #include <stdio.h>
+#include <string.h>
 #include "bbccon.h"
 
 #include "font_tt.h"

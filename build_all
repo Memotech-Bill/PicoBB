@@ -4,28 +4,24 @@
 ROOT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $ROOT_DIR/console/pico
 make clean
-make
+make BOARD=pico_w
 if [ $? -ne 0 ]; then
   exit 1
 fi
 #
-cd $ROOT_DIR/console/pico_w
-make clean
-make
+make BOARD=pico2_w
 if [ $? -ne 0 ]; then
   exit 1
 fi
 #
 cd $ROOT_DIR/bin/pico
 make clean
-make
+make BOARD=pico_w ADDON=vgaboard_sd
 if [ $? -ne 0 ]; then
   exit 1
 fi
 #
-cd $ROOT_DIR/bin/pico_w
-make clean
-make
+make BOARD=pico2_w ADDON=vgaboard_sd
 if [ $? -ne 0 ]; then
   exit 1
 fi
