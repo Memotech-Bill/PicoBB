@@ -298,7 +298,7 @@ static inline void process_kbd_report(hid_keyboard_report_t const *p_new_report)
         uint8_t key = p_new_report->keycode[i];
         if ( key )
             {
-#if DEBUG == 1
+#if DEBUG > 0
             printf ("Key %d reported.\n", key);
 #endif
             int kp = find_key_in_report(&prev_report, key);
@@ -345,7 +345,7 @@ void hid_task(void)
 void tuh_hid_keyboard_mounted_cb(uint8_t dev_addr)
     {
     // application set-up
-#if DEBUG == 1
+#if DEBUG > 0
     printf("A Keyboard device (address %d) is mounted\r\n", dev_addr);
 #endif
     tuh_hid_keyboard_get_report(dev_addr, &usb_keyboard_report);
@@ -354,7 +354,7 @@ void tuh_hid_keyboard_mounted_cb(uint8_t dev_addr)
 void tuh_hid_keyboard_unmounted_cb(uint8_t dev_addr)
     {
     // application tear-down
-#if DEBUG == 1
+#if DEBUG > 0
     printf("A Keyboard device (address %d) is unmounted\r\n", dev_addr);
 #endif
     }
@@ -388,17 +388,20 @@ static tuh_hid_report_info_t _report_info_arr[MAX_REPORT];
 void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len)
     {
     // Interface protocol
+#if DEBUG > 0
+        printf ("tuh_hid_mount_cb\n");
+#endif
     uint8_t const interface_protocol = tuh_hid_interface_protocol(dev_addr, instance);
     if ( interface_protocol == HID_ITF_PROTOCOL_KEYBOARD )
         {
         kbd_addr = dev_addr;
-#if DEBUG == 1
+#if DEBUG > 0
         printf ("Keyboard mounted: dev_addr = %d\n", dev_addr);
 #endif
     
         _report_count = tuh_hid_parse_report_descriptor(_report_info_arr, MAX_REPORT,
             desc_report, desc_len);
-#if DEBUG == 1
+#if DEBUG > 0
         printf ("%d reports defined\n", _report_count);
 #endif
         }
@@ -407,7 +410,7 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
 // Invoked when device with hid interface is un-mounted
 void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t __attribute__((unused)) instance)
     {
-#if DEBUG == 1
+#if DEBUG > 0
     printf ("Device %d unmounted\n");
 #endif
     if ( dev_addr == kbd_addr )
@@ -420,6 +423,9 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t __attribute__((unused)) instanc
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t __attribute__((unused)) instance,
     uint8_t const* report, uint16_t len)
     {
+#if DEBUG > 0
+        printf ("tuh_hid_report_received_cb\n");
+#endif
     if ( dev_addr != kbd_addr ) return;
 
     uint8_t const rpt_count = _report_count;
@@ -452,7 +458,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t __attribute__((unused)
 
     if (!rpt_info)
         {
-#if DEBUG == 1
+#if DEBUG > 0
         printf("Couldn't find the report info for this report !\r\n");
 #endif
         return;
@@ -565,7 +571,7 @@ static struct repeating_timer s_kbd_timer;
 static bool keyboard_periodic (struct repeating_timer *prt)
     {
 #if DEBUG == 2
-    // printf (".");
+    printf (".");
 #endif
     bRepeat = true;
     while ( bRepeat )
