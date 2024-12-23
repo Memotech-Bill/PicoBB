@@ -69,11 +69,11 @@ extern int gvl;	                        // Left edge of graphics viewport
 extern int gvr;	                        // Right edge of graphics viewport
 
 #if DBUF_MODE == 0
-static uint8_t  framebuf[BUF_SIZE];
+static uint8_t  framebuf[BUF_SIZE] __attribute((__aligned__(4)));
 #define displaybuf framebuf
 #define shadowbuf framebuf
 #elif DBUF_MODE <= 2
-static uint8_t  fbuffer[BUF_SIZE];
+static uint8_t  fbuffer[BUF_SIZE] __attribute((__aligned__(4)));
 static uint8_t  *vbuffer[2] = {fbuffer, NULL};
 static uint8_t  *framebuf = fbuffer;
 static uint8_t  *displaybuf = fbuffer;
@@ -93,7 +93,7 @@ extern void *himem;
 extern void *libase;
 extern void *libtop;
 #endif
-static uint16_t renderbuf[256 * 8];
+static uint16_t renderbuf[256 * 8] __attribute((__aligned__(4)));
 
 static const uint16_t defpal[16] =
     {
@@ -642,6 +642,9 @@ void setup_video (void)
 #if DEBUG & 1
 #if USE_INTERP
     printf ("setup_video: Using interpolator\n");
+#if PICO_SDK_VERSION_MAJOR >= 2
+    interp_claim_lane_mask (interp0, 0x03);
+#endif
 #endif
     printf ("setup_video: System clock speed %d kHz\n", clock_get_hz (clk_sys) / 1000);
     printf ("setup_video: Starting video\n");
@@ -947,6 +950,8 @@ static int bufsize (void)
 
 void *videobuf (int iBuf, void *pmem)
     {
+#if DBUF_MODE >= 2
+    pmem = (uint8_t *)(((int)pmem + 3) & 0xFFFFFFFC);
 #if DBUF_MODE == 3
     if ( iBuf == 0 )
         {
@@ -957,7 +962,6 @@ void *videobuf (int iBuf, void *pmem)
         pmem += BUF_SIZE;
         }
 #endif
-#if DBUF_MODE >= 2
     if ( iBuf == 1 )
         {
         vbuffer[1] = pmem;
