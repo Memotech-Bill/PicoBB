@@ -17,7 +17,7 @@ MIN_STACK ?= Y
 SUFFIX = _gui_$(BOARD)_$(ADDON)
 # BASIC examples selection
 DEVICE = -d all -d pico
-BUILD = -b all -b console
+BUILD = -b all -b gui
 
 else ifeq ($(TYPE), pico_w)
 # Pico W with network support
@@ -33,7 +33,7 @@ MIN_STACK ?= Y
 SUFFIX ?= _gui_$(BOARD)_$(ADDON)
 # BASIC examples selection
 DEVICE  ?=  -d all -d pico_w
-BUILD  ?=  -b all -b console
+BUILD  ?=  -b all -b gui
 
 else ifeq ($(TYPE), pico2)
 # Pico2  without network support
@@ -48,7 +48,7 @@ MIN_STACK ?= Y
 SUFFIX = _gui_$(BOARD)_$(ADDON)
 # BASIC examples selection
 DEVICE = -d all -d pico
-BUILD = -b all -b console
+BUILD = -b all -b gui
 
 else ifeq ($(TYPE), pico2_w)
 # Pico W with network support
@@ -64,7 +64,7 @@ MIN_STACK ?= Y
 SUFFIX ?= _gui_$(BOARD)_$(ADDON)
 # BASIC examples selection
 DEVICE  ?=  -d all -d pico_w
-BUILD  ?=  -b all -b console
+BUILD  ?=  -b all -b gui
 
 else
 $(error $(TYPE) is not a valid board type)
