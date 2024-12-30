@@ -84,7 +84,7 @@ ELSE
 INPUT#chan%, ssid$, pwd$, ccode%
 ENDIF
 CLOSE#chan%
-SYS "cyw43_arch_init_with_country", ccode% TO err%
+SYS "cyw43_arch_init_with_country_safe", ccode% TO err%
 IF err% <> 0 THEN
 ERROR 195, "Error "+STR$(err%)+" initialising WiFi"
 END
@@ -102,7 +102,6 @@ DEF PROC_exitsockets
 LOCAL hsize%, HeapPos{} : DIM HeapPos{bot%,top%}
 SYS "net_limits",^HeapPos.bot%,^HeapPos.top%
 SYS "net_freeall"
-SYS "cyw43_arch_deinit"
 IF HeapPos.bot% = HIMEM THEN
 hsize% = HeapPos.top% - HeapPos.bot%
 SYS "net_term"
