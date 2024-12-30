@@ -1,7 +1,7 @@
 # Select build type
 BOARD ?= pico_w
 TYPE ?= $(BOARD)
-ADDON ?= vgaboard_sd.h
+ADDON ?= vgaboard_sd
 
 # Build defaults: Override by options on the make command
 ifeq ($(TYPE), pico)
