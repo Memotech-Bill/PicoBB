@@ -461,10 +461,11 @@ if (TARGET tinyusb_device)
   if (NOT ("${OS_RAM}" STREQUAL "" ))
     message(STATUS "Link with custom ${OS_RAM}kB of OS RAM storage")
     set(OS_SIZE ${OS_RAM})
-  elseif (( "${STDIO}" STREQUAL "PICO" ) OR ( ${GRAPH} ))
+  elseif (( "${STDIO}" STREQUAL "PICO" ) OR ( GRAPH ))
     string(CONCAT stk_expr ${OS_SIZE} "+64")
     math(EXPR OS_SIZE "${stk_expr}")
   endif()
+  message (STATUS "${OS_SIZE}KB memory for interpreter")
   
   add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/picobb.ld
