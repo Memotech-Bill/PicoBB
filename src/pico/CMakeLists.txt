@@ -20,7 +20,19 @@ if(DEFINED ENV{PICO_SDK_PATH})
 else()
   message(FATAL_ERROR "Please set environment variable PICO_SDK_PATH to location of pico-sdk")
 endif()
-if (( "${STDIO}" STREQUAL "PICO" ) OR ( ${GRAPH} ))
+
+if(NOT DEFINED STDIO)
+  set(STDIO "USB+UART")
+endif()
+if ( "${STDIO}" STREQUAL "PICO" )
+  if (NOT GRAPH)
+    set (GRAPH "VGA")
+  endif ()
+endif ()
+if ( "${GRAPH}" STREQUAL "Y" )
+  set (GRAPH "VGA")
+endif ()
+if ( "${GRAPH}" STREQUAL "VGA" )
   if(DEFINED ENV{PICO_EXTRAS_PATH})
     message(STATUS "Include PICO-EXTRAS")
     include($ENV{PICO_EXTRAS_PATH}/external/pico_extras_import.cmake)
@@ -31,10 +43,6 @@ endif()
 
 project(bbcbasic C CXX ASM)
 pico_sdk_init()
-
-if(NOT DEFINED STDIO)
-  set(STDIO "USB+UART")
-endif()
 
 # Work around for SDK v1.x
 if(NOT DEFINED PICO_CHIP)
@@ -248,6 +256,8 @@ if (TARGET tinyusb_device)
           pico_lwip
           pico_lwip_nosys)
       endif()
+    else()
+      message (FATAL_ERROR "Unrecognised CYW43 support: ${CYW43}")
     endif()
   else()
     set(OS_SIZE 24)
@@ -280,6 +290,8 @@ if (TARGET tinyusb_device)
       ../../src/pico/sound_sdl.c
       )
     target_link_libraries(bbcbasic hardware_pwm)
+  elseif ( SOUND AND (NOT "${SOUND}" STREQUAL "NONE"))
+    message (FATAL_ERROR "Unrecognised sound support: ${SOUND}")
   endif()
 
   if ( ${LFS} )
@@ -338,9 +350,37 @@ if (TARGET tinyusb_device)
       target_sources(bbcbasic PRIVATE ../../src/pico/picoser.c)
     endif()
   endif()
+
+  if( "${GRAPH}" STREQUAL "VGA" )
+    message(STATUS "VGA Graphics Output")
+    target_sources(bbcbasic PRIVATE
+      ../../src/fbufvdu.c
+      ../../src/pico_gui/picofbuf.c
+      ../../src/pico_gui/framebuffer.S
+      )
+    target_include_directories(bbcbasic PRIVATE
+      ../../include/pico
+      )
+    if ( NOT "${STDIO}" STREQUAL "PICO" )
+      target_compile_definitions(bbcbasic PUBLIC -DPICO_GRAPH)
+    endif ()
+    target_compile_definitions(bbcbasic PUBLIC
+      -DPICO_SCANVIDEO_MAX_SCANLINE_BUFFER_WORDS=402
+      -DPICO_SCANVIDEO_SCANLINE_BUFFER_COUNT=8
+      )
+    target_link_libraries(bbcbasic
+      pico_scanvideo_dpi
+      hardware_interp
+      )
+    if ( "${SOUND}" STREQUAL "SDL")
+      message(FATAL_ERROR "Can not use core 1 for both sound and video")
+    endif()
+  elseif ( GRAPH AND (NOT "${GRAPH}" STREQUAL "NONE") )
+    message(FATAL_ERROR "Unsupported graphical display ${GRAPH}")
+  endif()
   
   if ( "${STDIO}" STREQUAL "PICO" )
-    message(STATUS "BBC Basic console I/O will be on USB keyboard and VGA screen")
+    message(STATUS "BBC Basic console I/O will be on USB keyboard and ${GRAPH} screen")
     pico_enable_stdio_usb(bbcbasic 0)
     if (${PRINTER})
       pico_enable_stdio_uart(bbcbasic 1)
@@ -351,25 +391,17 @@ if (TARGET tinyusb_device)
       pico_enable_stdio_uart(bbcbasic 0)
     endif()
     target_sources(bbcbasic PRIVATE
-      ../../src/fbufvdu.c
       ../../src/pico_gui/picokbd.c
-      ../../src/pico_gui/picofbuf.c
-      ../../src/pico_gui/framebuffer.S
       )
-    target_compile_definitions(bbcbasic PRIVATE -DPICO_GUI)
-    target_compile_definitions(bbcbasic PRIVATE -DGUI_SERIAL=${GUI_SERIAL})
-    
-    target_compile_definitions(bbcbasic PUBLIC
-      -DPICO_SCANVIDEO_MAX_SCANLINE_BUFFER_WORDS=402
-      -DPICO_SCANVIDEO_SCANLINE_BUFFER_COUNT=8
+    target_compile_definitions(bbcbasic PRIVATE
+      -DPICO_GUI
+      -DGUI_SERIAL=${GUI_SERIAL}
       )
     target_include_directories(bbcbasic PRIVATE
       ../../include/pico
       ../../include/pico_gui
       )
     target_link_libraries(bbcbasic
-      pico_scanvideo_dpi
-      hardware_interp
       tinyusb_host
       tinyusb_board
       )
@@ -415,33 +447,6 @@ if (TARGET tinyusb_device)
         pico_btstack_cyw43
         )
       target_compile_definitions(bbcbasic PRIVATE -DSTDIO_BT)
-    endif()
-  endif()
-
-  if( (${GRAPH}) AND (NOT ("${STDIO}" STREQUAL "PICO")))
-    message(STATUS "Framebuffer Graphics Support")
-    target_sources(bbcbasic PRIVATE
-      ../../src/fbufvdu.c
-      ../../src/pico_gui/picofbuf.c
-      ../../src/pico_gui/framebuffer.S
-      )
-    target_include_directories(bbcbasic PRIVATE
-      ../../include/pico
-      )
-    target_compile_definitions(bbcbasic PUBLIC -DPICO_GRAPH)
-    target_compile_definitions(bbcbasic PUBLIC
-      -DPICO_SCANVIDEO_MAX_SCANLINE_BUFFER_WORDS=402
-      -DPICO_SCANVIDEO_SCANLINE_BUFFER_COUNT=8
-      )
-    target_link_libraries(bbcbasic
-      pico_scanvideo_dpi
-      hardware_interp
-      )
-  endif()
-  
-  if (( "${STDIO}" STREQUAL "PICO" ) OR ( ${GRAPH} ))
-    if ( "${SOUND}" STREQUAL "SDL")
-      message(FATAL_ERROR "Can not use core 1 for both sound and video")
     endif()
   endif()
 
