@@ -43,7 +43,7 @@ There are currently four standard builds:
 * Support for networking over the built in WiFi on a Pico2 W.
 * Has 494KB of RAM available, shared between BASIC and the machine stack.
 
-### Pico GUI version: bbcbasic_gui_pico_w in folder bin/pico
+### Pico GUI version: bbcbasic_gui_pico_w_vgaboard_sd in folder bin/pico
 
 * Will run on a Pico or Pico W.
 * Uses the Pico as a computer programmable in BBC Basic with input by an attached USB keyboard,
@@ -59,9 +59,9 @@ There are currently four standard builds:
 * Has 164KB of RAM available, shared between BASIC and the machine stack.
 
 
-### Pico GUI version: bbcbasic_gui_pico_w in folder bin/pico
+### Pico GUI version: bbcbasic_gui_pico2_w_vgaboard_sd in folder bin/pico
 
-* Will run on a Pico or Pico W.
+* Will run on a Pico2 or Pico2 W.
 * Uses the Pico as a computer programmable in BBC Basic with input by an attached USB keyboard,
   and display on an attached VGA monitor.
 * The GUI version has been designed to run on a Pico attached to a VGA demonstration board as per
@@ -70,7 +70,7 @@ There are currently four standard builds:
   or the commercial version
   [Pimoroni Pico VGA Demo Base](https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base).
 * Includes program and data storage either in Pico flash and SD card on the VGA demo board.
-* Support for networking over the built in WiFi on a Pico W.
+* Support for networking over the built in WiFi on a Pico2 W.
 * Sound is low quality (as per BBC Micro) available via the PWM output.
 * Has 420KB of RAM available, shared between BASIC and the machine stack.
 
