@@ -100,6 +100,7 @@ ENDPROC
 REM Shut down the BBCSDL Sockets interface
 DEF PROC_exitsockets
 LOCAL hsize%, HeapPos{} : DIM HeapPos{bot%,top%}
+SYS "cyw43_arch_disable_sta_mode"
 SYS "net_limits",^HeapPos.bot%,^HeapPos.top%
 SYS "net_freeall"
 IF HeapPos.bot% = HIMEM THEN

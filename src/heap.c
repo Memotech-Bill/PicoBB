@@ -91,6 +91,7 @@ void heap_limits (void **base, void **top)
 
 void *heap_malloc (size_t size)
     {
+    if ((! bBasic) && (h_top == NULL)) error (0, "Heap not initialised");
     size = (size + 7) & -8;
     size |= 0x80000000;
     H_MEM *hptr = h_last;
