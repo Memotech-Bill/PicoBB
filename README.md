@@ -59,7 +59,7 @@ There are currently four standard builds:
 * Has 164KB of RAM available, shared between BASIC and the machine stack.
 
 
-### Pico GUI version: bbcbasic_gui_pico2_w_vgaboard_sd in folder bin/pico
+### Pico2 GUI version: bbcbasic_gui_pico2_w_vgaboard_sd in folder bin/pico
 
 * Will run on a Pico2 or Pico2 W.
 * Uses the Pico as a computer programmable in BBC Basic with input by an attached USB keyboard,
