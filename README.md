@@ -119,7 +119,7 @@ Select the console/pico folder then type one of:
      make BOARD=pico
      make BOARD=pico_w
      make BOARD=pico2
-     make BOARD=pico_w
+     make BOARD=pico2_w
 
 Note that there is little advantage in building the non WiFi versions. The with WiFi versions of
 the software will run on a board without the WiFi chip (although clearly networking will not work).
