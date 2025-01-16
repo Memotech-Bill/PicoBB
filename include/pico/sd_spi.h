@@ -5,6 +5,38 @@
 
 #include <stdint.h>
 
+#ifndef SD_CLK_PIN
+#ifdef PICO_SD_CLK_PIN
+#define SD_CLK_PIN      PICO_SD_CLK_PIN
+#else
+#error SD Card CLK pin not defined. Specify a board including SD card.
+#endif
+#endif
+
+#ifndef SD_MOSI_PIN
+#ifdef PICO_SD_CMD_PIN
+#define SD_MOSI_PIN     PICO_SD_CMD_PIN
+#else
+#error SD Card CMD / MOSI pin not defined. Specify a board including SD card.
+#endif
+#endif
+
+#ifndef SD_MISO_PIN
+#ifdef PICO_SD_DAT0_PIN
+#define SD_MISO_PIN     PICO_SD_DAT0_PIN
+#else
+#error SD Card DAT0 / MISO pin not defined. Specify a board including SD card.
+#endif
+#endif
+
+#ifndef SD_CS_PIN
+#ifdef PICO_SD_DAT0_PIN
+#define SD_CS_PIN       ( PICO_SD_DAT0_PIN + 3 * PICO_SD_DAT_PIN_INCREMENT )
+#else
+#error SD Card DAT3 / CS pin not defined. Specify a board including SD card.
+#endif
+#endif
+
 typedef enum {sdtpUnk, sdtpVer1, sdtpVer2, sdtpHigh} SD_TYPE;
 extern SD_TYPE sd_type;
 

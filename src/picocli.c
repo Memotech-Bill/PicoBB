@@ -2,7 +2,9 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include "bbccon.h"
+#include "picocli.h"
 #ifdef PICO
 #ifndef PICO_GUI
 #define HAVE_MODEM  1
@@ -10,7 +12,6 @@
 #endif
 #endif
 #if ( defined(STDIO_USB) || defined(STDIO_UART) )
-#include <stdbool.h>
 bool bBBCtl = false;
 #endif
 #ifdef PICO_GUI
@@ -46,6 +47,8 @@ void os_YUPLOAD (char *);
 void os_ZDOWNLOAD (char *);
 void os_ZUPLOAD (char *);
 #endif
+
+static CLIFUNC excli = NULL;
 
 static char *cmds[] = {
 #if defined(PICO_GUI) || defined(PICO_GRAPH)
@@ -160,6 +163,13 @@ void os_SCREENSAVE (char *p)
     }
 #endif  // defined(PICO_GUI) || defined(PICO_GRAPH)
 
+CLIFUNC add_cli (CLIFUNC new)
+    {
+    CLIFUNC old = excli;
+    excli = new;
+    return old;
+    }
+
 void org_oscli (char *cmd);
 
 void oscli (char *cmd)
@@ -168,6 +178,11 @@ void oscli (char *cmd)
 
 	if ((*cmd == 0x0D) || (*cmd == '|'))
 		return;
+
+    if (excli)
+        {
+        if (excli (cmd)) return;
+        }
 
 #if HAVE_MODEM
     if ( strncmp (cmd, "*B00", 4) == 0 )
@@ -213,48 +228,20 @@ void oscli (char *cmd)
     }
 
 #ifdef PICO_GRAPH
-#define NUMMODES 16
-static short modetab[NUMMODES][5] =
-    {
-    {640, 256, 8,  8,  2},  // MODE 0
-    {320, 256, 8,  8,  4},  // MODE 1
-    {160, 256, 8,  8, 16},  // MODE 2
-    {640, 225, 8,  9,  2},  // MODE 3
-    {320, 256, 8,  8,  2},  // MODE 4
-    {160, 256, 8,  8,  4},  // MODE 5
-    {320, 225, 8,  9,  2},  // MODE 6
-    {320, 225, 8,  9,  8},  // MODE 7
-    {640, 480, 8, 16,  2},  // MODE 8
-    {320, 480, 8, 16,  4},  // MODE 9
-    {160, 480, 8, 16, 16},  // MODE 10
-    {640, 450, 8, 18,  2},  // MODE 11
-    {320, 480, 8, 16,  2},  // MODE 12
-    {160, 480, 8, 16,  4},  // MODE 13
-    {320, 450, 8, 18,  2},  // MODE 14
-    {320, 240, 8,  8, 16}   // MODE 15
-    };
-
-static void modechg (char al) 
-{
-	short wx, wy, cx, cy, nc ;
-
-	if (al >= NUMMODES)
-		return ;
-
-	wx = modetab[(int) al][0] ;	// width
-	wy = modetab[(int) al][1] ;	// height
-	cx = modetab[(int) al][2] ;	// charx
-	cy = modetab[(int) al][3] ;	// chary
-	nc = modetab[(int) al][4] ;	// no. of colours
-	newmode (wx, wy, cx, cy, nc, vflags & (CGAFLG + EGAFLG)) ;
-}
 
 void org_xeqvdu (int code, int data1, int data2);
+bool txtmode (int code, int *pdata1, int *pdata2);
 
 void xeqvdu (int code, int data1, int data2)
     {
     if ((optval & 0x0F) >= 14) fbufvdu (code, data1, data2);
     if ((optval & 0x0F) == 14) return;
+    if ((code && 0xFF00) == 0x1600)
+        {
+        // modechg
+        if (! txtmode (code, &data1, &data2)) return;
+        code = 0x1700 | (vflags & (CGAFLG + EGAFLG));
+        }
     org_xeqvdu (code, data1, data2);
     }
 #endif

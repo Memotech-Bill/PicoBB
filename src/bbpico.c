@@ -57,11 +57,7 @@ extern char __StackTop;
 #error Bluetooth Console requires Pico_W
 #endif
 #endif
-#ifdef PICO_GUI
-#if ( ! defined(PICO_SCANVIDEO_COLOR_PIN_BASE) ) || ( ! defined(PICO_SCANVIDEO_SYNC_PIN_BASE) )
-#error SCANVIDEO pins not defined for VGA display
-#endif
-#else
+#ifndef PICO_GUI
 #if ( ! defined(STDIO_USB) ) && ( ! defined(STDIO_UART) ) && ( ! defined(STDIO_BT) )
 #error No Console connection defined
 #endif
@@ -76,18 +72,12 @@ extern char __StackTop;
 #endif
 
 #ifdef HAVE_FAT
+#include "sd_spi.h"
 #if defined(STDIO_UART) || defined (HAVE_PRINTER) || ( SERIAL_DEV == -1 ) || ( SERIAL_DEV == 2 )
-#if PICO_SD_DAT_PIN_INCREMENT > 0
-#define SD_DAT_MIN  PICO_SD_DAT0_PIN
-#define SD_DAT_MAX  ( PICO_SD_DAT0_PIN + (PICO_SD_DAT_PIN_COUNT - 1) * PICO_SD_DAT_PIN_INCREMENT )
-#else
-#define SD_DAT_MIN  ( PICO_SD_DAT0_PIN + (PICO_SD_DAT_PIN_COUNT - 1) * PICO_SD_DAT_PIN_INCREMENT )
-#define SD_DAT_MAX  PICO_SD_DAT0_PIN
-#endif
-#if (( PICO_DEFAULT_UART_TX_PIN >= SD_DAT_MIN ) && ( PICO_DEFAULT_UART_TX_PIN <= SD_DAT_MAX )) \
-    || (( PICO_DEFAULT_UART_RX_PIN >= SD_DAT_MIN ) && ( PICO_DEFAULT_UART_RX_PIN <= SD_DAT_MAX )) \
-    || ( PICO_DEFAULT_UART_TX_PIN == PICO_SD_CLK_PIN ) || ( PICO_DEFAULT_UART_TX_PIN == PICO_SD_CMD_PIN ) \
-    || ( PICO_DEFAULT_UART_RX_PIN == PICO_SD_CLK_PIN ) || ( PICO_DEFAULT_UART_RX_PIN == PICO_SD_CMD_PIN )
+#if    ( PICO_DEFAULT_UART_TX_PIN == SD_MOSI_PIN ) || ( PICO_DEFAULT_UART_RX_PIN == SD_MOSI_PIN )   \
+    || ( PICO_DEFAULT_UART_TX_PIN == SD_MISO_PIN ) || ( PICO_DEFAULT_UART_RX_PIN == SD_MISO_PIN )   \
+    || ( PICO_DEFAULT_UART_TX_PIN == SD_CLK_PIN )  || ( PICO_DEFAULT_UART_RX_PIN == SD_CLK_PIN )    \
+    || ( PICO_DEFAULT_UART_TX_PIN == SD_CS_PIN )   || ( PICO_DEFAULT_UART_RX_PIN == SD_CS_PIN )
 #error Default UART clashes with SD card
 #endif
 #endif
@@ -1683,7 +1673,7 @@ void oswait (int cs)
 	while ((unsigned int)(GetTicks () - start) < cs);
     }
 
-
+#if ! HAVE_MOUSE
 // MOUSE x%, y%, b%
 void mouse (int *px, int *py, int *pb)
     {
@@ -1706,6 +1696,7 @@ void mouseoff (void)
 void mouseto (int x, int y)
     {
     }
+#endif
 
 // Get address of an API function:
 void *sysadr (char *name)
@@ -3024,6 +3015,10 @@ void *main_init (int argc, char *argv[])
 #endif
 
 	UserTimerID = StartTimer (250);
+
+#if HAVE_MOUSE
+    mouse_init ();
+#endif
 
 	flags = 0;
     return immediate;

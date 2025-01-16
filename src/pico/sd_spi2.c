@@ -14,15 +14,19 @@
 #include <stdio.h>
 #endif
 
-#if ( !defined(PICO_SD_CLK_PIN)) ||  ( !defined(PICO_SD_CMD_PIN)) || ( !defined(PICO_SD_DAT0_PIN))
-#error SD Card connections not defined. Specify a board including SD card.
+#ifdef SD_CLAIM
+void SD_CLAIM (void);
 #else
+#define SD_CLAIM(...)
+#endif
 
-#define SD_CS_PIN       ( PICO_SD_DAT0_PIN + 3 )
-#define SD_CLK_PIN      PICO_SD_CLK_PIN
-#define SD_MOSI_PIN     PICO_SD_CMD_PIN
-// #define SD_MOSI_PIN     PICO_SD_DAT0_PIN
-#define SD_MISO_PIN     PICO_SD_DAT0_PIN
+#ifdef SD_RELEASE
+void SD_RELEASE (void);
+#else
+#define SD_RELEASE(...)
+#endif
+
+#if defined(SD_CLK_PIN) &&  defined(SD_MOSI_PIN) && defined(SD_MISO_PIN) && defined(SD_CS_PIN)
 
 bi_decl (bi_1pin_with_name (SD_CS_PIN, "SD card data 3 (chip select)"));
 bi_decl (bi_1pin_with_name (SD_CLK_PIN, "SD card clock"));
@@ -42,7 +46,7 @@ static int dma_tx = -1;
 static int dma_rx = -1;
 SD_TYPE sd_type = sdtpUnk;
 
-bool sd_spi_load (void)
+static bool sd_spi_load (void)
     {
     dma_tx = dma_claim_unused_channel (true);
     dma_rx = dma_claim_unused_channel (true);
@@ -69,15 +73,12 @@ bool sd_spi_load (void)
     pio_sm_set_pins_with_mask(pio_sd, sd_sm, 0, (1 << SD_CLK_PIN) | (1 << SD_MOSI_PIN));
     pio_sm_set_pindirs_with_mask(pio_sd, sd_sm,  (1 << SD_CLK_PIN) | (1 << SD_MOSI_PIN),
         (1 << SD_CLK_PIN) | (1 << SD_MOSI_PIN) | (1 << SD_MISO_PIN));
-    pio_gpio_init (pio_sd, SD_CLK_PIN);
-    pio_gpio_init (pio_sd, SD_MOSI_PIN);
-    pio_gpio_init (pio_sd, SD_MISO_PIN);
     pio_sm_init (pio_sd, sd_sm, offset, &c);
     pio_sm_set_enabled (pio_sd, sd_sm, true);
     return true;
     }
 
-void sd_spi_unload (void)
+static void sd_spi_unload (void)
     {
     pio_sm_set_enabled (pio_sd, sd_sm, false);
     pio_sm_unclaim (pio_sd, sd_sm);
@@ -88,20 +89,15 @@ void sd_spi_unload (void)
     dma_rx = -1;
     }
 
-void sd_spi_freq (float freq)
+static void sd_spi_freq (float freq)
     {
     float div = clock_get_hz (clk_sys) / ( 4000.0 * freq );
     pio_sm_set_clkdiv (pio_sd, sd_sm, div);
     }
 
-void sd_spi_chpsel (bool sel)
-    {
-    gpio_put (SD_CS_PIN, ! sel);
-    }
-
 // Do 8 bit accesses on FIFO, so that write data is byte-replicated. This
 // gets us the left-justification for free (for MSB-first shift-out)
-void sd_spi_xfer (bool bWrite, const uint8_t *src, uint8_t *dst, size_t len)
+static void sd_spi_xfer (bool bWrite, const uint8_t *src, uint8_t *dst, size_t len)
     {
     io_rw_8 *txfifo = (io_rw_8 *) &pio_sd->txf[sd_sm];
     io_rw_8 *rxfifo = (io_rw_8 *) &pio_sd->rxf[sd_sm];
@@ -133,20 +129,20 @@ void sd_spi_xfer (bool bWrite, const uint8_t *src, uint8_t *dst, size_t len)
     dma_channel_wait_for_finish_blocking (dma_rx);
     }
 
-uint8_t sd_spi_put (const uint8_t *src, size_t len)
+static uint8_t sd_spi_put (const uint8_t *src, size_t len)
     {
     uint8_t resp;
     sd_spi_xfer (true, src, &resp, len);
     return resp;
     }
 
-void sd_spi_get (uint8_t *dst, size_t len)
+static void sd_spi_get (uint8_t *dst, size_t len)
     {
     uint8_t fill = 0xFF;
     sd_spi_xfer (false, &fill, dst, len);
     }
 
-uint8_t sd_spi_clk (size_t len)
+static uint8_t sd_spi_clk (size_t len)
     {
     size_t tx_remain = len;
     size_t rx_remain = len;
@@ -189,7 +185,7 @@ static uint8_t cmd55[]  = { 0xFF, 0x40 | 55, 0x00, 0x00, 0x01, 0xAA, 0x65 }; // 
 static uint8_t cmd58[]  = { 0xFF, 0x40 | 58, 0x00, 0x00, 0x00, 0x00, 0xFD }; // Read Operating Condition Reg.
 static uint8_t acmd41[] = { 0xFF, 0x40 | 41, 0x40, 0x00, 0x00, 0x00, 0x77 }; // Set operation condition
 
-uint8_t sd_spi_cmd (uint8_t *src)
+static uint8_t sd_spi_cmd (uint8_t *src)
     {
     uint8_t resp = sd_spi_put (src, 7);
     for (int i = 0; i < 100; ++i)
@@ -207,14 +203,18 @@ bool sd_spi_init (void)
 #ifdef DEBUG
     printf ("sd_spi_init\n");
 #endif
+    SD_CLAIM ();
     if ( sd_sm < 0 ) sd_spi_load ();
+    pio_gpio_init (pio_sd, SD_CLK_PIN);
+    pio_gpio_init (pio_sd, SD_MOSI_PIN);
+    pio_gpio_init (pio_sd, SD_MISO_PIN);
     sd_type = sdtpUnk;
     sd_spi_freq (200);
-    sd_spi_chpsel (false);
+    gpio_put (SD_CS_PIN, true);
     sd_spi_clk (10);
     for (int i = 0; i < 256; ++i)
         {
-        sd_spi_chpsel (true);
+        gpio_put (SD_CS_PIN, false);
 #ifdef DEBUG
         printf ("Go idle\n");
 #endif
@@ -223,7 +223,7 @@ bool sd_spi_init (void)
         printf ("   Response 0x%02X\n", resp);
 #endif
         if ( resp == SD_R1_IDLE ) break;
-        sd_spi_chpsel (false);
+        gpio_put (SD_CS_PIN, true);
         sleep_ms (1);
         }
     if ( resp != SD_R1_IDLE )
@@ -231,6 +231,8 @@ bool sd_spi_init (void)
 #ifdef DEBUG
         printf ("Failed @1\n");
 #endif
+        gpio_put (SD_CS_PIN, true);
+        SD_RELEASE ();
         return false;
         }
     for (int i = 0; i < 10; ++i)
@@ -267,7 +269,8 @@ bool sd_spi_init (void)
 #ifdef DEBUG
         printf ("Failed @2\n");
 #endif
-        sd_spi_chpsel (false);
+        gpio_put (SD_CS_PIN, true);
+        SD_RELEASE ();
         return false;
         }
     for (int i = 0; i < 256; ++i)
@@ -287,7 +290,8 @@ bool sd_spi_init (void)
 #ifdef DEBUG
         printf ("Failed @3\n");
 #endif
-        sd_spi_chpsel (false);
+        gpio_put (SD_CS_PIN, true);
+        SD_RELEASE ();
         return false;
         }
     if ( sd_type == sdtpUnk )
@@ -302,9 +306,10 @@ bool sd_spi_init (void)
         if ( resp != SD_R1_OK )
             {
 #ifdef DEBUG
-            printf ("Failed @3\n");
+            printf ("Failed @4\n");
 #endif
-            sd_spi_chpsel (false);
+            gpio_put (SD_CS_PIN, true);
+            SD_RELEASE ();
             return false;
             }
         sd_spi_get (chk, 4);
@@ -330,6 +335,8 @@ bool sd_spi_init (void)
     printf ("SD Card initialised\n");
 #endif
     sd_spi_freq (25000);
+    gpio_put (SD_CS_PIN, true);
+    SD_RELEASE ();
     return true;
     }
 
@@ -339,11 +346,11 @@ void sd_spi_term (void)
     printf ("SD Card terminate\n");
 #endif
     sd_type = sdtpUnk;
-    sd_spi_chpsel (false);
+    gpio_put (SD_CS_PIN, true);
     sd_spi_freq (200);
     }
 
-void sd_spi_set_crc7 (uint8_t *pcmd)
+static void sd_spi_set_crc7 (uint8_t *pcmd)
     {
     uint8_t crc = 0;
     for (int i = 0; i < 5; ++i)
@@ -360,7 +367,7 @@ void sd_spi_set_crc7 (uint8_t *pcmd)
     *pcmd = crc + 1;
     }
 
-void sd_spi_set_lba (uint lba, uint8_t *pcmd)
+static void sd_spi_set_lba (uint lba, uint8_t *pcmd)
     {
     if ( sd_type != sdtpHigh ) lba <<= 9;
     pcmd += 5;
@@ -376,11 +383,16 @@ void sd_spi_set_lba (uint lba, uint8_t *pcmd)
 bool sd_spi_read (uint lba, uint8_t *buff)
     {
     uint8_t chk[2];
-    sd_spi_set_lba (lba, cmd17);
 #ifdef DEBUG
     printf ("Read command 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
         cmd17[1], cmd17[2], cmd17[3], cmd17[4], cmd17[5], cmd17[6]);
 #endif
+    SD_CLAIM ();
+    pio_gpio_init (pio_sd, SD_CLK_PIN);
+    pio_gpio_init (pio_sd, SD_MOSI_PIN);
+    pio_gpio_init (pio_sd, SD_MISO_PIN);
+    gpio_put (SD_CS_PIN, false);
+    sd_spi_set_lba (lba, cmd17);
     uint8_t resp = sd_spi_cmd (cmd17);
 #ifdef DEBUG
     printf ("   Resp 0x%02X", resp);
@@ -390,6 +402,8 @@ bool sd_spi_read (uint lba, uint8_t *buff)
 #ifdef DEBUG
         printf ("\nFailed\n");
 #endif
+        gpio_put (SD_CS_PIN, true);
+        SD_RELEASE ();
         return false;
         }
     while (true)
@@ -404,6 +418,8 @@ bool sd_spi_read (uint lba, uint8_t *buff)
 #ifdef DEBUG
             printf ("\nError\n");
 #endif
+            gpio_put (SD_CS_PIN, true);
+            SD_RELEASE ();
             return false;
             }
         }
@@ -421,8 +437,12 @@ bool sd_spi_read (uint lba, uint8_t *buff)
 #ifdef DEBUG
         printf ("CRC mismatch\n");
 #endif
+        gpio_put (SD_CS_PIN, true);
+        SD_RELEASE ();
         return false;
         }
+    gpio_put (SD_CS_PIN, true);
+    SD_RELEASE ();
     return true;
     }
 
@@ -432,6 +452,11 @@ bool sd_spi_write (uint lba, const uint8_t *buff)
 #ifdef DEBUG
     printf ("Write block\n");
 #endif
+    SD_CLAIM ();
+    pio_gpio_init (pio_sd, SD_CLK_PIN);
+    pio_gpio_init (pio_sd, SD_MOSI_PIN);
+    pio_gpio_init (pio_sd, SD_MISO_PIN);
+    gpio_put (SD_CS_PIN, false);
     sd_spi_set_lba (lba, cmd24);
 #ifdef DEBUG
     printf ("Write command 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
@@ -446,6 +471,8 @@ bool sd_spi_write (uint lba, const uint8_t *buff)
 #ifdef DEBUG
         printf ("\nFailed\n");
 #endif
+        gpio_put (SD_CS_PIN, true);
+        SD_RELEASE ();
         return false;
         }
 #ifdef DEBUG
@@ -502,6 +529,8 @@ bool sd_spi_write (uint lba, const uint8_t *buff)
 #ifdef DEBUG
     printf ("\n");
 #endif
+    gpio_put (SD_CS_PIN, true);
+    SD_RELEASE ();
     return bResp;
     }
 

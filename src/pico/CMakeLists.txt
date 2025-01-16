@@ -62,7 +62,6 @@ if(NOT OPTIMISE)
 endif()
 message(STATUS "Compiling using optimisation level ${OPTIMISE}")
 
-string(TOUPPER ${STDIO} STDIO)
 string(REPLACE "+" ";" STDIO_LIST ${STDIO})
 
 if ( NOT DEFINED BBC_SRC )
@@ -105,6 +104,7 @@ if (TARGET tinyusb_device)
       )
   endif()
   if (ADDON)
+    string (TOLOWER "${ADDON}" ADDON)
     message(STATUS "Using add on board ${ADDON}")
     target_compile_options(bbcbasic PUBLIC -include ../../boards/${ADDON}.h)
   endif ()
@@ -358,6 +358,8 @@ if (TARGET tinyusb_device)
     message(STATUS "VGA Graphics Output")
     target_sources(bbcbasic PRIVATE
       ../../src/fbufvdu.c
+      ../../src/fbufctl.c
+      ../../src/pico/periodic.c
       ../../src/pico_gui/picofbuf.c
       ../../src/pico_gui/framebuffer.S
       )
@@ -378,6 +380,32 @@ if (TARGET tinyusb_device)
     if ( "${SOUND}" STREQUAL "SDL")
       message(FATAL_ERROR "Can not use core 1 for both sound and video")
     endif()
+  elseif ( "${GRAPH}" STREQUAL "WSLCD35" )
+    message(STATUS "Waveshare 3.5 inch LCD Graphics Output")
+    target_sources(bbcbasic PRIVATE
+      ../../src/fbufvdu.c
+      ../../src/fbufctl.c
+      ../../src/pico/periodic.c
+      ../../src/wslcd35/DEV_Config.c
+      ../../src/wslcd35/LCD_Driver.c
+      ../../src/wslcd35/LCD_Touch.c
+      ../../src/wslcd35/wslcd35.c
+      )
+    target_compile_definitions(bbcbasic PUBLIC
+      -DVDU_OUT=wslcd35_out
+      -DVDU_OUT_INT=wslcd35_out_int
+      -DVDU_OUT7=wslcd35_out7
+      -DSD_CLAIM=SPI_Claim
+      -DSD_RELEASE=SPI_Release
+      -DHAVE_MOUSE=1
+      )
+    if ( NOT "${STDIO}" STREQUAL "PICO" )
+      target_compile_definitions(bbcbasic PUBLIC -DPICO_GRAPH)
+    endif ()
+    target_link_libraries(bbcbasic
+      hardware_gpio
+      hardware_spi
+      )
   elseif ( GRAPH AND (NOT "${GRAPH}" STREQUAL "NONE") )
     message(FATAL_ERROR "Unsupported graphical display ${GRAPH}")
   endif()
@@ -468,7 +496,6 @@ if (TARGET tinyusb_device)
     string(CONCAT stk_expr ${OS_SIZE} "+64")
     math(EXPR OS_SIZE "${stk_expr}")
   endif()
-  message (STATUS "${OS_SIZE}KB memory for interpreter")
   
   add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/picobb.ld

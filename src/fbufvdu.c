@@ -152,7 +152,7 @@ typedef struct
     } GPOINT;
 static GPOINT pltpt[NPLT];              // History of plotted points (graphics units from top left)
 
-static uint16_t curpal[16];
+uint16_t curpal[16];
 
 #if BBC_FONT
 static const uint8_t pmsk02[256] = {
@@ -423,6 +423,7 @@ static void scrldn (void)
                 }
             memset (fb1, ' ', nb);
             }
+        VDU_OUT7 (framebuf, tvl, tvt, tvr, tvb);
         }
     else if (( tvl == 0 ) && ( tvr == pmode->tcol - 1 ))
         {
@@ -430,6 +431,7 @@ static void scrldn (void)
             framebuf + tvt * pmode->thgt * pmode->nbpl,
             ( tvb - tvt ) * pmode->thgt * pmode->nbpl);
         memset (framebuf + tvt * pmode->thgt * pmode->nbpl, bgfill, pmode->thgt * pmode->nbpl);
+        VDU_OUT (framebuf, tvl << 3, tvt * pmode->thgt, (tvr + 1) << 3, (tvb + 1) * pmode->thgt);
         }
     else
         {
@@ -449,6 +451,7 @@ static void scrldn (void)
             fb2 -= pmode->nbpl;
             memset (fb2, bgfill, nb);
             }
+        VDU_OUT (framebuf, tvl << 3, tvt * pmode->thgt, (tvr + 1) << 3, (tvb + 1) * pmode->thgt);
         }
     showcsr ();
     }
@@ -477,6 +480,7 @@ static void scrlup (void)
                 }
             memset (fb2, ' ', nb);
             }
+        VDU_OUT7 (framebuf, tvl, tvt, tvr, tvb);
         }
     else if (( tvl == 0 ) && ( tvr == pmode->tcol - 1 ))
         {
@@ -484,6 +488,7 @@ static void scrlup (void)
             framebuf + ( tvt + 1 ) * pmode->thgt * pmode->nbpl,
             ( tvb - tvt ) * pmode->thgt * pmode->nbpl);
         memset (framebuf + tvb * pmode->thgt * pmode->nbpl, bgfill, pmode->thgt * pmode->nbpl);
+        VDU_OUT (framebuf, tvl << 3, tvt * pmode->thgt, (tvr + 1) << 3, (tvb + 1) * pmode->thgt);
         }
     else
         {
@@ -503,6 +508,7 @@ static void scrlup (void)
             memset (fb1, bgfill, nb);
             fb1 += pmode->nbpl;
             }
+        VDU_OUT (framebuf, tvl << 3, tvt * pmode->thgt, (tvr + 1) << 3, (tvb + 1) * pmode->thgt);
         }
     showcsr ();
     }
@@ -532,6 +538,7 @@ static void cls ()
                 fb1 += pmode->tcol;
                 }
             }
+        VDU_OUT7 (framebuf, tvl, tvt, tvr, tvb);
         }
     else if (( tvl == 0 ) && ( tvr == pmode->tcol - 1 ))
         {
@@ -541,6 +548,7 @@ static void cls ()
 #endif
         memset (framebuf + tvt * pmode->thgt * pmode->nbpl, bgfill,
             ( tvb - tvt + 1 ) * pmode->thgt * pmode->nbpl);
+        VDU_OUT (framebuf, tvl << 3, tvt * pmode->thgt, (tvr + 1) << 3, (tvb + 1) * pmode->thgt);
         }
     else
         {
@@ -556,6 +564,7 @@ static void cls ()
             memset (fb1, bgfill, nb);
             fb1 += pmode->nbpl;
             }
+        VDU_OUT (framebuf, tvl << 3, tvt * pmode->thgt, (tvr + 1) << 3, (tvb + 1) * pmode->thgt);
         }
     home ();
     showcsr ();
@@ -578,6 +587,7 @@ static void dispchr (int chr)
     if ( pmode->ncbt == 3 )
         {
         framebuf[ycsr * pmode->tcol + xcsr] = chr & 0x7F;
+        VDU_OUT7 (framebuf, xcsr, ycsr, xcsr, ycsr);
         }
     else
         {
@@ -659,6 +669,7 @@ static void dispchr (int chr)
                 }
             }
         showcsr ();
+        VDU_OUT (framebuf, xcsr << 3, ycsr * pmode->thgt, (xcsr + 1) << 3, (ycsr + 1) * pmode->thgt);
         }
     }
 
@@ -809,7 +820,7 @@ static inline int clrmsk (int clr)
     return ( clr & cdef->clrmsk );
     }
 
-void modechg (int mode)
+void modechg (char mode)
     {
 #if DEBUG & 2
     printf ("modechg (%d)\n", mode);
@@ -817,6 +828,9 @@ void modechg (int mode)
     hidecsr ();
     if ( setmode (mode, &framebuf, &pmode, &cdef) )
         {
+        uint32_t gwth;
+        uint32_t ghgt;
+        gsize (&gwth, &ghgt);
 #if DEBUG & 2
         printf ("grow = %d, gcol = %d\n", pmode->grow, pmode->gcol);
 #endif
@@ -825,7 +839,7 @@ void modechg (int mode)
         int gunit = pmode->gcol;
         pixelx = 1;
         xshift = 0;
-        while ( gunit < 1280 )
+        while ( gunit <= gwth )
             {
             ++xshift;
             pixelx <<= 1;
@@ -834,7 +848,7 @@ void modechg (int mode)
         gunit = pmode->grow;
         pixely = 1;
         yshift = 0;
-        while ( gunit < 900 )
+        while ( gunit <= ghgt )
             {
             ++yshift;
             pixely <<= 1;
@@ -913,17 +927,17 @@ static void hline (int clrop, int xp1, int xp2, int yp)
 #if DEBUG & 4
     printf ("hline (0x%04X, %d, %d, %d)\n", clrop, xp1, xp2, yp);
 #endif
-    xp1 <<= cdef->bitsh;
-    xp2 <<= cdef->bitsh;
+    int xb1 = xp1 << cdef->bitsh;
+    int xb2 = xp2 << cdef->bitsh;
     uint32_t *fb1 = (uint32_t *)(framebuf + yp * pmode->nbpl);
-    uint32_t *fb2 = fb1 + ( xp2 >> 5 );
-    fb1 += ( xp1 >> 5 );
-    uint32_t msk1 = fwdmsk[xp1 & 0x1F];
-    uint32_t msk2 = bkwmsk[(xp2 & 0x1F) + pmode->ncbt - 1];
+    uint32_t *fb2 = fb1 + ( xb2 >> 5 );
+    fb1 += ( xb1 >> 5 );
+    uint32_t msk1 = fwdmsk[xb1 & 0x1F];
+    uint32_t msk2 = bkwmsk[(xb2 & 0x1F) + pmode->ncbt - 1];
     uint32_t cpx = cdef->cpx[clrop & cdef->clrmsk];
 #if DEBUG & 4
-    printf ("xp1 = %d, xp2 = %d, clrmsk = %d, fb1 = %p, fb2 = %p\n",
-        xp1 & 0x1F, xp2 & 0x1F, cdef->clrmsk, fb1, fb2);
+    printf ("xb1 = %d, xb2 = %d, clrmsk = %d, fb1 = %p, fb2 = %p\n",
+        xb1 & 0x1F, xb2 & 0x1F, cdef->clrmsk, fb1, fb2);
     printf ("msk1 = 0x%08X, msk2 = 0x%08X, cpx = 0x%08X\n", msk1, msk2, cpx);
 #endif
     if ( fb2 == fb1 )
@@ -941,6 +955,7 @@ static void hline (int clrop, int xp1, int xp2, int yp)
             }
         pixop (op, fb1, msk2, cpx);
         }
+    VDU_OUT (framebuf, xp1, yp, xp2 + 1, yp + 1);
     }
 
 static void point (int clrop, uint32_t xp, uint32_t yp)
@@ -949,15 +964,16 @@ static void point (int clrop, uint32_t xp, uint32_t yp)
     printf ("point (0x%04X, %d, %d)\n", clrop, xp, yp);
 #endif
     uint32_t *fb = (uint32_t *)(framebuf + yp * pmode->nbpl);
-    xp <<= cdef->bitsh;
-    fb += xp >> 5;
-    xp &= 0x1F;
-    uint32_t msk = cdef->clrmsk << xp;
-    uint32_t cpx = ( clrop & cdef->clrmsk ) << xp;
+    uint32_t xb = xp << cdef->bitsh;
+    fb += xb >> 5;
+    xb &= 0x1F;
+    uint32_t msk = cdef->clrmsk << xb;
+    uint32_t cpx = ( clrop & cdef->clrmsk ) << xb;
     pixop (clrop >> 8, fb, msk, cpx);
 #if DEBUG & 4
     printf ("xp = %d, cpx = %08X, msk = %08X, fb = %p, *fb = %08X\n", xp, cpx, msk, fb, *fb);
 #endif
+    VDU_OUT (framebuf, xp, yp, xp + 1, yp + 1);
     }
 
 static void clippoint  (int clrop, int xp, int yp)
@@ -1133,6 +1149,7 @@ static void clipline (int clrop, int xp1, int yp1, int xp2, int yp2, uint32_t do
     {
 #if DEBUG & 2
     printf ("clipline (0x%02X, %d, %d, %d, %d, 0x%08X, %d)\n", clrop, xp1, yp1, xp2, yp2, dots, skip);
+    printf ("clip limits: %d %d %d %d\n", gvl, gvt, gvr, gvb);
 #endif
     if ( xp2 < xp1 )
         {
@@ -1147,12 +1164,18 @@ static void clipline (int clrop, int xp1, int yp1, int xp2, int yp2, uint32_t do
     if (( xp2 < gvl ) || ( xp1 > gvr )) return;
     if ( xp1 < gvl )
         {
+#if DEBUG & 2
+        printf ("Clip left.\n");
+#endif
         yp1 += ( yp2 - yp1 ) * ( gvl - xp1 ) / ( xp2 - xp1 );
         xp1 = gvl;
         if ( skip == SKIP_FIRST ) skip = SKIP_NONE;
         }
     if ( xp2 > gvr )
         {
+#if DEBUG & 2
+        printf ("Clip right.\n");
+#endif
         yp2 -= ( yp2 - yp1 ) * ( xp2 - gvr ) / ( xp2 - xp1 );
         xp2 = gvr;
         if ( skip == SKIP_LAST ) skip = SKIP_NONE;
@@ -1170,12 +1193,18 @@ static void clipline (int clrop, int xp1, int yp1, int xp2, int yp2, uint32_t do
     if (( yp2 < gvt ) || ( yp1 > gvb )) return;
     if ( yp1 < gvt )
         {
+#if DEBUG & 2
+        printf ("Clip top.\n");
+#endif
         xp1 += ( xp2 - xp1 ) * ( gvt - yp1 ) / ( yp2 - yp1 );
         yp1 = gvt;
         if ( skip == SKIP_FIRST ) skip = SKIP_NONE;
         }
     if ( yp2 > gvb )
         {
+#if DEBUG & 2
+        printf ("Clip bottom.\n");
+#endif
         xp2 -= ( xp2 - xp1 ) * ( yp2 - gvb ) / ( yp2 - yp1 );
         yp2 = gvb;
         if ( skip == SKIP_LAST ) skip = SKIP_NONE;

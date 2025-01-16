@@ -12,14 +12,13 @@
 
 // Remove routines replaced in GUI mode
 
-#ifdef PICO_GUI
+#if defined(PICO_GUI)
 #define modechg null_modechg
 #define defchr  null_defchr
 #define newline null_newline
 #define xeqvdu  null_xeqvdu
-#endif
 
-#ifdef PICO_GRAPH
+#elif defined(PICO_GRAPH)
 #define modechg null_modechg
 #define xeqvdu  org_xeqvdu
 #endif

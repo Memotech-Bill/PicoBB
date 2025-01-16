@@ -71,10 +71,49 @@ GUI_SOURCES = \
     ../../include/pico_gui/tusb_config.h \
     ../../include/font_tt.h \
     ../../src/fbufvdu.c \
+    ../../src/fbufctl.c \
     ../../src/pico_gui/picokbd.c \
     ../../src/pico_gui/picofbuf.c \
-    ../../src/pico_gui/framebuffer.S
+    ../../src/pico_gui/framebuffer.S \
+	../../include/fbufvdu.h
 SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt
+EXAMPLE_FILES += ../../bin/pico/examples/* \
+		../../bin/pico/examples/graphics/*
+else ifeq ($(GRAPH), VGA)
+GUI_SOURCES = \
+    ../../include/pico_gui/tusb_config.h \
+    ../../include/font_tt.h \
+    ../../src/fbufvdu.c \
+    ../../src/fbufctl.c \
+	../../src/pico/periodic.c \
+    ../../src/pico_gui/picofbuf.c \
+    ../../src/pico_gui/framebuffer.S \
+	../../src/pico/zmodem.c \
+	../../include/fbufvdu.h \
+	../../include/periodic.h
+SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
+	../../src/pico/symbols/sdk_stdio_usb.txt
+EXAMPLE_FILES += ../../bin/pico/examples/* \
+		../../bin/pico/examples/graphics/*
+else ifeq ($(GRAPH), WSLCD35)
+GUI_SOURCES = \
+    ../../include/pico_gui/tusb_config.h \
+    ../../include/font_tt.h \
+    ../../src/fbufvdu.c \
+    ../../src/fbufctl.c \
+	../../src/pico/periodic.c \
+	../../src/wslcd35/DEV_Config.c \
+	../../src/wslcd35/LCD_Driver.c \
+	../../src/wslcd35/LCD_Touch.c \
+	../../src/wslcd35/wslcd35.c \
+	../../src/wslcd35/DEV_Config.h \
+	../../src/wslcd35/LCD_Driver.h \
+	../../src/wslcd35/LCD_Touch.h \
+	../../src/pico/zmodem.c \
+	../../include/fbufvdu.h \
+	../../include/periodic.h
+SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
+	../../src/pico/symbols/sdk_stdio_usb.txt
 EXAMPLE_FILES += ../../bin/pico/examples/* \
 		../../bin/pico/examples/graphics/*
 else
@@ -94,7 +133,10 @@ SDK_HEADERS += ../../src/pico/symbols/sdk_cyw43.txt \
 NET_SOURCES = ../../include/network.h \
 	../../src/pico/network_cyw43.c \
 	../../src/heap.c \
-	../../src/lwip/memp.c
+	../../src/lwip/memp.c \
+	../../include/lwipopts.h \
+	../../include/heap.h \
+	../../include/network.h
 SDL_EXAMPLES = ../../BBCSDL/examples/general/client.bbc \
 	../../BBCSDL/examples/general/server.bbc
 EXAMPLE_FILES += 	../../console/pico/examples_w/* \
@@ -151,11 +193,13 @@ SOURCES= \
 	../../src/pico/crctab.c \
 	../../src/pico/picobb_2040.ld \
 	../../src/pico/picobb_2350.ld \
+	../../include/fbufvdu.h \
 	../../include/ffconf.h \
 	../../include/lfswrap.h \
 	../../include/sconfig.h \
 	../../include/bbuart.h \
 	../../include/crctab.h \
+	../../include/picocos.h \
 	../../include/zmodem.h \
     ../../m0FaultDispatch/m0FaultDispatch.c \
     $(EXEC_SOURCES) \

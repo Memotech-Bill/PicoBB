@@ -10,12 +10,6 @@
 //          8   Buffer swap
 #define DEBUG       0
 
-// DBUF_MODE =  0 No double buffer
-//              1 One fixed buffer and second buffer above himem
-//              2 One fixed buffer and second buffer below PAGE
-//              3 Two buffers both below PAGE
-#define DBUF_MODE   1
-
 #include "pico.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
@@ -32,21 +26,16 @@
 #include <string.h>
 #include "bbccon.h"
 
+#if ( ! defined(PICO_SCANVIDEO_COLOR_PIN_BASE) ) || ( ! defined(PICO_SCANVIDEO_SYNC_PIN_BASE) )
+#error SCANVIDEO pins not defined for VGA display
+#endif
+
 #include "font_tt.h"
 
 void modechg (int mode);
 void error (int iErr, const char *psErr);
 void *oshwm (void *addr, int mark);
-// void *gethwm (int mark);
 
-#if HIRES
-#define SWIDTH  800
-#define SHEIGHT 600
-#else
-#define SWIDTH  640
-#define SHEIGHT 480
-#endif
-#define BUF_SIZE    (SWIDTH * SHEIGHT / 8)  // Maximum size of a framebuffer
 #define VGA_FLAG    0x1234                  // Used to syncronise cores
 
 // VDU variables declared in bbcdata_*.s:
@@ -68,32 +57,17 @@ extern int gvb;	                        // Bottom of graphics viewport
 extern int gvl;	                        // Left edge of graphics viewport
 extern int gvr;	                        // Right edge of graphics viewport
 
-#if DBUF_MODE == 0
-static uint8_t  framebuf[BUF_SIZE] __attribute((__aligned__(4)));
-#define displaybuf framebuf
-#define shadowbuf framebuf
-#elif DBUF_MODE <= 2
-static uint8_t  fbuffer[BUF_SIZE] __attribute((__aligned__(4)));
-static uint8_t  *vbuffer[2] = {fbuffer, NULL};
-static uint8_t  *framebuf = fbuffer;
-static uint8_t  *displaybuf = fbuffer;
-static uint8_t  *shadowbuf = fbuffer;
-static uint8_t  *vidtop = fbuffer;
-static volatile bool bSwap = false;
-#elif DBUF_MODE == 3
-static uint8_t  *vbuffer[2] = {NULL, NULL};
-static uint8_t  *framebuf = NULL;
-static uint8_t  *displaybuf = NULL;
-static uint8_t  *shadowbuf = NULL;
-static uint8_t  *vidtop = NULL;
-static volatile bool bSwap = false;
-#endif
-#if DBUF_MODE == 1
-extern void *himem;
-extern void *libase;
-extern void *libtop;
-#endif
+// Variables defined in fbufctl.c
+extern int nCsrHide;                    // Non-zero to hide cursor
+extern int csrhgt;                      // Height of cursor
+extern int csrtop;                      // Top of cursor in text line
+
+static bool bBlank = true;              // Blank video screen
 static uint16_t renderbuf[256 * 8] __attribute((__aligned__(4)));
+
+static MODE curmode;
+static uint8_t  *framebuf = NULL;
+static volatile uint8_t  *displaybuf = NULL;
 
 static const uint16_t defpal[16] =
     {
@@ -114,18 +88,6 @@ static const uint16_t defpal[16] =
     PICO_SCANVIDEO_PIXEL_FROM_RGB8(  0u, 255u, 255u),
     PICO_SCANVIDEO_PIXEL_FROM_RGB8(255u, 255u, 255u)
     };
-
-static bool bBlank = true;              // Blank video screen
-static int csrtop;                      // Top of cursor
-static int csrhgt;                      // Height of cursor
-static bool bCsrVis = false;            // Cursor currently rendered
-static uint8_t nCsrHide = 0;            // Cursor hide count (Bit 7 = Cursor off, Bit 6 = Outside screen)
-static uint32_t nFlash = 0;             // Time counter for cursor flash
-static critical_section_t cs_csr;       // Critical section controlling cursor flash
-
-#define CSR_OFF 0x80                    // Cursor turned off
-#define CSR_INV 0x40                    // Cursor invalid (off-screen)
-#define CSR_CNT 0x3F                    // Cursor hide count bits
 
 static const uint32_t ttcsr = PICO_SCANVIDEO_PIXEL_FROM_RGB8(255u, 255u, 255u)
     | ( (PICO_SCANVIDEO_PIXEL_FROM_RGB8(255u, 255u, 255u)) << 16 );
@@ -193,8 +155,6 @@ static const MODE modes[] = {
     };
 #endif
 
-static MODE curmode;
-
 /****** Routines executed on Core 1 **********************************************************
 
 Video render routines must be entirely in RAM.
@@ -244,10 +204,10 @@ void __time_critical_func(render_mode7) (void)
         uint32_t *twopix = buffer->data;
         int iScan = scanvideo_scanline_number (buffer->scanline_id);
 #if DBUF_MODE > 0
-        if ( bSwap && ( iScan == 0 ))
+        if ( displaybuf && ( iScan == 0 ))
             {
-            framebuf = displaybuf;
-            bSwap = false;
+            framebuf = (uint8_t *) displaybuf;
+            displaybuf = NULL;;
             }
 #endif
         iScan -= curmode.vmgn;
@@ -266,6 +226,7 @@ void __time_critical_func(render_mode7) (void)
                 iScanCnt = 0;
                 iScanLst = 0;
                 bDouble = false;
+                bLower = false;
                 }
             else
                 {
@@ -274,7 +235,8 @@ void __time_critical_func(render_mode7) (void)
                     {
                     iScanCnt -= curmode.thgt << curmode.yshf;
                     ++iRow;
-                    bLower = bDouble;
+                    if (bDouble) bLower = ! bLower;
+                    else bLower = false;
                     bDouble = false;
                     }
                 iScanLst = iScan;
@@ -293,7 +255,7 @@ void __time_critical_func(render_mode7) (void)
             int iScan2 = iScan;
             for (int iCol = 0; iCol < curmode.tcol; ++iCol)
                 {
-                uint8_t ch = *pch;
+                uint8_t ch = *pch & 0x7F;
                 if ( ch >= 0x20 )
                     {
                     uint8_t px = pfont[TTH * ch + iScan2];
@@ -353,7 +315,7 @@ void __time_critical_func(render_mode7) (void)
                         bGraph = false;
                         nfg = ch & 0x07;
                         if (( bFlash ) && ( nFrame & FLASH_BIT ))
-                            fgnd = ((uint32_t *)renderbuf)[nfg ^ 0x07];
+                            fgnd = bgnd;
                         else
                             fgnd = ((uint32_t *)renderbuf)[nfg];
                         }
@@ -361,7 +323,7 @@ void __time_critical_func(render_mode7) (void)
                         {
                         bFlash = true;
                         if ( nFrame & FLASH_BIT )
-                            fgnd = ((uint32_t *)renderbuf)[nfg ^ 0x07];
+                            fgnd = bgnd;
                         else
                             fgnd = ((uint32_t *)renderbuf)[nfg];
                         }
@@ -387,7 +349,7 @@ void __time_critical_func(render_mode7) (void)
                         bGraph = true;
                         nfg = ch & 0x07;
                         if (( bFlash ) && ( nFrame & FLASH_BIT ))
-                            fgnd = ((uint32_t *)renderbuf)[nfg ^ 0x07];
+                            fgnd = bgnd;
                         else
                             fgnd = ((uint32_t *)renderbuf)[nfg];
                         }
@@ -522,10 +484,10 @@ void __time_critical_func(render_loop) (void)
         uint32_t *twopix = buffer->data;
         int iScan = scanvideo_scanline_number (buffer->scanline_id);
 #if DBUF_MODE > 0
-        if ( bSwap && ( iScan == 0 ))
+        if ( displaybuf && ( iScan == 0 ))
             {
-            framebuf = displaybuf;
-            bSwap = false;
+            framebuf = (uint8_t *) displaybuf;
+            displaybuf = NULL;;
             }
 #endif
         iScan -= curmode.vmgn;
@@ -672,94 +634,18 @@ void setup_video (void)
 
 /****** Routines executed on Core 0 **********************************************************/
 
-static void flipcsr (void)
+void gsize (uint32_t *pwth, uint32_t *phgt)
     {
-    int xp;
-    int yp;
-    if ( vflags & HRGFLG )
-        {
-        xp = lastx;
-        yp = lasty;
-        if (( xp < gvl ) || ( xp + 7 > gvr ) || ( yp < gvt ) || ( yp + curmode.thgt - 1 > gvb ))
-            {
-            nCsrHide |= CSR_INV;
-            bCsrVis = false;
-            return;
-            }
-        }
-    else
-        {
-        if (( ycsr < 0 ) || ( ycsr >= curmode.trow ) || ( xcsr < 0 ) || ( xcsr >= curmode.tcol ))
-            {
-            nCsrHide |= CSR_INV;
-            bCsrVis = false;
-            return;
-            }
-        xp = 8 * xcsr;
-        yp = ycsr * curmode.thgt;
-        }
-    yp += csrtop;
-    CLRDEF *cdef = &clrdef[curmode.ncbt];
-    uint32_t *fb = (uint32_t *)(shadowbuf + yp * curmode.nbpl);
-    xp <<= cdef->bitsh;
-    fb += xp >> 5;
-    xp &= 0x1F;
-    uint32_t msk1 = cdef->csrmsk << xp;
-    uint32_t msk2 = cdef->csrmsk >> ( 32 - xp );
-    for (int i = 0; i < csrhgt; ++i)
-        {
-        *fb ^= msk1;
-        *(fb + 1) ^= msk2;
-        fb += curmode.nbpl / 4;
-        ++yp;
-        }
-    bCsrVis = ! bCsrVis;
+    *pwth = 640;
+    *phgt = 480;
     }
 
-void hidecsr (void)
+void bufswap (uint8_t *fbuf)
     {
-    ++nCsrHide;
-    if ( curmode.ncbt != 3 )
+    displaybuf = fbuf;
+    while (displaybuf)
         {
-        critical_section_enter_blocking (&cs_csr);
-        if ( bCsrVis ) flipcsr ();
-        critical_section_exit (&cs_csr);
-        }
-    }
-
-void showcsr (void)
-    {
-    if ( ( nCsrHide & CSR_CNT ) > 0 ) --nCsrHide;
-    if ( vflags & HRGFLG )
-        {
-        if (( lastx >= gvl ) && ( lastx + 7 <= gvr )
-            && ( lasty >= gvt ) && ( lasty + curmode.thgt - 1 <= gvb ))
-            nCsrHide &= ~CSR_INV;
-        else
-            nCsrHide |= CSR_INV;
-        }
-    else
-        {
-        if ( ( ycsr >= tvt ) && ( ycsr <= tvb ) && ( xcsr >= tvl ) && ( xcsr <= tvr ))
-            nCsrHide &= ~CSR_INV;
-        else
-            nCsrHide |= CSR_INV;
-        }
-    if (( curmode.ncbt != 3 ) && ( nCsrHide == 0 ))
-        {
-        critical_section_enter_blocking (&cs_csr);
-        if ( ! bCsrVis ) flipcsr ();
-        critical_section_exit (&cs_csr);
-        }
-    }
-
-static void flashcsr (void)
-    {
-    if (( curmode.ncbt != 3 ) && ( nCsrHide == 0 ))
-        {
-        critical_section_enter_blocking (&cs_csr);
-        flipcsr ();
-        critical_section_exit (&cs_csr);
+        tight_loop_contents ();
         }
     }
 
@@ -778,37 +664,6 @@ int clrrgb (uint16_t clr)
     return ( PICO_SCANVIDEO_R5_FROM_PIXEL(clr) << 3 )
         | ( PICO_SCANVIDEO_G5_FROM_PIXEL(clr) << 11 )
         | ( PICO_SCANVIDEO_B5_FROM_PIXEL(clr) << 19 );
-    }
-
-void csrdef (int data2)
-    {
-    uint32_t p1 = data2 & 0xFF;
-    uint32_t p2 = ( data2 >> 8 ) & 0xFF;
-    uint32_t p3 = ( data2 >> 16 ) & 0xFF;
-    if ( p1 == 1 )
-        {
-        if ( p2 == 0 ) nCsrHide |= CSR_OFF;
-        else nCsrHide &= ~CSR_OFF;
-        }
-    else if ( p1 == 0 )
-        {
-        if ( p2 == 10 )
-            {
-            if ( p3 < curmode.thgt )
-                {
-                csrtop = p3;
-                cursa = p3;
-                }
-            }
-        else if ( p2 == 11 )
-            {
-            if ( p3 < curmode.thgt )
-                {
-                csrhgt = p3 - csrtop + 1;
-                cursb = p3;
-                }
-            }
-        }
     }
 
 void genrb (uint16_t *curpal)
@@ -854,17 +709,24 @@ bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd, CLRDEF **ppcd)
         {
         bBlank = true;
         memcpy (&curmode, &modes[mode], sizeof (MODE));
-        singlebuf ();
-        nCsrHide |= CSR_OFF;
+        framebuf = singlebuf ();
+        nCsrHide = CSR_OFF;
         csrtop = curmode.thgt - 1;
         csrhgt = 1;
-        *pfbuf = shadowbuf;
+        *pfbuf = framebuf;
         *ppmd = &curmode;
         *ppcd = &clrdef[curmode.ncbt];
-        if ( mode == 7 ) memcpy (&shadowbuf[curmode.trow * curmode.tcol], font_tt, sizeof (font_tt));
+        if ( curmode.ncbt == 3 ) memcpy (&framebuf[curmode.trow * curmode.tcol], font_tt, sizeof (font_tt));
         return true;
         }
     return false;
+    }
+
+int bufsize (void)
+    {
+    int nbyt = curmode.grow * curmode.nbpl;
+    if ( curmode.ncbt == 3 ) nbyt += sizeof (font_tt);
+    return nbyt;
     }
 
 void dispmode (void)
@@ -881,13 +743,13 @@ void dispmode (void)
 #endif
     }
 
-void video_periodic (void)
+bool txtmode (int code, int *pdata1, int *pdata2)
     {
-    if ( ++nFlash >= 5 )
-        {
-        flashcsr ();
-        nFlash = 0;
-        }
+    if ((code & 0x7F) >= sizeof (modes) / sizeof (modes[0])) return false;
+    MODE *pmode = &modes[(code & 0x7F)];
+    *pdata2 = (pmode->gcol << 8) | (pmode->grow << 24);
+    *pdata1 = (pmode->grow >> 8) | 0x0800 | (pmode->thgt << 16) | (0x01000000 << pmode->ncbt);
+    return true;
     }
 
 int setup_vdu (void)
@@ -915,12 +777,7 @@ int setup_vdu (void)
     sleep_ms(500);
     printf ("setup_vdu: Set clock frequency %d kHz.\n", clock_get_hz (clk_sys) / 1000);
 #endif
-    critical_section_init (&cs_csr);
-#if DBUF_MODE > 0
-    displaybuf = vbuffer[0];
-    shadowbuf = vbuffer[0];
-#endif
-    memset (shadowbuf, 0, BUF_SIZE);
+    setup_fbuf (&curmode);
     modechg (8);
     multicore_fifo_drain ();
     multicore_launch_core1 (setup_video);
@@ -935,205 +792,6 @@ int setup_vdu (void)
 #endif
     }
 
-#include <unistd.h>
-int usleep(useconds_t usec)
+void mode7flash (void)
     {
-    sleep_us (usec);
     }
-
-static int bufsize (void)
-    {
-    int nbyt = curmode.grow * curmode.nbpl;
-    if ( curmode.ncbt == 3 ) nbyt += sizeof (font_tt);
-    return nbyt;
-    }
-
-void *videobuf (int iBuf, void *pmem)
-    {
-#if DBUF_MODE >= 2
-    pmem = (uint8_t *)(((int)pmem + 3) & 0xFFFFFFFC);
-#if DBUF_MODE == 3
-    if ( iBuf == 0 )
-        {
-        vbuffer[0] = (uint8_t *) pmem;
-        framebuf = vbuffer[0];
-        displaybuf = vbuffer[0];
-        shadowbuf = vbuffer[0];
-        pmem += BUF_SIZE;
-        }
-#endif
-    if ( iBuf == 1 )
-        {
-        vbuffer[1] = pmem;
-        pmem += BUF_SIZE;
-        }
-#endif
-    return pmem;
-    }
-
-#if DBUF_MODE == 0
-
-uint8_t *swapbuf (void)
-    {
-    return framebuf;
-    }
-
-uint8_t *singlebuf (void)
-    {
-    return framebuf;
-    }
-
-uint8_t *doublebuf (void)
-    {
-    return framebuf;
-    }
-
-#else
-
-uint8_t *swapbuf (void)
-    {
-    if ( shadowbuf != vbuffer[0] )
-        {
-#if DEBUG & 8
-        printf ("swapbuf: vbuffer[0] = %p, displaybuf = %p, shadowbuf = %p\n",
-            vbuffer[0], displaybuf, shadowbuf);
-#endif
-        hidecsr ();
-        displaybuf = shadowbuf;
-        bSwap = true;
-        while ( bSwap )
-            {
-            // Waiting for new frame
-            }
-#if DEBUG & 8
-        printf ("Displaying shadowbuf\n");
-#endif
-        memcpy (vbuffer[0], shadowbuf, bufsize ());
-        displaybuf = vbuffer[0];
-        bSwap = true;
-        while ( bSwap )
-            {
-            // Waiting for new frame
-            }
-#if DEBUG & 8
-        printf ("Displaying displaybuf\n");
-#endif
-        showcsr ();
-        }
-    return shadowbuf;
-    }
-
-uint8_t *singlebuf (void)
-    {
-#if DEBUG & 4
-    printf ("singlebuf\n");
-#endif
-    if ( shadowbuf != vbuffer[0] ) swapbuf ();
-    if ( libtop == (void *)vidtop )
-        {
-        libtop = vbuffer[1];
-        oshwm (libtop, 0);
-        }
-    shadowbuf = vbuffer[0];
-    vidtop = shadowbuf + bufsize ();
-    return shadowbuf;
-    }
-
-uint8_t *doublebuf (void)
-    {
-    if ( shadowbuf == vbuffer[0] )
-        {
-        int nbyt = bufsize ();
-        if ( 2 * nbyt <= BUF_SIZE )
-            {
-#if DEBUG & 4
-            printf ("doublebuf: Using top of buffer 0\n");
-#endif
-            hidecsr ();
-            shadowbuf = vbuffer[0] + nbyt;
-            }
-        else
-            {
-#if DEBUG & 4
-            printf ("doublebuf: Using buffer 1\n");
-#endif
-#if DBUF_MODE == 1
-            vbuffer[1] = (uint8_t *)(((int)himem + 3) & 0xFFFFFFFC);
-            int nfree = (uint8_t *)libase - vbuffer[1];
-            if ( nfree < nbyt )
-                {
-                if ( libase > 0 )
-                    vbuffer[1] = (uint8_t *)(((int)libtop + 3) & 0xFFFFFFFC);
-                nfree = (uint8_t *)(&nbyt) - vbuffer[1] - 0x800;
-#if DEBUG & 4
-                printf ("doublebuf: nbyt = 0x%04X, nfree = 0x%04X, vbuffer[1] = %p, stack = %p\n",
-                    nbyt, nfree, vbuffer[1], &nbyt);
-#endif
-                if ( nbyt + 0x280 > nfree )
-                    {
-                    error (255, "No room for refresh buffer");
-                    }
-                libtop = (void *)(vbuffer[1] + nbyt);
-                oshwm (libtop, 0);
-                }
-#if DEBUG & 4
-            else
-                {
-                printf ("doublebuf: buffer 1 between himem and libase\n");
-                }
-#endif
-#endif
-            hidecsr ();
-            shadowbuf = vbuffer[1];
-            }
-        vidtop = shadowbuf + nbyt;
-#if DBUF_MODE >= 2
-        if ( (void *)vidtop > vpage )
-            {
-            shadowbuf = vbuffer[0];
-            error (255, "No room for refresh buffer");
-            }
-#endif
-        memcpy (shadowbuf, displaybuf, nbyt);
-        showcsr ();
-        }
-    return shadowbuf;
-    }
-
-const char *checkbuf (void)
-    {
-#if STACK_CHECK & 3
-#if DBUF_MODE == 1
-    static const char sErr2[] = "Stack collided with refresh buffer";
-    if ( shadowbuf == vbuffer[1] )
-        {
-        int nbyt = bufsize ();
-        int nfree = (uint8_t *)(&nbyt) - vbuffer[1];
-#if DEBUG & 4
-        printf ("nbyt = 0x%04X, nfree = 0x%04X\n", nbyt, nfree);
-#endif
-        if ( nfree < nbyt )
-            {
-#if DEBUG & 4
-            printf ("checkbuf: sErr2\n");
-#endif
-            return sErr2;
-            }
-        }
-#elif DBUF_MODE > 1
-    static const char sErr3[] = "PAGE below refresh buffer";
-    if (( vpage != NULL ) && ( vpage < (void *)vidtop ))
-        {
-#if DEBUG & 4
-        printf ("checkbuf: sErr3\n");
-#endif
-        return sErr3;
-        }
-#endif
-#if DEBUG & 4
-    printf ("checkbuf: NULL\n");
-#endif
-#endif
-    return NULL;
-    }
-#endif

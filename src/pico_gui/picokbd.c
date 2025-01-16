@@ -3,6 +3,7 @@
 #include "pico.h"
 #include "pico/stdlib.h"
 #include "bsp/board.h"
+#include "periodic.h"
 #include "tusb.h"
 #include <stdio.h>
 
@@ -40,8 +41,6 @@
 
 // Defined in bbccon.c
 extern int putkey (char key);
-// Defined in picovdu.c
-extern void video_periodic (void);
 
 static bool bRepeat;
 static uint8_t led_flags = 0;
@@ -567,8 +566,9 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
 #error Unknown TinyUSB Version
 #endif  // KBD_VERSION
 
-static struct repeating_timer s_kbd_timer;
-static bool keyboard_periodic (struct repeating_timer *prt)
+static PRD_FUNC pnext = NULL;
+
+static void keyboard_periodic (void)
     {
 #if DEBUG == 2
     printf (".");
@@ -580,8 +580,7 @@ static bool keyboard_periodic (struct repeating_timer *prt)
         tuh_task();
         hid_task();
         }
-    video_periodic ();
-    return true;
+    if (pnext) pnext ();
     }
 
 void setup_keyboard (void)
@@ -591,7 +590,7 @@ void setup_keyboard (void)
 #endif
     memset (keydn, 0, sizeof (keydn));
     tusb_init();
-    add_repeating_timer_ms (100, keyboard_periodic, NULL, &s_kbd_timer);
+    pnext = add_periodic (keyboard_periodic);
     }
 
 #define HID_KEY_CONTROL_ALL 0xE8
