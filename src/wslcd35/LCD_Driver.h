@@ -78,13 +78,15 @@ void LCD_WriteData(uint16_t Data);
 void LCD_Write_Words (uint16_t Data, int nRpt);
 void LCD_Write_Term (void);
 void LCD_Write_Init (void);
+void LCD_Scroll (int Data);
+void LCD_ScrollArea (int top, int mid, int bot);
 
 void LCD_SetBackLight(uint16_t value);
 void LCD_SetWindow(POINT Xstart, POINT Ystart, POINT Xend, POINT Yend);
 void LCD_SetCursor(POINT Xpoint, POINT Ypoint);
 void LCD_SetColor(COLOR Color ,POINT Xpoint, POINT Ypoint);
-void LCD_SetPointlColor(POINT Xpoint, POINT Ypoint, COLOR Color);
-void LCD_SetArealColor(POINT Xstart, POINT Ystart, POINT Xend, POINT Yend,COLOR  Color);
+void LCD_SetPointColor(POINT Xpoint, POINT Ypoint, COLOR Color);
+void LCD_SetAreaColor(POINT Xstart, POINT Ystart, POINT Xend, POINT Yend,COLOR  Color);
 void LCD_Clear(COLOR  Color);
 uint8_t LCD_Read_Id(void);
 #endif

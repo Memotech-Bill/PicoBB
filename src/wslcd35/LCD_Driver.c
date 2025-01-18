@@ -104,6 +104,24 @@ void LCD_Write_Term (void)
 	DEV_Digital_Write(LCD_CS_PIN,1);
     }
 
+void LCD_Scroll (int Data)
+    {
+    LCD_WriteReg (0x37);
+    LCD_WriteData (Data >> 8);
+    LCD_WriteData (Data & 0xFF);
+    }
+
+void LCD_ScrollArea (int top, int mid, int bot)
+    {
+    LCD_WriteReg (0x33);
+    LCD_WriteData (top >> 8);
+    LCD_WriteData (top & 0xFF);
+    LCD_WriteData (mid >> 8);
+    LCD_WriteData (mid & 0xFF);
+    LCD_WriteData (bot >> 8);
+    LCD_WriteData (bot & 0xFF);
+    }
+
 /*******************************************************************************
 function:
 		Common register initialization
@@ -544,7 +562,7 @@ parameter:
 	Yend   :   End point coordinates
 	Color  :   Set the color
 ********************************************************************************/
-void LCD_SetArealColor(POINT Xstart, POINT Ystart, POINT Xend, POINT Yend,	COLOR Color)
+void LCD_SetAreaColor(POINT Xstart, POINT Ystart, POINT Xend, POINT Yend,	COLOR Color)
     {
     if((Xend > Xstart) && (Yend > Ystart))
         {
@@ -559,7 +577,7 @@ function:
 ********************************************************************************/
 void LCD_Clear(COLOR  Color)
     {
-    LCD_SetArealColor(0, 0, sLCD_DIS.LCD_Dis_Column , sLCD_DIS.LCD_Dis_Page , Color);
+    LCD_SetAreaColor(0, 0, sLCD_DIS.LCD_Dis_Column , sLCD_DIS.LCD_Dis_Page , Color);
     }
 
 uint8_t LCD_Read_Id(void)

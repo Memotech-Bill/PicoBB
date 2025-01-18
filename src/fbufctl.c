@@ -188,18 +188,15 @@ void showcsr (void)
 
 static void flashcsr (void)
     {
-    if ( nCsrHide == 0 )
+    if ( pmode->ncbt == 3 )
         {
-        if ( pmode->ncbt == 3 )
-            {
-            mode7flash ();
-            }
-        else
-            {
-            critical_section_enter_blocking (&cs_csr);
-            flipcsr ();
-            critical_section_exit (&cs_csr);
-            }
+        mode7flash ();
+        }
+    else if ( nCsrHide == 0 )
+        {
+        critical_section_enter_blocking (&cs_csr);
+        flipcsr ();
+        critical_section_exit (&cs_csr);
         }
     }
 

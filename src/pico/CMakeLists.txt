@@ -394,7 +394,9 @@ if (TARGET tinyusb_device)
     target_compile_definitions(bbcbasic PUBLIC
       -DVDU_OUT=wslcd35_out
       -DVDU_OUT_INT=wslcd35_out_int
+      -DVDU_SCROLL=wslcd35_scroll
       -DVDU_OUT7=wslcd35_out7
+      -DVDU_SCROLL7=wslcd35_scroll7
       -DSD_CLAIM=SPI_Claim
       -DSD_RELEASE=SPI_Release
       -DHAVE_MOUSE=1

@@ -1,6 +1,7 @@
 # Select build type
 BOARD ?= pico_w
 TYPE ?= $(BOARD)
+ADDON ?=
 
 # Build defaults: Override by options on the make command
 ifeq ($(TYPE), pico)
@@ -13,7 +14,6 @@ FAT ?= N
 SOUND ?= SDL
 SERIAL_DEV ?= 1
 MIN_STACK ?= Y
-SUFFIX = _console_$(TYPE)
 # BASIC examples selection
 DEVICE = -d all -d pico
 BUILD = -b all -b console
@@ -29,7 +29,6 @@ FAT ?= N
 SOUND ?= SDL
 SERIAL_DEV ?= 1
 MIN_STACK ?= Y
-SUFFIX ?= _console_$(TYPE)
 # BASIC examples selection
 DEVICE  ?=  -d all -d pico_w
 BUILD  ?=  -b all -b console
@@ -44,7 +43,6 @@ FAT ?= N
 SOUND ?= SDL
 SERIAL_DEV ?= 1
 MIN_STACK ?= Y
-SUFFIX = _console_$(TYPE)
 # BASIC examples selection
 DEVICE = -d all -d pico
 BUILD = -b all -b console
@@ -60,7 +58,6 @@ FAT ?= N
 SOUND ?= SDL
 SERIAL_DEV ?= 1
 MIN_STACK ?= Y
-SUFFIX ?= _console_$(TYPE)
 # BASIC examples selection
 DEVICE  ?=  -d all -d pico_w
 BUILD  ?=  -b all -b console
@@ -68,6 +65,12 @@ BUILD  ?=  -b all -b console
 else
 $(error $(TYPE) is not a valid board type)
 
+endif
+
+ifneq ($(ADDON),)
+SUFFIX = _console_$(TYPE)_$(ADDON)
+else
+SUFFIX = _console_$(TYPE)
 endif
 
 include ../../src/pico/Makefile

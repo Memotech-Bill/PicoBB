@@ -423,7 +423,11 @@ static void scrldn (void)
                 }
             memset (fb1, ' ', nb);
             }
+#ifdef VDU_SCROLL7
+        VDU_SCROLL7 (framebuf, tvt, tvb, false);
+#else
         VDU_OUT7 (framebuf, tvl, tvt, tvr, tvb);
+#endif
         }
     else if (( tvl == 0 ) && ( tvr == pmode->tcol - 1 ))
         {
@@ -431,7 +435,11 @@ static void scrldn (void)
             framebuf + tvt * pmode->thgt * pmode->nbpl,
             ( tvb - tvt ) * pmode->thgt * pmode->nbpl);
         memset (framebuf + tvt * pmode->thgt * pmode->nbpl, bgfill, pmode->thgt * pmode->nbpl);
+#ifdef VDU_SCROLL
+        VDU_SCROLL (framebuf, tvt, tvb, false);
+#else
         VDU_OUT (framebuf, tvl << 3, tvt * pmode->thgt, (tvr + 1) << 3, (tvb + 1) * pmode->thgt);
+#endif
         }
     else
         {
@@ -480,7 +488,11 @@ static void scrlup (void)
                 }
             memset (fb2, ' ', nb);
             }
+#ifdef VDU_SCROLL7
+        VDU_SCROLL7 (framebuf, tvt, tvb, true);
+#else
         VDU_OUT7 (framebuf, tvl, tvt, tvr, tvb);
+#endif
         }
     else if (( tvl == 0 ) && ( tvr == pmode->tcol - 1 ))
         {
@@ -488,7 +500,11 @@ static void scrlup (void)
             framebuf + ( tvt + 1 ) * pmode->thgt * pmode->nbpl,
             ( tvb - tvt ) * pmode->thgt * pmode->nbpl);
         memset (framebuf + tvb * pmode->thgt * pmode->nbpl, bgfill, pmode->thgt * pmode->nbpl);
+#ifdef VDU_SCROLL
+        VDU_SCROLL (framebuf, tvt, tvb, true);
+#else
         VDU_OUT (framebuf, tvl << 3, tvt * pmode->thgt, (tvr + 1) << 3, (tvb + 1) * pmode->thgt);
+#endif
         }
     else
         {

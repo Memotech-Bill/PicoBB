@@ -40,6 +40,12 @@ void VDU_OUT7 (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2);
 #else
 #define VDU_OUT7(...)
 #endif
+#ifdef VDU_SCROLL
+void VDU_SCROLL (uint8_t *fbuf, int lt, int lb, bool bUp);
+#endif
+#ifdef VDU_SCROLL7
+void VDU_SCROLL7 (uint8_t *fbuf, int lt, int lb, bool bUp);
+#endif
 
 typedef struct
     {

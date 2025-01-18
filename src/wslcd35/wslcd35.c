@@ -16,6 +16,7 @@
 void modechg (char mode);
 void error (int iErr, const char *psErr);
 void *oshwm (void *addr, int mark);
+int putevt (heapptr handler, int msg, int wparam, int lparam);
 
 // VDU variables declared in bbcdata_*.s:
 extern int lastx;                       // Graphics cursor x-position (pixels)
@@ -41,8 +42,6 @@ extern uint16_t curpal[16];             // Current palette
 extern int nCsrHide;                    // Non-zero to hide cursor
 extern int csrhgt;                      // Height of cursor
 extern int csrtop;                      // Top of cursor in text line
-
-static CLIFUNC excli = NULL;
 
 #define PIXEL_FROM_RGB8(r, g, b)    (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3))
 
@@ -86,12 +85,12 @@ static CLRDEF clrdef[] = {
 
 static const MODE modes[] = {
 // ncbt gcol grow tcol trw  vmg hmg pb nbpl ys thg
-    { 1, 320, 256,  40, 32, 112,  0,  8,  40, 0,  8},   // Mode  0 - 10KB
-    { 2, 320, 256,  40, 32, 112,  0,  4,  80, 0,  8},   // Mode  1 - 20KB
-    { 4, 160, 256,  20, 32, 112,  0,  4,  80, 0,  8},   // Mode  2 - 20KB
+    { 1, 320, 256,  40, 32, 111,  0,  8,  40, 0,  8},   // Mode  0 - 10KB
+    { 2, 320, 256,  40, 32, 111,  0,  4,  80, 0,  8},   // Mode  1 - 20KB
+    { 4, 160, 256,  20, 32, 111,  0,  4,  80, 0,  8},   // Mode  2 - 20KB
     { 1, 320, 225,  40, 25,  15,  0,  8,  40, 1,  9},   // Mode  3 - 10KB
-    { 1, 320, 256,  40, 32, 112,  0,  8,  40, 0,  8},   // Mode  4 - 10KB
-    { 2, 160, 256,  20, 32, 112,  0,  8,  40, 0,  8},   // Mode  5 - 10KB
+    { 1, 320, 256,  40, 32, 111,  0,  8,  40, 0,  8},   // Mode  4 - 10KB
+    { 2, 160, 256,  20, 32, 111,  0,  8,  40, 0,  8},   // Mode  5 - 10KB
     { 1, 320, 225,  40, 25,  15,  0,  8,  40, 1,  9},   // Mode  6 - 10KB
     { 3, 320, 225,  40, 25,  15,  0,  8, 160, 1,TTH},   // Mode  7 - ~1KB - Teletext
     { 1, 320, 480,  40, 30,   0,  0,  8,  40, 0, 16},   // Mode  8 - 19KB
@@ -104,16 +103,19 @@ static const MODE modes[] = {
     { 4, 320, 240,  40, 30,   0,  0,  2, 160, 1,  8},   // Mode 15 - 37.5KB
     { 1, 480, 320,  60, 20,   0, LS,  8,  60, 0, 16},   // Mode 16 - 18.75KB
     { 2, 480, 320,  60, 20,   0, LS,  4, 120, 0, 16},   // Mode 17 - 37.5KB
-    { 4, 480, 320,  30, 20,   0, LS,  8,  60, 0, 16},   // Mode 18 - 37.5KB
+    { 4, 240, 320,  30, 20,   0, LS,  8,  60, 1, 16},   // Mode 18 - 37.5KB
     { 1, 480, 320,  60, 40,   0, LS,  8,  60, 0,  8},   // Mode 19 - 18.75KB
     { 2, 480, 320,  60, 40,   0, LS,  4, 120, 0,  8},   // Mode 20 - 37.5KB
-    { 4, 480, 320,  30, 40,   0, LS,  8,  60, 0,  8},   // Mode 21 - 37.5KB
+    { 4, 240, 320,  30, 40,   0, LS,  8,  60, 1,  8},   // Mode 21 - 37.5KB
     };
 
+static CLIFUNC excli = NULL;
 static MODE curmode;
 static uint8_t *framebuf = NULL;
 static bool bInverse = false;
 static bool bLScape = false;
+static int nrow = 480;
+static int scrltop = 0;
 static int xscl = 1;
 static int yscl = 1;
 static CLRDEF *cdef = NULL;
@@ -166,17 +168,37 @@ void gsize (uint32_t *pwth, uint32_t *phgt)
 void wslcd35_out (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
     {
     SPI_Claim ();
+    bool bWrap = false;
+    if (scrltop + (yp1 << curmode.yshf) >= nrow)
+        {
+        bWrap = true;
+        scrltop -= nrow;
+        }
+    else if (scrltop + (yp2 << curmode.yshf) > nrow)
+        {
+        wslcd35_out (fbuf, xp1, yp1, xp2, (nrow - scrltop) >> curmode.yshf);
+        bWrap = true;
+        scrltop -= nrow;
+        yp1 = (-scrltop) >> curmode.yshf;
+        }
+    // bool bShow = nSPIInt <= 0;
 	gpio_set_function (LCD_CLK_PIN, GPIO_FUNC_SPI);
 	gpio_set_function (LCD_MOSI_PIN, GPIO_FUNC_SPI);
 	gpio_set_function (LCD_MISO_PIN, GPIO_FUNC_SPI);
-    // printf ("wslcd35_out (%p, %d, %d, %d, %d)\n", fbuf, xp1, yp1, xp2, yp2);
+    // if (bShow) printf ("wslcd35_out (%p, %d, %d, %d, %d)\n", fbuf, xp1, yp1, xp2, yp2);
     if (fbuf != framebuf) return;
     xp1 = xp1 >> (3 - cdef->bitsh);
     xp2 = ((xp2 - 1) >> (3 - cdef->bitsh)) + 1;
-    // printf ("nppb = %d, bitsh = %d\n", curmode.nppb, cdef->bitsh);
-    // printf ("xp1 = %d, xp2 = %d, xscl = %d, yscl = %d\n", xp1, xp2, xscl, yscl);
-    // printf ("LCD_SetWindow (%d, %d, %d, %d)\n", xp1 * curmode.nppb, yp1 * yscl, xp2 * curmode.nppb, yp2 * yscl);
-    LCD_SetWindow (xp1 * curmode.nppb, yp1 * yscl, xp2 * curmode.nppb, yp2 * yscl);
+    // if (bShow)
+    //     {
+    //     printf ("ncbt = %d, bitsh = %d\n", curmode.ncbt, cdef->bitsh);
+    //     printf ("xp1 = %d, xp2 = %d, xscl = %d, yscl = %d\n", xp1, xp2, xscl, yscl);
+    //     printf ("LCD_SetWindow (%d, %d, %d, %d)\n",
+    //         xp1 * curmode.nppb, curmode.vmgn + scrltop + (yp1 << curmode.yshf),
+    //         xp2 * curmode.nppb, curmode.vmgn + scrltop + ((yp2 + 1) << curmode.yshf) - 1);
+    //     }
+    LCD_SetWindow (xp1 * curmode.nppb, curmode.vmgn + scrltop + (yp1 << curmode.yshf),
+        xp2 * curmode.nppb, curmode.vmgn + scrltop + ((yp2 + 1) << curmode.yshf) - 1);
     fbuf += curmode.nbpl * yp1 + xp1;
     LCD_Write_Init ();
     for (int y = yp1; y < yp2; ++y)
@@ -189,19 +211,19 @@ void wslcd35_out (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
                 {
                 uint8_t pix = *fp;
                 // if (yp2 == yp1 + 1) printf ("x = %d, pix = 0x%02X\n", x, pix);
-                switch (curmode.nppb)
+                switch (curmode.ncbt)
                     {
-                    case 2:
+                    case 4:
                         LCD_Write_Words (curpal[pix & 0x0F], xscl);
                         LCD_Write_Words (curpal[pix >> 4], xscl);
                         break;
-                    case 4:
+                    case 2:
                         LCD_Write_Words (curpal[pix & 0x03], xscl);
                         LCD_Write_Words (curpal[(pix >> 2) & 0x03], xscl);
                         LCD_Write_Words (curpal[(pix >> 4) & 0x03], xscl);
                         LCD_Write_Words (curpal[pix >> 6], xscl);
                         break;
-                    case 8:
+                    case 1:
                         for (int i = 0; i < 8; ++i)
                             {
                             LCD_Write_Words (curpal[pix & 0x01], xscl);
@@ -215,6 +237,7 @@ void wslcd35_out (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
         fbuf += curmode.nbpl;
         }
     LCD_Write_Term ();
+    if (bWrap) scrltop += nrow;
     SPI_Release ();
     }
 
@@ -224,6 +247,32 @@ void wslcd35_out_int (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
         {
         wslcd35_out (fbuf, xp1, yp1, xp2, yp2);
         SPI_Int_Release ();
+        }
+    }
+
+void wslcd35_scroll (uint8_t *fbuf, int lt, int lb, bool bUp)
+    {
+    if ((lt != 0) || (lb != curmode.trow - 1))
+        {
+        wslcd35_out (fbuf, 0, lt * curmode.thgt, curmode.gcol, (lb + 1) * curmode.thgt);
+        }
+    else if (bUp)
+        {
+        scrltop += curmode.thgt << curmode.yshf;
+        if ( scrltop >= nrow) scrltop -= nrow;
+        SPI_Claim ();
+        LCD_Scroll (curmode.vmgn + scrltop);
+        SPI_Release ();
+        wslcd35_out (fbuf, 0, (curmode.trow - 1) * curmode.thgt, curmode.gcol, curmode.grow);
+        }
+    else
+        {
+        scrltop -= curmode.thgt << curmode.yshf;
+        if ( scrltop < 0) scrltop += nrow;
+        SPI_Claim ();
+        LCD_Scroll (curmode.vmgn + scrltop);
+        SPI_Release ();
+        wslcd35_out (fbuf, 0, 0, curmode.gcol, curmode.thgt);
         }
     }
 
@@ -260,25 +309,38 @@ bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd, CLRDEF **ppcd)
         {
         memcpy (&curmode, &modes[mode], sizeof (MODE));
         bool bNewLS = (curmode.hmgn & LS) != 0;
+        SPI_Claim ();
         if (bNewLS != bLScape)
             {
             LCD_SetGramScanWay (bNewLS ? D2U_L2R : L2R_U2D);
             bLScape = bNewLS;
             }
-        if ( bLScape )
+        if (curmode.ncbt == 3) xscl = 1;
+        else                   xscl = (curmode.ncbt * curmode.nppb) >> 3;
+        yscl = 1 << curmode.yshf;
+        nrow = curmode.grow << curmode.yshf;
+        // printf ("xscl = %d, yscl = %d, nrow = %d, vmgn = %d\n", xscl, yscl, nrow, curmode.vmgn);
+        scrltop = 0;
+        LCD_ScrollArea (curmode.vmgn, nrow, curmode.vmgn);
+        LCD_Scroll (curmode.vmgn + scrltop);
+        if (curmode.vmgn > 0)
             {
-            xscl = 480 / curmode.gcol;
-            yscl = 320 / curmode.grow;
+            LCD_SetAreaColor (0, 0, curmode.gcol * xscl, curmode.vmgn, 0);
+            LCD_SetAreaColor (0, nrow + curmode.vmgn, curmode.gcol * xscl, nrow + 2 * curmode.vmgn, 0);
+            }
+        SPI_Release ();
+        framebuf = singlebuf ();
+        nCsrHide |= CSR_OFF;
+        if (curmode.ncbt == 3)
+            {
+            csrtop = 0;
+            csrhgt = TTH;
             }
         else
             {
-            xscl = 320 / curmode.gcol;
-            yscl = 480 / curmode.grow;
+            csrtop = curmode.thgt - 1;
+            csrhgt = 1;
             }
-        framebuf = singlebuf ();
-        nCsrHide |= CSR_OFF;
-        csrtop = curmode.thgt - 1;
-        csrhgt = 1;
         *pfbuf = framebuf;
         *ppmd = &curmode;
         cdef = &clrdef[curmode.ncbt];
@@ -292,7 +354,7 @@ bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd, CLRDEF **ppcd)
 bool txtmode (int code, int *pdata1, int *pdata2)
     {
     if ((code & 0x7F) >= sizeof (modes) / sizeof (modes[0])) return false;
-    MODE *pmode = &modes[(code & 0x7F)];
+    const MODE *pmode = &modes[(code & 0x7F)];
     *pdata2 = (pmode->gcol << 8) | (pmode->grow << 24);
     *pdata1 = (pmode->grow >> 8) | 0x0800 | (pmode->thgt << 16) | (0x01000000 << pmode->ncbt);
     return true;
@@ -314,7 +376,7 @@ void dispmode (void)
 #endif
     }
 
-void wslcd35_out7 (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
+static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool bShow)
     {
     // printf ("wslcd35_out7 (%p, %d, %d, %d, %d)\n", fbuf, xp1, yp1, xp2, yp2);
     if (fbuf != framebuf) return;
@@ -322,195 +384,233 @@ void wslcd35_out7 (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
 	gpio_set_function (LCD_CLK_PIN, GPIO_FUNC_SPI);
 	gpio_set_function (LCD_MOSI_PIN, GPIO_FUNC_SPI);
 	gpio_set_function (LCD_MISO_PIN, GPIO_FUNC_SPI);
-    uint16_t blk[8];
+    uint16_t blk[TTH][8];
     uint8_t *ttfont = fbuf + curmode.trow * curmode.tcol - 0x20 * TTH;
+    bool bDHeight = false;
     bool bDouble = false;
     bool bLower = false;
     for (int yr = 0; yr < yp1; ++yr)
         {
         uint8_t *pch = fbuf + yr * curmode.tcol;
-        bDouble = false;
+        bDHeight = false;
         for (int xc = 0; xc < curmode.tcol; ++xc)
             {
             if ( *pch & 0x7F == 0x0D )
                 {
-                bDouble = true;
+                bDHeight = true;
                 break;
                 }
             }
-        if (bDouble) bLower = ! bLower;
+        if (bDHeight) bLower = ! bLower;
         else bLower = false;
         }
     // printf ("LCD_SetWindow (%d, %d, %d, %d)\n", 8 * xscl * xp1, curmode.thgt * yscl * yp1, 8 * xscl * (xp2 + 1), curmode.thgt * yscl * (yp2 + 1));
-    LCD_SetWindow (8 * xscl * xp1, curmode.thgt * yscl * yp1, 8 * xscl * (xp2 + 1), curmode.thgt * yscl * (yp2 + 1));
-    LCD_Write_Init ();
     for (int yr = yp1; yr <= yp2; ++yr)
         {
-        for (int ys = 0; ys < curmode.thgt; ++ys)
+        uint8_t *font = ttfont;
+        uint8_t *pch = fbuf + yr * curmode.tcol;
+        int nfg = 7;
+        uint16_t bgnd = curpal[0];
+        uint16_t fgnd = curpal[nfg];
+        bDHeight = false;
+        bDouble = false;
+        bool bFlash = false;
+        bool bGraph = false;
+        bool bCont = true;
+        bool bHold = false;
+        for (int xc = 0; xc < curmode.tcol; ++xc)
             {
-            for (int y = 0; y < yscl; ++y)
+            uint8_t ch = *pch & 0x7F;
+            // printf ("yr = %d, xc = %d, ch = 0x%02X\n", yr, xc, ch);
+            if ( ch >= 0x20 )
                 {
-                uint8_t *font = ttfont;
-                uint8_t *pch = fbuf + yr * curmode.tcol;
-                int nfg = 7;
-                uint16_t bgnd = curpal[0];
-                uint16_t fgnd = curpal[nfg];
-                int iScan = ys;
-                bDouble = false;
-                bool bFlash = false;
-                bool bGraph = false;
-                bool bCont = true;
-                bool bHold = false;
-                for (int xc = 0; xc < curmode.tcol; ++xc)
+                uint16_t *pblk = &blk[0][0];
+                for (int ys = 0; ys < curmode.thgt; ++ys)
                     {
-                    uint8_t ch = *pch & 0x7F;
-                    // printf ("yr = %d, xc = %d, ch = 0x%02X\n", yr, xc, ch);
-                    if ( ch >= 0x20 )
+                    int iScan = ys;
+                    if (bDouble)
                         {
-                        uint16_t *pblk = blk;
-                        uint8_t px = font[TTH * ch + iScan];
-                        // printf ("ys = %d, y = %d, px = 0x%02X\n", ys, y, px);
-                        if ( px & 0x01 ) *pblk = fgnd;
-                        else             *pblk = bgnd;
-                        ++pblk;
-                        if ( px & 0x02 ) *pblk = fgnd;
-                        else             *pblk = bgnd;
-                        ++pblk;
-                        if ( px & 0x04 ) *pblk = fgnd;
-                        else             *pblk = bgnd;
-                        ++pblk;
-                        if ( px & 0x08 ) *pblk = fgnd;
-                        else             *pblk = bgnd;
-                        ++pblk;
-                        if ( px & 0x10 ) *pblk = fgnd;
-                        else             *pblk = bgnd;
-                        ++pblk;
-                        if ( px & 0x20 ) *pblk = fgnd;
-                        else             *pblk = bgnd;
-                        ++pblk;
-                        if ( px & 0x40 ) *pblk = fgnd;
-                        else             *pblk = bgnd;
-                        ++pblk;
-                        if ( px & 0x80 ) *pblk = fgnd;
-                        else             *pblk = bgnd;
+                        if ( bLower )   iScan = ( ys + TTH ) >> 1;
+                        else            iScan = ys >> 1;
                         }
-                    else
+                    uint8_t px = font[TTH * ch + iScan];
+                    // printf ("ys = %d, y = %d, px = 0x%02X\n", ys, y, px);
+                    if ( px & 0x01 ) *pblk = fgnd;
+                    else             *pblk = bgnd;
+                    ++pblk;
+                    if ( px & 0x02 ) *pblk = fgnd;
+                    else             *pblk = bgnd;
+                    ++pblk;
+                    if ( px & 0x04 ) *pblk = fgnd;
+                    else             *pblk = bgnd;
+                    ++pblk;
+                    if ( px & 0x08 ) *pblk = fgnd;
+                    else             *pblk = bgnd;
+                    ++pblk;
+                    if ( px & 0x10 ) *pblk = fgnd;
+                    else             *pblk = bgnd;
+                    ++pblk;
+                    if ( px & 0x20 ) *pblk = fgnd;
+                    else             *pblk = bgnd;
+                    ++pblk;
+                    if ( px & 0x40 ) *pblk = fgnd;
+                    else             *pblk = bgnd;
+                    ++pblk;
+                    if ( px & 0x80 ) *pblk = fgnd;
+                    else             *pblk = bgnd;
+                    ++pblk;
+                    }
+                }
+            else
+                {
+                if ( ! bHold )
+                    {
+                    for (int ys = 0; ys < TTH; ++ys)
                         {
-                        if ( ! bHold )
+                        for (int i = 0; i < 8; ++i)
+                            {
+                            blk[ys][i] = bgnd;
+                            }
+                        }
+                    }
+                if ((ch >= 0x00) && (ch <= 0x07))
+                    {
+                    font = ttfont;
+                    bGraph = false;
+                    nfg = ch & 0x07;
+                    fgnd = curpal[nfg];
+                    }
+                else if (ch == 0x08)
+                    {
+                    bFlash = true;
+                    }
+                else if (ch == 0x09)
+                    {
+                    bFlash = false;
+                    }
+                else if (ch == 0x0C)
+                    {
+                    bDouble = false;
+                    }
+                else if (ch == 0x0D)
+                    {
+                    bDouble = true;
+                    bDHeight = true;
+                    }
+                else if ((ch >= 0x10) && (ch <= 0x17))
+                    {
+                    if ( bCont )    font = ttfont + 0x60 * TTH;
+                    else            font = ttfont + 0xC0 * TTH;
+                    bGraph = true;
+                    nfg = ch & 0x07;
+                    fgnd = curpal[nfg];
+                    }
+                else if (ch == 0x19)
+                    {
+                    bCont = true;
+                    if ( bGraph ) font = ttfont + 0x60 * TTH;
+                    }
+                else if (ch == 0x1A)
+                    {
+                    bCont = false;
+                    if ( bGraph ) font = ttfont + 0xC0 * TTH;
+                    }
+                else if (ch == 0x1C)
+                    {
+                    bgnd = curpal[0];
+                    }
+                else if (ch == 0x1D)
+                    {
+                    bgnd = curpal[nfg];
+                    }
+                else if (ch == 0x1E)
+                    {
+                    bHold = true;
+                    }
+                else if (ch == 0x1F)
+                    {
+                    bHold = false;
+                    }
+                }
+            if ((xc >= xp1) && (xc <= xp2))
+                {
+                int ysr = scrltop + curmode.thgt * yscl * yr;
+                if (ysr >= nrow) ysr -= nrow;
+                LCD_SetWindow (8 * xscl * xc, curmode.vmgn + ysr, 8 * xscl * (xc + 1), curmode.vmgn + ysr + curmode.thgt * yscl);
+                LCD_Write_Init ();
+                // printf ("LCD_Write_Words:");
+                for (int ys = 0; ys < TTH; ++ys)
+                    {
+                    if (bInverse && (bFlash ||
+                                    ((xc == xcsr) && (yr == ycsr)
+                                    && (ys >= csrtop) && (ys < csrtop + csrhgt)
+                                    && (nCsrHide == 0))))
+                        {
+                        LCD_Write_Words (bgnd, 8 * xscl * yscl);
+                        // printf (" %0x%02X * %d", bgnd, 8 * xscl);
+                        }
+                    else if (bShow || bFlash)
+                        {
+                        for (int y = 0; y < yscl; ++y)
                             {
                             for (int i = 0; i < 8; ++i)
                                 {
-                                blk[i] = bgnd;
-                                }
-                            }
-                        if ((ch >= 0x00) && (ch <= 0x07))
-                            {
-                            font = ttfont;
-                            bGraph = false;
-                            nfg = ch & 0x07;
-                            if (( bFlash ) && ( bInverse ))
-                                fgnd = bgnd;
-                            else
-                                fgnd = curpal[nfg];
-                            }
-                        else if (ch == 0x08)
-                            {
-                            bFlash = true;
-                            if ( bInverse )
-                                fgnd = bgnd;
-                            else
-                                fgnd = curpal[nfg];
-                            }
-                        else if (ch == 0x09)
-                            {
-                            bFlash = false;
-                            fgnd = curpal[nfg];
-                            }
-                        else if (ch == 0x0C)
-                            {
-                            iScan = ys;
-                            }
-                        else if (ch == 0x0D)
-                            {
-                            if ( bLower )   iScan = ( ys + TTH ) >> 1;
-                            else            iScan = ys >> 1;
-                            bDouble = true;
-                            }
-                        else if ((ch >= 0x10) && (ch <= 0x17))
-                            {
-                            if ( bCont )    font = ttfont + 0x60 * TTH;
-                            else            font = ttfont + 0xC0 * TTH;
-                            bGraph = true;
-                            nfg = ch & 0x07;
-                            if (( bFlash ) && ( bInverse ))
-                                fgnd = bgnd;
-                            else
-                                fgnd = curpal[nfg];
-                            }
-                        else if (ch == 0x19)
-                            {
-                            bCont = true;
-                            if ( bGraph ) font = ttfont + 0x60 * TTH;
-                            }
-                        else if (ch == 0x1A)
-                            {
-                            bCont = false;
-                            if ( bGraph ) font = ttfont + 0xC0 * TTH;
-                            }
-                        else if (ch == 0x1C)
-                            {
-                            bgnd = curpal[0];
-                            }
-                        else if (ch == 0x1D)
-                            {
-                            bgnd = curpal[nfg];
-                            }
-                        else if (ch == 0x1E)
-                            {
-                            bHold = true;
-                            }
-                        else if (ch == 0x1F)
-                            {
-                            bHold = false;
-                            }
-                        }
-                    if ((xc >= xp1) && (xc <= xp2))
-                        {
-                        // printf ("LCD_Write_Words:");
-                        if ((xc == xcsr) && (yr == ycsr) && (ys >= csrtop) && (ys < csrtop + csrhgt)
-                            && (nCsrHide == 0) && bInverse)
-                            {
-                            LCD_Write_Words (bgnd, 8 * xscl);
-                            // printf (" %0x%02X * %d", bgnd, 8 * xscl);
-                            }
-                        else
-                            {
-                            for (int i = 0; i < 8; ++i)
-                                {
-                                LCD_Write_Words (blk[i], xscl);
+                                LCD_Write_Words (blk[ys][i], xscl);
                                 // printf (" 0x%02X", blk[i]);
                                 }
                             }
                         // printf ("\n");
                         }
-                    ++pch;
                     }
+                LCD_Write_Term ();
                 }
+            ++pch;
             }
-        if (bDouble) bLower = ! bLower;
+        if (bDHeight) bLower = ! bLower;
         else bLower = false;
         }
-    LCD_Write_Term ();
     SPI_Release ();
+    }
+
+void wslcd35_out7 (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
+    {
+    wslcd35_ttx (fbuf, xp1, yp1, xp2, yp2, true);
+    }
+
+void wslcd35_scroll7 (uint8_t *fbuf, int lt, int lb, bool bUp)
+    {
+    if ((lt != 0) || (lb != curmode.trow - 1))
+        {
+        wslcd35_out7 (fbuf, 0, lt, curmode.tcol - 1, lb);
+        }
+    else if (bUp)
+        {
+        scrltop += curmode.thgt << curmode.yshf;
+        if ( scrltop >= nrow) scrltop -= nrow;
+        SPI_Claim ();
+        LCD_Scroll (curmode.vmgn + scrltop);
+        SPI_Release ();
+        wslcd35_out7 (fbuf, 0, curmode.trow - 1, curmode.tcol - 1, curmode.trow - 1);
+        }
+    else
+        {
+        scrltop -= curmode.thgt << curmode.yshf;
+        if ( scrltop < 0) scrltop += nrow;
+        SPI_Claim ();
+        LCD_Scroll (curmode.vmgn + scrltop);
+        SPI_Release ();
+        wslcd35_out7 (fbuf, 0, 0, curmode.tcol - 1, 0);
+        }
     }
 
 void mode7flash (void)
     {
     if (SPI_Int_Claim ())
-        {
-        bInverse = ! bInverse;
-        wslcd35_out7 (framebuf, 0, 0, curmode.tcol, curmode.trow);
-        }
+		{
+		bInverse = ! bInverse;
+		wslcd35_ttx (framebuf, 0, 0, curmode.tcol - 1, curmode.trow - 1, false);
+        SPI_Int_Release ();
+		}
     }
 
 #if HAVE_MOUSE
