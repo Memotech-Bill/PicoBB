@@ -24,37 +24,29 @@ else ifeq ($(TYPE), pico_w)
 BOARD ?= pico_w
 CYW43 ?= BACKGROUND
 NET_HEAP ?= 1
-STDIO ?= USB
-LFS ?= Y
-FAT ?= Y
-SOUND ?= PWM
-SERIAL_DEV ?= 0
-MIN_STACK ?= Y
-SUFFIX ?= _gui_$(BOARD)_$(ADDON)
 # BASIC examples selection
 DEVICE  ?=  -d all -d pico_w
-BUILD  ?=  -b all -b gui
 
 else ifeq ($(TYPE), pico2)
 # Pico2  without network support
 BOARD ?= pico
 CYW43 ?= NONE
-STDIO ?= USB
-LFS ?= Y
-FAT ?= Y
-SOUND ?= PWM
-SERIAL_DEV ?= 0
-MIN_STACK ?= Y
-SUFFIX = _gui_$(BOARD)_$(ADDON)
 # BASIC examples selection
 DEVICE = -d all -d pico
-BUILD = -b all -b gui
 
 else ifeq ($(TYPE), pico2_w)
 # Pico W with network support
 BOARD ?= pico2_w
 CYW43 ?= BACKGROUND
 NET_HEAP ?= 1
+# BASIC examples selection
+DEVICE  ?=  -d all -d pico_w
+
+else
+$(error $(TYPE) is not a valid board type)
+
+endif
+
 STDIO ?= USB
 LFS ?= Y
 FAT ?= Y
@@ -62,13 +54,11 @@ SOUND ?= PWM
 SERIAL_DEV ?= 0
 MIN_STACK ?= Y
 SUFFIX ?= _gui_$(BOARD)_$(ADDON)
+
 # BASIC examples selection
-DEVICE  ?=  -d all -d pico_w
 BUILD  ?=  -b all -b gui
-
-else
-$(error $(TYPE) is not a valid board type)
-
+ifneq ($(ADDON),)
+DEVICE += -d $(ADDON)
 endif
 
 # Required for GUI build
