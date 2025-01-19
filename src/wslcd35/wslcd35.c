@@ -120,6 +120,19 @@ static int xscl = 1;
 static int yscl = 1;
 static CLRDEF *cdef = NULL;
 
+#include "pico/binary_info.h"
+bi_decl (bi_1pin_with_name (LCD_DC_PIN,   "LCD command / data"));
+bi_decl (bi_1pin_with_name (LCD_CS_PIN,   "LCD chip select"));
+bi_decl (bi_1pin_with_name (LCD_CLK_PIN,  "LCD clock"));
+bi_decl (bi_1pin_with_name (LCD_MOSI_PIN, "LCD data in"));
+bi_decl (bi_1pin_with_name (LCD_BKL_PIN,  "LCD backlight"));
+bi_decl (bi_1pin_with_name (LCD_RST_PIN,  "LCD reset"));
+bi_decl (bi_1pin_with_name (TP_CLK_PIN,   "Touchpad clock"));
+bi_decl (bi_1pin_with_name (TP_MOSI_PIN,  "Touchpad data in"));
+bi_decl (bi_1pin_with_name (TP_MISO_PIN,  "Touchpad data out"));
+bi_decl (bi_1pin_with_name (TP_CS_PIN,    "Touchpad chip select"));
+bi_decl (bi_1pin_with_name (TP_IRQ_PIN,   "Touchpad interrupt"));
+
 // Control Access to SPI
 
 static int  nSPIInt = 0;
