@@ -395,9 +395,9 @@ int MaximumRAM = MAXIMUM_RAM;
 timer_t UserTimerID;
 unsigned int palette[256];
 void *TTFcache[1];
-#ifdef PICO
 #include <stdbool.h>
 static bool bSysErr = false;
+#ifdef PICO
 extern heapptr libase;		// Base of libraries 
 extern void *libtop;        // Top of installed libraries
 #endif
@@ -409,7 +409,6 @@ static const int vdulen[] = {
 
 #if ( defined(STDIO_USB) || defined(STDIO_UART) || defined(STDIO_BT) )
 #define printf(...) fprintf (stdout, __VA_ARGS__)
-#include <stdbool.h>
 extern bool bBBCtl;
 #endif
 
