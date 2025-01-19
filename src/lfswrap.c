@@ -1060,17 +1060,14 @@ bi_decl(bi_block_device(
 */
 #endif
 
-extern void waitconsole (void);
-extern void text (const char *psMsg);
 extern void syserror (const char *psMsg);
-int mount (void)
+int mount (char *psMsg)
     {
     int istat = 0;
 #ifdef HAVE_LFS
 #ifdef PICO
     struct lfs_bbc_config lfs_bbc_cfg;
     lfs_bbc_cfg.buffer = (void *)(((intptr_t) BINARY_END) & (~ (FLASH_SECTOR_SIZE-1)));
-    waitconsole ();
     while (true)
         {
         lfs_bbc_cfg.buffer += FLASH_SECTOR_SIZE;
@@ -1094,17 +1091,12 @@ int mount (void)
         uint32_t    lfs_ver = *((uint32_t *)(lfs_bbc_cfg.buffer + 20));
         uint32_t    lfs_bsz = *((uint32_t *)(lfs_bbc_cfg.buffer + 24));
         uint32_t    lfs_bct = *((uint32_t *)(lfs_bbc_cfg.buffer + 28));
-        char    sTxt[20];
-        text ("LittleFS image v");
-        sprintf (sTxt, "%d.%d", lfs_ver >> 16, lfs_ver & 0xFFFF);
-        text (sTxt);
-        text (", Size = ");
-        sprintf (sTxt, "%d", lfs_bsz * lfs_bct / 1024);
-        text (sTxt);
-        text ("KB, Origin = 0x");
-        sprintf (sTxt, "%08X", lfs_bbc_cfg.buffer);
-        text (sTxt);
-        text ("\r\n");
+        if (psMsg)
+            {
+            psMsg += strlen (psMsg);
+            sprintf (psMsg, "LittleFS image v%d.%d, Size = %dKB, Origin = 0x%08X\r\n",
+                lfs_ver >> 16, lfs_ver & 0xFFFF, lfs_bsz * lfs_bct / 1024, lfs_bbc_cfg.buffer);
+            }
         if (lfs_ver != LFS_DISK_VERSION)
             {
             syserror ("Invalid VFS version");

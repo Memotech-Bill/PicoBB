@@ -33,7 +33,7 @@ extern DIR *myopendir(const char *name);
 extern struct dirent *myreaddir(DIR *dirp);
 extern int myclosedir(DIR *dirp);
 extern int myrename (const char *old, const char *new);
-extern int mount(void);
+extern int mount(char *psMsg);
 
 #define realpath myrealpath
 #define chdir mychdir

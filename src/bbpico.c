@@ -314,13 +314,15 @@ void *userRAM = NULL;
 void *progRAM = NULL;
 void *userTOP = NULL;
 const int bLowercase = 0;    // Dummy
+#define SFY(x) #x
+#define MVL(x) SFY(x)
 bi_decl (bi_program_description (szVersion));
 #ifdef PICO_GUI
 bi_decl (bi_program_feature ("VGA display"));
 bi_decl (bi_program_feature ("USB host for keyboard"));
 #endif
 #ifdef PICO_GRAPH
-bi_decl (bi_program_feature ("VGA display"));
+bi_decl (bi_program_feature (MVL(PICO_GRAPH)" display"));
 #endif
 const char szVersion[] = "BBC BASIC for "PLATFORM
 #ifdef PICO_GUI
@@ -339,7 +341,7 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
     ", Bluetooth Console"
 #endif
 #ifdef PICO_GRAPH
-    ", VGA Display"
+    ", " MVL(PICO_GRAPH) " Display"
 #endif
 #ifdef HAVE_LFS
     ", Flash Filesystem"
@@ -376,8 +378,6 @@ const char szVersion[] = "BBC BASIC for "PLATFORM
 #elif MIN_STACK
     ", Min Stack"
 #endif
-#define SFY(x) #x
-#define MVL(x) SFY(x)
 #if PICO_STACK_CHECK > 0
     ", Stack Check " MVL(PICO_STACK_CHECK)
 #endif
@@ -396,6 +396,8 @@ timer_t UserTimerID;
 unsigned int palette[256];
 void *TTFcache[1];
 #ifdef PICO
+#include <stdbool.h>
+static bool bSysErr = false;
 extern heapptr libase;		// Base of libraries 
 extern void *libtop;        // Top of installed libraries
 #endif
@@ -2560,9 +2562,18 @@ void waitconsole(void){
 void syserror (const char *psMsg)
     {
 #ifdef PICO
-    waitconsole ();
-    text (psMsg);
-    text ("\r\n");
+    bSysErr = true;
+    if (waitdone)
+        {
+        text (psMsg);
+        text ("\r\n");
+        }
+    else
+        {
+        char *psErr = (char *)progRAM + strlen (progRAM);
+        strcpy (psErr, psMsg);
+        strcat (psErr, "\r\n");
+        }
 #else
 	fprintf (stderr, "%s\r\n", msg);
 #endif
@@ -2701,7 +2712,7 @@ void *main_init (int argc, char *argv[])
     else
         {
         iCyw = PICO_ERROR_NO_CYW43;
-#endif
+#endif  // HAVE_CYW43
         led_init ();
 #if HAVE_CYW43
         }
@@ -2732,9 +2743,7 @@ void *main_init (int argc, char *argv[])
     dma_channel_unclaim (0);  // Free DMA channel for video
     setup_vdu ();
     setup_keyboard ();
-    waitdone = 1;
-#endif
-#ifdef PICO_GRAPH
+#elif defined(PICO_GRAPH)
     dma_channel_unclaim (0);  // Free DMA channel for video
     setup_vdu ();
 #endif
@@ -2743,11 +2752,10 @@ void *main_init (int argc, char *argv[])
 #if PICO_SOUND == 3
     uart_set_baudrate (uart_default, PICO_DEFAULT_UART_BAUD_RATE);
 #endif
-#endif
-	mount ();
+#endif  // def PICO_SOUND
     cfgvar.next = (intptr_t)sysvar + (intptr_t)(&sysvar) - (intptr_t)(&cfgvar);
     ISTORE (&sysvar, (intptr_t)(&cfgvar) - (intptr_t)(&sysvar));
-#endif
+#endif  // def PICO
     int i;
     char *env, *p, *q;
     int exitcode = 0;
@@ -2834,8 +2842,8 @@ void *main_init (int argc, char *argv[])
   for a custom linker script that allocates most of the RAM to the
   stack.  For the default script userRAM = malloc(MaximumRAM);
 */
+#endif  // def PICO
 	if (userRAM) bzero(userRAM,MaximumRAM);
-#endif
 
 	if ((userRAM == NULL) || (userRAM == (void *)-1))
 	    {
@@ -2864,6 +2872,9 @@ void *main_init (int argc, char *argv[])
 #endif
 */
     allocbuf ();
+#ifdef PICO
+    mount ((char *)progRAM);
+#endif
 
 // Get path to executable:
 
@@ -2899,8 +2910,7 @@ void *main_init (int argc, char *argv[])
 	strcat (szAutoRun, ".bbc");
 
 	TestFile = fopen (szAutoRun, "rb");
-	if (TestFile != NULL)
-		fclose (TestFile);
+	if (TestFile != NULL) fclose (TestFile);
 	else if ((argc >= 2) && (*argv[1] != '-'))
 		strcpy (szAutoRun, argv[1]);
 
@@ -2917,7 +2927,7 @@ void *main_init (int argc, char *argv[])
 		progRAM = (void *)(((intptr_t) szCmdLine + strlen(szCmdLine) + 256) & -256);
 	    }
 
-	if (*szAutoRun && (NULL != (ProgFile = fopen (szAutoRun, "rb"))))
+	if ((! bSysErr) && *szAutoRun && (NULL != (ProgFile = fopen (szAutoRun, "rb"))))
 	    {
 		fread (progRAM, 1, userTOP - progRAM, ProgFile);
 		fclose (ProgFile);
@@ -2928,6 +2938,11 @@ void *main_init (int argc, char *argv[])
 	    {
 #ifdef PICO
 		waitconsole();
+        if (*((char *)progRAM))
+            {
+            text (progRAM);
+            memset (progRAM, 0, strlen (progRAM));
+            }
 #endif
 		immediate = (void *) 1;
 		*szAutoRun = '\0';

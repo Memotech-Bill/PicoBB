@@ -367,7 +367,7 @@ if (TARGET tinyusb_device)
       ../../include/pico
       )
     if ( NOT "${STDIO}" STREQUAL "PICO" )
-      target_compile_definitions(bbcbasic PUBLIC -DPICO_GRAPH)
+      target_compile_definitions(bbcbasic PUBLIC -DPICO_GRAPH=${GRAPH})
     endif ()
     target_compile_definitions(bbcbasic PUBLIC
       -DPICO_SCANVIDEO_MAX_SCANLINE_BUFFER_WORDS=402
@@ -402,7 +402,7 @@ if (TARGET tinyusb_device)
       -DHAVE_MOUSE=1
       )
     if ( NOT "${STDIO}" STREQUAL "PICO" )
-      target_compile_definitions(bbcbasic PUBLIC -DPICO_GRAPH)
+      target_compile_definitions(bbcbasic PUBLIC -DPICO_GRAPH=${GRAPH})
     endif ()
     target_link_libraries(bbcbasic
       hardware_gpio
