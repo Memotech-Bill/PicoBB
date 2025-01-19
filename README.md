@@ -147,7 +147,7 @@ Having completed the make, the following files should be in the folder:
 
 where "_xxx" is replaced by the name of the selected board.
 
-#### GUI Versions
+### GUI Versions
 
 The GUI version has been designed to run on a Pico attached to a VGA demonstration board as per
 chapter 3 of
@@ -211,9 +211,9 @@ board that provides pin connections for video, sound, SD card and serial.
 Thus to build a GUI version use:
 
         cd bin/pico
-        make BOARD=<pico_name> ADDON=<base_name>
+        make BOARD=<pico_type> ADDON=<base_name>
 
-Where <pico_name> is one of pico, pico_w, pico2 or pico2_w, and <base_name> is one of
+Where <pico_type> is one of pico, pico_w, pico2 or pico2_w, and <base_name> is one of
 vgaboard_sd, vgaboard_serial or vgaboard_cut (or another file specifying the pi connections).
 
 For third-party processor boards, identify the actual board using BOARD and specify the chip
@@ -229,6 +229,33 @@ Having completed the make, the following files should be in the folder:
 * bbcbasic+filesystem_gui_ppp_aaa.uf2 - A combination of the above two.
 
 where "ppp" is replaced by the name of the processor board and "aaa" by the name of the addon board.
+
+### LCD Build
+
+One possible custom build supports the Waveshare
+[Pico-ResTouch-LCD-3.5](https://www.waveshare.com/wiki/Pico-ResTouch-LCD-3.5).
+
+This board provides:
+
+* 320 x 480 LCD panel - Supported by both Portrait and Landscape display modes.
+* Resistive touch panel - Supported by MOUSE and ON MOUSE commands.
+* Mico SD card slot - Provides additional storage for both programs and data.
+
+This Waveshare board does not have a separate power socket, so power has to be applied via
+the Pico USB socket. This means that it is not possible to attach a USB keyboard to produce
+a stand-alone computer without modifying the hardware to provide a power input.
+
+This build is therefore programmed connected to a host computer with both power and user
+console supplied by the Pico USB socket. However, it is possible to write an auto-run program
+which uses the LCD screen and touch panel for user interaction. This can then be run stand-alone
+with power supplied via the Pico USB socket and no host computer.
+
+To build the version of PicoBB for the Waveshare Pico-ResTouch-LCD-3.5:
+
+        cd bin/pico
+        make BOARD=<pico_type> ADDON=wslcd35 GRAPH=wslcd35 SOUND=N FAT=Y
+
+Where <pico_type> is replaced by the type of Pico being used.
         
 ## Installation
 

@@ -82,7 +82,7 @@
         GPIO pins for interfacing by either not using the lsb of the video output or omitting
         either sound or SD card connections.</dd>
     </dl>
-    <p>Either of these major versions may be on boaards with or without a CYW43 wirless chip.
+    <p>Either of these major versions may be on boards with or without a CYW43 wirless chip.
       The CYW43 introduces the possibility of providing wireless networking. The builds which
       include network support have slightly less memory available to BASIC. It is possible to
       run either a with or without networking build on either a board with or without the CYW43
@@ -154,10 +154,14 @@
       restricted to 260 characters. A forward slash (/) is used as the path seperator. The
       standard BBC BASIC commands are used to access the files. Storeage in the flash is
       implemented using <a href="https://github.com/littlefs-project/littlefs">littlefs</a>.</p>
+    <p>A program named <b>/autorun.bbc</b> will be run automatically when the Pico is started.</p>
     <p>Additional storeage may be provided by an SD card reader attached to some of the Pico
       GPIO pins (this is default for the GUI builds). SD and SDHC cards are supported and the
       first FAT partition on the card is used. The contents of the SD card will appear under
       the folder <b>/sdcard/</b>.</p>
+    <p>If both flash and SD card storage are implemented, then a program stored on the SD card
+      will not auto-run by default. However a one line <b>/autorun.bbc</b> on the flash storage
+      could <b>CHAIN</b> to <b>/sdcard/autorun.bbc</b> (or another file name).</p>
     <h2 id="sysvar">System Variables & System Identification</h2>
     <p>The low byte (bits 0-7) of the system variable <code>@platform%</code> identifies the
       system on which a program is running. For any of the Pico builds this will have the
@@ -285,7 +289,7 @@
     <p>In general, PicoBB console builds do not support graphical output. Issuing graphics drawing commands
       from a program running in console mode will not produce an error, they just do not produce
       any output. However commands that attempt to interrogate the screen will generally fail.</p>
-    <p>There are two exceptions:</p>
+    <p>There are three exceptions:</p>
     <ul>
       <li>Normally the console builds send VT100 escape codes to the host computer to control the display.
         However there is an option to send BBC BASIC VDU codes instead. These could then be interpreted
@@ -296,7 +300,73 @@
       <li>While not supported by any of the four standard builds, there is a compilation option to
         include VGA output from a console build. With this option, if VGA output is selected, the
         graphics capabilities are the same as for the GUI builds.</li>
+      <li>Another compilation option is to include support for an SPI LCD display. With this option
+        the USB connecction is used for the console, and graphical output can be directed to the
+        LCD display.</li>
     </ul>
+    <h3>LCD Builds</h3>
+    <p>There is a compilation option to support the Waveshare
+      <a href="https://www.waveshare.com/wiki/Pico-ResTouch-LCD-3.5">Pico-ResTouch-LCD-3.5</a>
+      display board. This board is designed to take a Raspberry Pi Pico or Pico 2, and provides:</p>
+    <ul>
+      <li>A 320 x 480 LCD display.</li>
+      <li>Touch panel.</li>
+      <li>Micro SD card.</li>
+    </ul>
+    <p>The board does not have an independent power input, so unless the hardware is modified,
+      power has to be supplied via the Pico USB connector. Thus a typical build will be with
+      a USB console, with the LCD screen forming a second dispay, rather than having a keyboard
+      attached to form a stand-alone computer.</p>
+    <p>The LCD display supports the following modes:</p>
+    <table>
+      <thead>
+        <tr><th>Mode</th><th>Colours</th><th>Text</th><th>Graphics</th><th>Letterbox</th><th>Landscape</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>2</td><td>40 x 32</td><td>320 x 256</td><td>Y</td><td>N</td></tr>
+        <tr><td>1</td><td>4</td><td>40 x 32</td><td>320 x 256</td><td>Y</td><td>N</td></tr>
+        <tr><td>2</td><td>16</td><td>20 x 32</td><td>160 x 256</td><td>Y</td><td>N</td></tr>
+        <tr><td>3</td><td>2</td><td>40 x 25</td><td>320 x 225</td><td></td><td>N</td></tr>
+        <tr><td>4</td><td>2</td><td>40 x 32</td><td>320 x 256</td><td>Y</td><td>N</td></tr>
+        <tr><td>5</td><td>4</td><td>20 x 32</td><td>160 x 256</td><td>Y</td><td>N</td></tr>
+        <tr><td>6</td><td>2</td><td>40 x 25</td><td>320 x 225</td><td></td><td>N</td></tr>
+        <tr><td>7</td><td>8</td><td>40 x 25</td><td>Teletext</td><td></td><td>N</td></tr>
+        <tr><td>8</td><td>2</td><td>40 x 30</td><td>320 x 480</td><td></td><td>N</td></tr>
+        <tr><td>9</td><td>4</td><td>40 x 30</td><td>320 x 480</td><td></td><td>N</td></tr>
+        <tr><td>10</td><td>16</td><td>20 x 30</td><td>160 x 480</td><td></td><td>N</td></tr>
+        <tr><td>11</td><td>2</td><td>40 x 25</td><td>320 x 450</td><td></td><td>N</td></tr>
+        <tr><td>12</td><td>2</td><td>40 x 30</td><td>320 x 480</td><td></td><td>N</td></tr>
+        <tr><td>13</td><td>4</td><td>20 x 30</td><td>160 x 480</td><td></td><td>N</td></tr>
+        <tr><td>14</td><td>2</td><td>40 x 25</td><td>320 x 450</td><td></td><td>N</td></tr>
+        <tr><td>15</td><td>16</td><td>40 x 30</td><td>320 x 240</td><td></td><td>N</td></tr>
+        <tr><td>16</td><td>2</td><td>60 x 20</td><td>480 x 320</td><td>Y</td><td>Y</td></tr>
+        <tr><td>17</td><td>4</td><td>60 x 20</td><td>480 x 320</td><td>Y</td><td>Y</td></tr>
+        <tr><td>18</td><td>16</td><td>30 x 20</td><td>240 x 320</td><td>Y</td><td>Y</td></tr>
+        <tr><td>19</td><td>2</td><td>60 x 40</td><td>480 x 320</td><td></td><td>Y</td></tr>
+        <tr><td>20</td><td>4</td><td>60 x 40</td><td>480 x 320</td><td>Y</td><td>Y</td></tr>
+        <tr><td>21</td><td>16</td><td>30 x 40</td><td>240 x 320</td><td>Y</td><td>Y</td></tr>
+      </tbody>
+    </table>
+    <p>Modes 0-15 are for the LCD display in portrate orientation, and are as close as possible
+      to those for the VGA display given the limitation of half the number of horizontal pixels.</p>
+    <p>Modes 0-7 approximate those from the BBC Micro:</p>
+    <ul>
+      <li>Modes 0-2, 4 &amp; 5 only have 256 rows of pixels which are displayed in the centre of
+        the monitor so may appear squashed.</li>
+      <li>Modes 3 &amp; 6 can also display graphics.</li>
+      <li>Except for Mode 7, colours 8-15 are high intensity rather than flashing.</li>
+    </ul>
+    <p>Modes 17-21 are for the display in landscape orientation.</p>
+    <p>The generally most useful modes are mode 9, which is a four colour display with the highest resolution,
+      and mode 17, which the corrisponding mode in landscape orientation. The default mode on startup is mode 9.</p>
+    <p>The Pico display is paletted, with the number of colours displayed at any one time limited by
+      the graphics mode. The LCD output generated by the Waveshare board uses five bits for red and blue,
+      and six bits for green, giving 64k possible physical colours. The COLOUR command can be used
+      to map any of the possible colours onto the palette.</p>
+    <p>The touchpad on this board is supported by the MOUSE and ON MOUSE commands. Before using the
+      touchpad, it should be calibrated using the <b>tp_setup</b> program. The calibration is stored in
+      the file <b>/mouse.cfg</b>. This calibration will automatically be used whenever the <b>/mouse.cfg</b>
+      file is present. If it is absent, then a very approximate default configuration will be used.</p>
     <h2 id="sound">Sound</h2>
     <p>The console builds usually use the second ARM core on the Pico to produce high quality sound,
       equivalent to that produced by BBCSDL on other platforrms. The GUI builds, however, use the second
@@ -409,10 +479,17 @@
       Mouse support is not implemented, so testing for mouse button status will always return
       zero.</p>
     <h3>MOUSE</h3>
-    <p>PicoBB does not have a mouse interface. This command will not produce an error, but
-      it will not have much effect either. A command of the form <code>MOUSE x,y,b</code> will create
+    <p>For a build with LCD plus Touchpad the command <code>MOUSE x,y,b</code> will give the
+      current touch position, if any. If the panel is being touched, then <b>b</b> will be
+      <b>1</b> and <b>x</b> and <b>y</b> will give the touch position in graphics units. If
+      not being touched then <b>b</b> will be <b>0</b> and <b>x</b> and <b>y</b> will be <b>-1</b>.
+      Before using the touchpad, it should be calibrated by running the program <b>tp_setup</b>.</p>
+    <p>For builds without a touchpad a command of the form <code>MOUSE x,y,b</code> will create
       the specified variables, all with value zero.</p>
-    <h3>ON MOUSE, ON MOVE and ON SYS</h3>
+    <h3>ON MOUSE</h3>
+    <p>For builds with a touchpad this event will be triggered each time the pad is first touched.
+      For other builds this event will never be triggered.</p>
+    <h3>ON MOVE and ON SYS</h3>
     <p>The events trapped by these statements will never occur in PicoBB.</p>
     <h3>PLOT</h3>
     <p>With GUI builds, plotting modes 0 to 167 and 192 to 199 are implemented. Modes 168 to 191
@@ -454,6 +531,9 @@
         <td>*margins<br/>*mdisplay<br/>*noega<br/>*osk<br/>*play</td>
         <td>*printer<br/>*printerfont<br/>*screensave<br/>*sys</td></tr></table>
     <p>The following star commands differ from BBCSDL or are unique to PicoBB:</p>
+    <h3>*brightness</h3>
+    <p>Only for builds with an LCD panel, controls the brightness of the backlight. Values
+      between 0 and 100 may be selected.</p>
     <h3>*display</h3>
     <p>Only a limited implementation of this command is provided. A bitmap file can be loaded to
       fill the entire screen. The size and bit depth of the file must match the currently selected
