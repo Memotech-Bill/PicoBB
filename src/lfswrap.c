@@ -508,6 +508,71 @@ int myfseek (FILE *fp, long offset, int whence)
     return -1;
     }
 
+int myfextent (FILE *fp, long offset)
+    {
+    if (offset < 0) return -1;
+    FSTYPE fst = get_filetype (fp);
+#if DEBUG
+    dbgmsg ("fextent (%p, %d)\r\n", fp, offset);
+#endif
+#ifdef HAVE_FAT
+    if ( fst == fstFAT )
+        {
+        FRESULT fr;
+        FIL *pf = fatptr (fp);
+        long size = f_size (pf);
+        long posn = f_tell (pf);
+#if DEBUG
+        dbgmsg ("fsize (%p) fat = %d\r\n", fp, size);
+        dbgmsg ("ftell (%p) fat = %d\r\n", fp, posn);
+#endif
+        if (offset <= size)
+            {
+            fr = f_lseek (pf, offset);
+#if DEBUG
+            dbgmsg ("fseek fat offset = %d, fr = %d\r\n", offset, fr);
+#endif
+            if ( fr != FR_OK ) return -1;
+            fr = f_truncate (pf);
+            if ( fr != FR_OK ) return -1;
+            }
+        else if (size == 0)
+            {
+            fr = f_expand (pf, offset, 1);
+            if ( fr != FR_OK ) return -1;
+            return 0;
+            }
+        else
+            {
+            fr = f_seek (pf, offset);
+            if ( fr != FR_OK ) return -1;
+            }
+        if (posn > offset) posn = offset;
+        fr = f_seek (pf, posn);
+        if ( fr != FR_OK ) return -1;
+        return 0;
+        }
+#endif
+#ifdef HAVE_LFS
+    if ( fst == fstLFS )
+        {
+        lfs_file_t *pf = lfsptr (fp);
+        long size = lfs_file_size (&lfs_root, pf);
+        long posn = lfs_file_tell (&lfs_root, pf);
+        if (offset <= size)
+            {
+            int r = lfs_file_truncate (&lfs_root, pf, offset);
+            if (r < 0) return -1;
+            if (posn > offset) posn = offset;
+            r = lfs_file_seek (&lfs_root, pf, offset, LFS_SEEK_SET);
+            if (r < 0) return -1;
+            }
+        return 0;
+        }
+#endif
+    return -1;
+    }
+
 FILE *myfopen (const char *p, char *mode)
     {
     FILE *fp = (FILE *) malloc (sizeof (multi_file));

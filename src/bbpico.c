@@ -905,6 +905,12 @@ int vtint (int x, int y)
 	return -1;
     }
 
+// Get current MODE number:
+int getmode (void)
+    {
+	return modeno;
+    }
+
 // Get nearest palette index:
 int vpoint (int x, int y)
     {
@@ -2179,6 +2185,13 @@ long long getext (void *chan)
 	if (newptr > size)
 		return newptr;
 	return size;
+    }
+
+// Set file size (if possible):
+void setext (void *chan, long long ptr)
+    {
+	FILE *file = lookup (chan);
+    fextent (file, ptr);
     }
 
 // Get EOF status:

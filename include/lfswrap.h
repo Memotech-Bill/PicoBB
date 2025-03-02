@@ -25,6 +25,7 @@ extern int myusleep(useconds_t usec);
 extern unsigned int mysleep(unsigned int seconds);
 extern long myftell(FILE *fp);
 extern int myfseek(FILE *fp, long offset, int whence);
+extern int myfextent(FILE *fp, long offset);
 extern FILE *myfopen(const char *pathname, char *mode);
 extern int myfclose(FILE *fp);
 extern size_t myfread(void *ptr, size_t size, size_t nmemb, FILE *fp);
@@ -50,6 +51,7 @@ extern int mount(char *psMsg);
 #define fwrite myfwrite
 #define fseek myfseek
 #define ftell myftell
+#define fextent myfextent
 #define opendir myopendir
 #define readdir myreaddir
 #define closedir myclosedir
