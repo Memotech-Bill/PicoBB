@@ -544,11 +544,11 @@ int myfextent (FILE *fp, long offset)
             }
         else
             {
-            fr = f_seek (pf, offset);
+            fr = f_lseek (pf, offset);
             if ( fr != FR_OK ) return -1;
             }
         if (posn > offset) posn = offset;
-        fr = f_seek (pf, posn);
+        fr = f_lseek (pf, posn);
         if ( fr != FR_OK ) return -1;
         return 0;
         }

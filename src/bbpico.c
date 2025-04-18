@@ -877,6 +877,12 @@ void quiet (void)
     }
 #endif
 
+// Get current MODE number:
+int getmodeno (void)
+    {
+	return modeno;
+    }
+
 #ifndef PICO_GUI
 // Get text cursor (caret) coordinates:
 void getcsr(int *px, int *py)
@@ -903,12 +909,6 @@ int vtint (int x, int y)
 #endif
 	error (255, "Sorry, TINT not implemented");
 	return -1;
-    }
-
-// Get current MODE number:
-int getmode (void)
-    {
-	return modeno;
     }
 
 // Get nearest palette index:

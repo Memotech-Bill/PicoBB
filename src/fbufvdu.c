@@ -107,7 +107,6 @@ extern short int forgnd;                // Graphics foreground colour/action
 extern short int bakgnd;                // Graphics background colour/action
 extern unsigned char txtfor;            // Text foreground colour
 extern unsigned char txtbak;            // Text background colour
-extern unsigned char modeno;            // Mode number
 extern int bPaletted;                   // @ispal%
 extern int sizex;                       // Total width of client area
 extern int sizey;                       // Total height of client area
