@@ -135,3 +135,35 @@ match any build.
 The header is followed by a list of filenames (which may include wildcards) to be
 copied into the LittleFS image if the <device> and <build> options in the header
 line are matched by the command line options.
+
+## uf2dump
+
+Extracts binary images from a UF2 file.
+
+Usage: `uf2dump <UF2 file> [<image file> [...]]`
+
+Each continuous range of addresses within the UF2 file is assumed to be a binary image.
+Any discontinuity in address is assumed to mark the start of a new image.
+
+If only the UF2 file name is specified, then the address range of each image in the UF2
+file will be listed. To extract images, append a file name for each image in sequence to
+the command line. To skip over an image without extracting it, use **-** in place of a
+file name.
+
+## lfsdump
+
+Extracts files from a Little FS binary image.
+
+Usage: `lfsdump <LFS image file> [<top folder> [<output folder>]]`
+
+If only the `<LFS image file>` is specified, then all of the folders and files in the image
+will be listed.
+
+If the `<top folder>` is specified, then only the files in this folder on the LFS filesystem
+and any sub-folders will be listed.
+
+If the `<output folder>` is specified, then all files in the `<top folder>` and any sub-folders
+will be copied into the `<output folder>` on the host filesystem. `<output folder>` must exist
+before running the program.
+
+TODO: Improve error checking.

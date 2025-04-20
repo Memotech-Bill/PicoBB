@@ -57,6 +57,8 @@ wifi.cfg
 mklfsimage
 uf2conv
 uf2merge
+uf2dump
+lfsdump
 tree
 sympico.h
 sym_*.txt
