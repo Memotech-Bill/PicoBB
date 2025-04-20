@@ -1,8 +1,8 @@
 REM Program to demonstrate the 'mysqllib' library for 'BBC BASIC for SDL 2.0'
 REM (should also work with 'BBC BASIC for Windows'). R.T.Russell 18-Aug-2022
 
-REM SERV$ = "mysql-rfam-public.ebi.ac.uk"
-SERV$ = "193.62.194.222"
+SERV$ = "mysql-rfam-public.ebi.ac.uk"
+REM SERV$ = "193.62.194.222"
 PORT$ = "4497"
 USER$ = "rfamro"
 PASS$ = ""

@@ -238,7 +238,7 @@ P% = INSTR(host$, ".")
 host$ = MID$(host$, P%+1)
 NEXT
 ELSE
-SYS "net_dns_get_ip", PTR(host$), 10000, ^IPaddress.host% TO I%
+SYS "net_dns_get_ip", host$, 10000, ^IPaddress.host% TO I%
 IF I% = 0 THEN H% = IPaddress.host% ELSE H% = FALSE
 ENDIF
 = H%

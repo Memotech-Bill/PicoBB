@@ -641,13 +641,14 @@ int net_dns_get_ip (const char *host, uint32_t timeout, ip_addr_t *ipaddr)
     if ( timeout == 0 ) net_tend = at_the_end_of_time;
     else                net_tend = make_timeout_time_ms (timeout);
     err_t err = dns_gethostbyname (host, &fip.ipaddr, net_dns_found_cb, &fip);
-    DPRINT ("err = %d\n", err);
+    DPRINT ("&fip = %p, err = %d\n", &fip, err);
     if ( err == ERR_INPROGRESS )
         {
         while (( fip.err == STATE_WAITING ) && ( net_continue () ))
             {
             net_wait ();
             }
+        DPRINT ("&fip = %p, fip.err = %d, fip.ipaddr = 0x%08X\n", &fip, fip.err, fip.ipaddr);
         if ( fip.err == STATE_WAITING )
             {
             DPRINT ("net_dns_get_ip: Timeout = %d\n", timeout);
