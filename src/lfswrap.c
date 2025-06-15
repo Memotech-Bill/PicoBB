@@ -1164,12 +1164,17 @@ int mount (char *psMsg)
             }
         if (lfs_ver != LFS_DISK_VERSION)
             {
-            syserror ("Invalid VFS version");
+            syserror ("Invalid LFS version");
             return 2;
             }
         if (lfs_bsz != FLASH_SECTOR_SIZE)
             {
             syserror ("Invalid flash sector size");
+            return 2;
+            }
+        if (lfs_bct == 0)
+            {
+            syserror ("Zero LittleFS image size");
             return 2;
             }
         if (lfs_bbc_cfg.buffer + lfs_bsz * lfs_bct > (void *)(XIP_BASE + PICO_FLASH_SIZE_BYTES))
