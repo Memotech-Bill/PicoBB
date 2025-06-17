@@ -1187,7 +1187,7 @@ int mount (char *psMsg)
     else
         {
         lfs_bbc_cfg.buffer = (void *)(XIP_BASE + ROOT_OFFSET);
-        lfs_root_cfg.block_count = ROOT_SIZE;
+        lfs_root_cfg.block_count = ROOT_SIZE / FLASH_SECTOR_SIZE;
         }
 #else
 #error Define location of LFS storage
