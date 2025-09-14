@@ -37,6 +37,9 @@
 #include "class/hid/hid.h"
 #endif
 
+uint8_t kbd_addr;
+uint8_t kbd_inst;
+
 #define DEBUG   0
 
 // Defined in bbccon.c
@@ -47,10 +50,11 @@ static uint8_t led_flags = 0;
 
 void set_leds (uint8_t leds)
     {
-    uint8_t const addr = 1;
     led_flags = leds;
+#if KBD_VERSION == 3
+    uint8_t const addr = 1;
 
-    tusb_control_request_t ledreq = {
+    static tusb_control_request_t ledreq = {
         .bmRequestType_bit.recipient = TUSB_REQ_RCPT_INTERFACE,
         .bmRequestType_bit.type = TUSB_REQ_TYPE_CLASS,
         .bmRequestType_bit.direction = TUSB_DIR_OUT,
@@ -60,16 +64,29 @@ void set_leds (uint8_t leds)
         .wLength = sizeof (led_flags)
         };
     
-#if KBD_VERSION == 3
     bool bRes = tuh_control_xfer (addr, &ledreq, &led_flags, NULL);
-#elif KBD_VERSION >= 4
-    tuh_xfer_t ledxfer = {
+#elif KBD_VERSION == 4
+    uint8_t const addr = 1;
+
+    static tusb_control_request_t ledreq = {
+        .bmRequestType_bit.recipient = TUSB_REQ_RCPT_INTERFACE,
+        .bmRequestType_bit.type = TUSB_REQ_TYPE_CLASS,
+        .bmRequestType_bit.direction = TUSB_DIR_OUT,
+        .bRequest = HID_REQ_CONTROL_SET_REPORT,
+        .wValue = HID_REPORT_TYPE_OUTPUT << 8,
+        .wIndex = 0,    // Interface number
+        .wLength = sizeof (led_flags)
+        };
+    
+    static tuh_xfer_t ledxfer = {
         .daddr = addr,
         .setup = &ledreq,
         .buffer = &led_flags,
         .complete_cb = NULL
         };
     bool bRes = tuh_control_xfer (&ledxfer);
+#elif KBD_VERSION == 5
+    tuh_hid_set_report(kbd_addr, kbd_inst, 0, HID_REPORT_TYPE_OUTPUT, &led_flags, sizeof(led_flags));
 #endif
     }
 
@@ -373,7 +390,6 @@ void hid_task (void)
 // Each HID instance can has multiple reports
 
 #define MAX_REPORT  4
-static uint8_t kbd_addr;
 static uint8_t _report_count;
 static tuh_hid_report_info_t _report_info_arr[MAX_REPORT];
 
@@ -510,6 +526,15 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
     const char* protocol_str[] = { "None", "Keyboard", "Mouse" };
     printf("HID Interface Protocol = %s\r\n", protocol_str[itf_protocol]);
 #endif
+
+    if ( itf_protocol == HID_ITF_PROTOCOL_KEYBOARD )
+        {
+        kbd_addr = dev_addr;
+        kbd_inst = instance;
+#if DEBUG > 0
+        printf ("Keyboard mounted: dev_addr = %d\n", dev_addr);
+#endif
+        }
 
     // By default host stack will use activate boot protocol on supported interface.
     // Therefore for this simple example, we only need to parse generic report descriptor
