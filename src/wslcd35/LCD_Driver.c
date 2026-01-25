@@ -524,7 +524,7 @@ parameter:
 ********************************************************************************/
 void LCD_SetCursor(POINT Xpoint, POINT Ypoint)
     {
-	LCD_SetWindow(Xpoint, Ypoint, Xpoint, Ypoint);
+	LCD_SetWindow(Xpoint, Ypoint, Xpoint + 1, Ypoint + 1);
     }
 
 /********************************************************************************
