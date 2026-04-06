@@ -30,6 +30,10 @@ if ( "${STDIO}" STREQUAL "PICO" )
   if (NOT GRAPH)
     set (GRAPH "VGA")
   endif ()
+elseif ( "${STDIO}" STREQUAL "PICOCALC" )
+  if (NOT GRAPH)
+    set (GRAPH "PICOCALC")
+  endif ()
 endif ()
 if ( "${GRAPH}" STREQUAL "Y" )
   set (GRAPH "VGA")
@@ -237,7 +241,7 @@ if (TARGET tinyusb_device)
         pico_lwip
         pico_lwip_nosys)
       target_compile_definitions(bbcbasic PUBLIC HAVE_CYW43=2)
-      set(OS_SIZE 72)
+      set(OS_SIZE 74)
     elseif( CYW43 )
       message(STATUS "Pico W CYW43 background support")
       target_sources(bbcbasic PRIVATE ../../src/pico/network_cyw43.c)
@@ -252,7 +256,7 @@ if (TARGET tinyusb_device)
           picobb_lwip
           picobb_lwip_nosys)
       else()
-        set(OS_SIZE 72)
+        set(OS_SIZE 74)
         target_link_libraries(bbcbasic
           pico_cyw43_arch_lwip_threadsafe_background
           pico_lwip
@@ -302,14 +306,15 @@ if (TARGET tinyusb_device)
     target_compile_definitions(bbcbasic PUBLIC
       -DHAVE_LFS
       )
+    target_compile_definitions(bbcbasic PUBLIC
+      -DROOT_SIZE=0x100000
+      )
     if(${PICO_CHIP} STREQUAL "rp2350")
       target_compile_definitions(bbcbasic PUBLIC
-        -DROOT_SIZE=0x100000
         -DROOT_OFFSET=0x300000
         )
     else()
       target_compile_definitions(bbcbasic PUBLIC
-        -DROOT_SIZE=0x100000
         -DROOT_OFFSET=0x100000
         )
     endif()
@@ -408,6 +413,25 @@ if (TARGET tinyusb_device)
       hardware_gpio
       hardware_spi
       )
+  elseif ( "${GRAPH}" STREQUAL "PICOCALC" )
+    message(STATUS "PicoCalc LCD Graphics Output")
+    target_sources(bbcbasic PRIVATE
+      ../../src/fbufvdu.c
+      ../../src/fbufctl.c
+      ../../src/pico/periodic.c
+      ../../src/PicoCalc/pc_lcd.c
+      )
+    target_compile_definitions(bbcbasic PUBLIC
+      -DVDU_OUT=pclcd_out
+      -DVDU_OUT_INT=pclcd_out
+      -DVDU_SCROLL=pclcd_scroll
+      -DVDU_OUT7=pclcd_out7
+      -DVDU_SCROLL7=pclcd_scroll7
+      )
+    target_link_libraries(bbcbasic
+      hardware_gpio
+      hardware_spi
+      )
   elseif ( GRAPH AND (NOT "${GRAPH}" STREQUAL "NONE") )
     message(FATAL_ERROR "Unsupported graphical display ${GRAPH}")
   endif()
@@ -437,6 +461,42 @@ if (TARGET tinyusb_device)
     target_link_libraries(bbcbasic
       tinyusb_host
       tinyusb_board
+      )
+  elseif ( "${STDIO}" STREQUAL "PICOCALC" )
+    message(STATUS "BBC Basic console I/O will be on PicoCalc keyboard and ${GRAPH} screen")
+      message(STATUS "BBC Basic console I/O will be on USB")
+      target_sources(bbcbasic PRIVATE
+        ../../src/pico/pico_boot.c
+        )
+      target_link_libraries(bbcbasic
+        pico_stdio_usb
+        )
+      pico_enable_stdio_usb(bbcbasic 1)
+      target_compile_definitions(bbcbasic PRIVATE -DSTDIO_USB)
+      target_compile_definitions(bbcbasic PUBLIC
+        PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
+        PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=0
+        )
+      message(STATUS "BBC Basic console I/O will be on UART")
+      target_link_libraries(bbcbasic
+        pico_stdio_uart
+        )
+      pico_enable_stdio_uart(bbcbasic 1)
+      target_compile_definitions(bbcbasic PRIVATE -DSTDIO_UART)
+    # if (${PRINTER})
+    #   pico_enable_stdio_uart(bbcbasic 1)
+    #   target_compile_definitions(bbcbasic PRIVATE -DHAVE_PRINTER)
+    # elseif (${SERIAL_DEV} EQUAL -1)
+    #   pico_enable_stdio_uart(bbcbasic 1)
+    # else()
+    #   pico_enable_stdio_uart(bbcbasic 0)
+    # endif()
+    target_sources(bbcbasic PRIVATE
+      ../../src/PicoCalc/pc_kbd.c
+      )
+    target_compile_definitions(bbcbasic PRIVATE
+      -DPICO_GUI
+      -DGUI_SERIAL=${GUI_SERIAL}
       )
   else()
     target_sources(bbcbasic PRIVATE

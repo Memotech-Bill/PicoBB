@@ -116,6 +116,21 @@ SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
 	../../src/pico/symbols/sdk_stdio_usb.txt
 EXAMPLE_FILES += ../../bin/pico/examples/* \
 		../../bin/pico/examples/graphics/*
+else ifeq ($(STDIO), PicoCalc)
+GUI_SOURCES = \
+    ../../boards/picocalc.h \
+    ../../include/font_tt.h \
+	../../include/fbufvdu.h \
+	../../include/periodic.h \
+    ../../src/fbufvdu.c \
+    ../../src/fbufctl.c \
+	../../src/pico/periodic.c \
+	../../src/PicoCalc/pc_lcd.c \
+	../../src/PicoCalc/pc_kbd.c
+SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
+	../../src/pico/symbols/sdk_stdio_usb.txt
+EXAMPLE_FILES += ../../bin/pico/examples/* \
+		../../bin/pico/examples/graphics/*
 else
 GUI_SOURCES = ../../src/pico/zmodem.c
 SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \

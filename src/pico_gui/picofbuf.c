@@ -44,6 +44,10 @@ extern int lasty;                       // Graphics cursor y-position (pixels)
 extern unsigned char cursa;             // Start (top) line of cursor
 extern unsigned char cursb;             // Finish (bottom) line of cursor
 extern void *vpage;                     // Address of start of BASIC program memory
+extern short int forgnd;                // Graphics foreground colour/action
+extern short int bakgnd;                // Graphics background colour/action
+extern unsigned char txtfor;            // Text foreground colour
+extern unsigned char txtbak;            // Text background colour
 
 // Variables defined in fbufvdu.c
 extern int xcsr;                        // Text cursor horizontal position
@@ -69,6 +73,8 @@ static MODE curmode;
 static uint8_t  *framebuf = NULL;
 static volatile uint8_t  *displaybuf = NULL;
 
+static uint16_t curpal[16];             // Current palette
+
 static const uint16_t defpal[16] =
     {
     PICO_SCANVIDEO_PIXEL_FROM_RGB8(  0u,   0u,   0u),
@@ -91,7 +97,7 @@ static const uint16_t defpal[16] =
 
 static const uint32_t ttcsr = PICO_SCANVIDEO_PIXEL_FROM_RGB8(255u, 255u, 255u)
     | ( (PICO_SCANVIDEO_PIXEL_FROM_RGB8(255u, 255u, 255u)) << 16 );
-
+/*
 static const uint32_t cpx02[] = { 0x00000000, 0xFFFFFFFF };
 static const uint32_t cpx04[] = { 0x00000000, 0x55555555, 0xAAAAAAAA, 0xFFFFFFFF };
 static const uint32_t cpx16[] = { 0x00000000, 0x11111111, 0x22222222, 0x33333333,
@@ -107,7 +113,7 @@ static CLRDEF clrdef[] = {
     {   8,  NULL,   0, 0x07,       0x00},
     {  16, cpx16,   2, 0x0F, 0xFFFFFFFF}
     };
-
+*/
 #if HIRES    // 800x600 VGA
 static const MODE modes[] = {
 // ncbt gcol grow tcol trw  vmg hmg pb nbpl ys thg
@@ -649,18 +655,14 @@ void bufswap (uint8_t *fbuf)
         }
     }
 
-uint16_t defclr (int clr)
-    {
-    return defpal[clr];
-    }
-
 uint16_t rgbclr (int r, int g, int b)
     {
     return PICO_SCANVIDEO_PIXEL_FROM_RGB8(r, g, b);
     }
 
-int clrrgb (uint16_t clr)
+int clrrgb (int clr)
     {
+    clr = curpal[clr];
     return ( PICO_SCANVIDEO_R5_FROM_PIXEL(clr) << 3 )
         | ( PICO_SCANVIDEO_G5_FROM_PIXEL(clr) << 11 )
         | ( PICO_SCANVIDEO_B5_FROM_PIXEL(clr) << 19 );
@@ -675,7 +677,7 @@ void genrb (uint16_t *curpal)
     int nbuf = 256;
     int npix = 8 / curmode.ncbt;
     int nrpt = curmode.nppb / npix;
-    uint32_t clrmsk = clrdef[curmode.ncbt].clrmsk;
+    uint32_t clrmsk = (1 << curmode.ncbt) - 1;
     if ( curmode.nppb == 16 )
         {
         nbuf = 16;
@@ -700,7 +702,62 @@ void genrb (uint16_t *curpal)
 #endif
     }
 
-bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd, CLRDEF **ppcd)
+void clrreset (const MODE *pmode)
+    {
+    if ( pmode->ncbt == 1 )
+        {
+#if DEBUG & 2
+        printf ("clrreset: nclr = 2\n");
+#endif
+        curpal[0] = defpal[0];
+        curpal[1] = defpal[15];
+        }
+    else if ( pmode->ncbt == 2 )
+        {
+#if DEBUG & 2
+        printf ("clrreset: nclr = 4\n");
+#endif
+        curpal[0] = defpal[0];
+        curpal[1] = defpal[9];
+        curpal[2] = defpal[11];
+        curpal[3] = defpal[15];
+        }
+    else if ( pmode->ncbt == 3 )
+        {
+#if DEBUG & 2
+        printf ("clrreset: nclr = 4\n");
+#endif
+        curpal[0] = defpal[0];
+        for (int i = 1; i < 8; ++i)
+            {
+            curpal[i] = defpal[i+8];
+            }
+        }
+    else
+        {
+#if DEBUG & 2
+        printf ("clrreset: nclr = 16\n");
+#endif
+        for (int i = 0; i < 16; ++i)
+            {
+            curpal[i] = defpal[i];
+            }
+        }
+    genrb (curpal);
+    }
+
+void clrset (int pal, int phy, int r, int g, int b)
+    {
+    if ( phy < 16 ) curpal[pal] = defpal[phy];
+    else if ( phy == 16 ) curpal[pal] = rgbclr (r, g, b);
+    else if ( phy == 255 ) curpal[pal] = rgbclr (8*r, 8*g, 8*b);
+#if DEBUG & 2
+    printf ("curpal[%d] = 0x%04X\n", pal, curpal[pal]);
+#endif
+    genrb (curpal);
+    }
+
+bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd)
     {
 #if DEBUG & 1
     printf ("setmode (%d)\n", mode);
@@ -715,7 +772,6 @@ bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd, CLRDEF **ppcd)
         csrhgt = 1;
         *pfbuf = framebuf;
         *ppmd = &curmode;
-        *ppcd = &clrdef[curmode.ncbt];
         if ( curmode.ncbt == 3 ) memcpy (&framebuf[curmode.trow * curmode.tcol], font_tt, sizeof (font_tt));
         return true;
         }
@@ -746,13 +802,13 @@ void dispmode (void)
 bool txtmode (int code, int *pdata1, int *pdata2)
     {
     if ((code & 0x7F) >= sizeof (modes) / sizeof (modes[0])) return false;
-    MODE *pmode = &modes[(code & 0x7F)];
+    const MODE *pmode = &modes[(code & 0x7F)];
     *pdata2 = (pmode->gcol << 8) | (pmode->grow << 24);
     *pdata1 = (pmode->grow >> 8) | 0x0800 | (pmode->thgt << 16) | (0x01000000 << pmode->ncbt);
     return true;
     }
 
-int setup_vdu (void)
+void setup_vdu (void)
     {
 #if DEBUG & 1
 #if HIRES

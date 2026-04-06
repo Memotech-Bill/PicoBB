@@ -2751,13 +2751,10 @@ void *main_init (int argc, char *argv[])
 #endif
 	char *cmdline[]={"/autorun.bbc",0};
 	argc=1; argv=cmdline;
-#ifdef PICO_GUI
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
     dma_channel_unclaim (0);  // Free DMA channel for video
     setup_vdu ();
     setup_keyboard ();
-#elif defined(PICO_GRAPH)
-    dma_channel_unclaim (0);  // Free DMA channel for video
-    setup_vdu ();
 #endif
 #ifdef PICO_SOUND
     snd_setup ();

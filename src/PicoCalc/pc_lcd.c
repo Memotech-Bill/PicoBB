@@ -1,17 +1,20 @@
-// wslcd35.c - Output to a Waveshare 3.5 inch LCD
+/* pc_lcd.c - Output to the PicoCalc LCD */
+
 #include <stdio.h>
 #include <string.h>
 #include <hardware/sync.h>
+#include <hardware/gpio.h>
+#include <hardware/spi.h>
+#include <pico/time.h>
 #include "fbufvdu.h"
 #include "lfswrap.h"
 #include "bbccon.h"
 #include "picocli.h"
 #include "periodic.h"
-#include "LCD_Driver.h"
 
 #include "font_tt.h"
 
-#define WM_LBUTTONDOWN 0x0201
+#define RGB     16
 
 void modechg (char mode);
 void error (int iErr, const char *psErr);
@@ -46,11 +49,17 @@ extern int nCsrHide;                    // Non-zero to hide cursor
 extern int csrhgt;                      // Height of cursor
 extern int csrtop;                      // Top of cursor in text line
 
+#if RGB == 18
+#define colour_t uint32_t
+#define PIXEL_FROM_RGB8(r, g, b)    (((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b))
+#else
+#define colour_t uint16_t
 #define PIXEL_FROM_RGB8(r, g, b)    (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3))
+#endif
 
-static uint16_t curpal[16];             // Current palette
+static colour_t curpal[16];             // Current palette
 
-static const uint16_t defpal[16] =
+static const colour_t defpal[16] =
     {
     PIXEL_FROM_RGB8(  0u,   0u,   0u),
     PIXEL_FROM_RGB8(128u,   0u,   0u),
@@ -69,123 +78,347 @@ static const uint16_t defpal[16] =
     PIXEL_FROM_RGB8(  0u, 255u, 255u),
     PIXEL_FROM_RGB8(255u, 255u, 255u)
     };
-/*
-static const uint32_t cpx02[] = { 0x00000000, 0xFFFFFFFF };
-static const uint32_t cpx04[] = { 0x00000000, 0x55555555, 0xAAAAAAAA, 0xFFFFFFFF };
-static const uint32_t cpx16[] = { 0x00000000, 0x11111111, 0x22222222, 0x33333333,
-                                  0x44444444, 0x55555555, 0x66666666, 0x77777777,
-                                  0x88888888, 0x99999999, 0xAAAAAAAA, 0xBBBBBBBB,
-                                  0xCCCCCCCC, 0xDDDDDDDD, 0xEEEEEEEE, 0xFFFFFFFF };
-
-static CLRDEF clrdef[] = {
-//   nclr,   cpx, bsh, clrm,     csrmsk
-    {   0,  NULL,   0, 0x00,       0x00},
-    {   2, cpx02,   0, 0x01, 0x000000FF},
-    {   4, cpx04,   1, 0x03, 0x0000FFFF},
-    {   8,  NULL,   0, 0x07,       0x00},
-    {  16, cpx16,   2, 0x0F, 0xFFFFFFFF}
-    };
-*/
-#define LS  0x10000
 
 static const MODE modes[] = {
 // ncbt gcol grow tcol trw  vmg hmg pb nbpl ys thg
-    { 1, 320, 256,  40, 32, 111,  0,  8,  40, 0,  8},   // Mode  0 - 10KB
-    { 2, 320, 256,  40, 32, 111,  0,  4,  80, 0,  8},   // Mode  1 - 20KB
-    { 4, 160, 256,  20, 32, 111,  0,  4,  80, 0,  8},   // Mode  2 - 20KB
-    { 1, 320, 225,  40, 25,  15,  0,  8,  40, 1,  9},   // Mode  3 - 10KB
-    { 1, 320, 256,  40, 32, 111,  0,  8,  40, 0,  8},   // Mode  4 - 10KB
-    { 2, 160, 256,  20, 32, 111,  0,  8,  40, 0,  8},   // Mode  5 - 10KB
-    { 1, 320, 225,  40, 25,  15,  0,  8,  40, 1,  9},   // Mode  6 - 10KB
-    { 3, 320, 225,  40, 25,  15,  0,  8, 160, 1,TTH},   // Mode  7 - ~1KB - Teletext
-    { 1, 320, 480,  40, 30,   0,  0,  8,  40, 0, 16},   // Mode  8 - 19KB
-    { 2, 320, 480,  40, 30,   0,  0,  4,  80, 0, 16},   // Mode  9 - 37.5KB
-    { 4, 160, 480,  20, 30,   0,  0,  4,  80, 0, 16},   // Mode 10 - 37.5KB
-    { 1, 320, 450,  40, 25,  15,  0,  8,  40, 0, 18},   // Mode 11 - 19KB
-    { 1, 320, 480,  40, 30,   0,  0,  8,  40, 0, 16},   // Mode 12 - 18.75KB
-    { 2, 160, 480,  20, 30,   0,  0,  8,  40, 0, 16},   // Mode 13 - 18.75KB
-    { 1, 320, 450,  40, 25,  15,  0,  8,  40, 0, 18},   // Mode 14 - 18.75KB
-    { 4, 320, 240,  40, 30,   0,  0,  2, 160, 1,  8},   // Mode 15 - 37.5KB
-    { 1, 480, 320,  60, 20,   0, LS,  8,  60, 0, 16},   // Mode 16 - 18.75KB
-    { 2, 480, 320,  60, 20,   0, LS,  4, 120, 0, 16},   // Mode 17 - 37.5KB
-    { 4, 240, 320,  30, 20,   0, LS,  8,  60, 1, 16},   // Mode 18 - 37.5KB
-    { 1, 480, 320,  60, 40,   0, LS,  8,  60, 0,  8},   // Mode 19 - 18.75KB
-    { 2, 480, 320,  60, 40,   0, LS,  4, 120, 0,  8},   // Mode 20 - 37.5KB
-    { 4, 240, 320,  30, 40,   0, LS,  8,  60, 1,  8},   // Mode 21 - 37.5KB
+    { 1, 320, 256,  40, 32,  32,  0,  8,  40, 0,  8},   // Mode  0 - 10KB
+    { 2, 320, 256,  40, 32,  32,  0,  4,  80, 0,  8},   // Mode  1 - 20KB
+    { 4, 160, 256,  20, 32,  32,  0,  4,  80, 0,  8},   // Mode  2 - 20KB
+    { 1, 320, 225,  40, 25,  47,  0,  8,  40, 0,  9},   // Mode  3 - 10KB
+    { 1, 320, 256,  40, 32,  32,  0,  8,  40, 0,  8},   // Mode  4 - 10KB
+    { 2, 160, 256,  20, 32,  32,  0,  8,  40, 0,  8},   // Mode  5 - 10KB
+    { 1, 320, 225,  40, 25,  47,  0,  8,  40, 0,  9},   // Mode  6 - 10KB
+    { 3, 320, 225,  40, 25,  47,  0,  8, 160, 0,TTH},   // Mode  7 - ~1KB - Teletext
+    { 1, 320, 320,  40, 20,   0,  0,  8,  40, 0, 16},   // Mode  8 - 19KB
+    { 2, 320, 320,  40, 20,   0,  0,  4,  80, 0, 16},   // Mode  9 - 37.5KB
+    { 4, 160, 320,  20, 20,   0,  0,  4,  80, 0, 16},   // Mode 10 - 37.5KB
+    { 1, 320, 288,  40, 16,  15,  0,  8,  40, 0, 18},   // Mode 11 - 19KB
+    { 1, 320, 320,  40, 40,   0,  0,  8,  40, 0,  8},   // Mode 12 - 19KB
+    { 2, 320, 320,  40, 40,   0,  0,  4,  80, 0,  8},   // Mode 13 - 37.5KB
+    { 4, 160, 320,  20, 40,   0,  0,  4,  80, 0,  8},   // Mode 14 - 37.5KB
+    { 1, 320, 288,  40, 32,  15,  0,  8,  40, 0,  9},   // Mode 15 - 19KB
     };
 
 static CLIFUNC excli = NULL;
 static MODE curmode;
 static uint8_t *framebuf = NULL;
 static bool bInverse = false;
-static bool bLScape = false;
 static int nrow = 480;
 static int scrltop = 0;
 static int xscl = 1;
 static int yscl = 1;
-static CLRDEF *cdef = NULL;
 
 #include "pico/binary_info.h"
-bi_decl (bi_1pin_with_name (LCD_DC_PIN,   "LCD command / data"));
-bi_decl (bi_1pin_with_name (LCD_CS_PIN,   "LCD chip select"));
-bi_decl (bi_1pin_with_name (LCD_CLK_PIN,  "LCD clock"));
-bi_decl (bi_1pin_with_name (LCD_MOSI_PIN, "LCD data in"));
-bi_decl (bi_1pin_with_name (LCD_BKL_PIN,  "LCD backlight"));
-bi_decl (bi_1pin_with_name (LCD_RST_PIN,  "LCD reset"));
-bi_decl (bi_1pin_with_name (TP_CLK_PIN,   "Touchpad clock"));
-bi_decl (bi_1pin_with_name (TP_MOSI_PIN,  "Touchpad data in"));
-bi_decl (bi_1pin_with_name (TP_MISO_PIN,  "Touchpad data out"));
-bi_decl (bi_1pin_with_name (TP_CS_PIN,    "Touchpad chip select"));
-bi_decl (bi_1pin_with_name (TP_IRQ_PIN,   "Touchpad interrupt"));
+bi_decl (bi_1pin_with_name (PICO_LCD_DC_PIN,    "LCD command / data"));
+bi_decl (bi_1pin_with_name (PICO_LCD_CS_PIN,    "LCD chip select"));
+bi_decl (bi_1pin_with_name (PICO_LCD_CLK_PIN,   "LCD clock"));
+bi_decl (bi_1pin_with_name (PICO_LCD_TX_PIN,    "LCD data send"));
+bi_decl (bi_1pin_with_name (PICO_LCD_RX_PIN,    "LCD data receive"));
+bi_decl (bi_1pin_with_name (PICO_LCD_RST_PIN,   "LCD reset"));
 
-// Control Access to SPI
+#ifndef PICO_LCD_RX_PIN
+#define PICO_LCD_RX_PIN 16
+#endif
+#ifndef PICO_LCD_CS_PIN
+#define PICO_LCD_CS_PIN 17
+#endif
+#ifndef PICO_LCD_CLK_PIN
+#define PICO_LCD_CLK_PIN 18
+#endif
+#ifndef PICO_LCD_TX_PIN
+#define PICO_LCD_TX_PIN 19
+#endif
+#ifndef PICO_LCD_DC_PIN
+#define PICO_LCD_DC_PIN 14
+#endif
+#ifndef PICO_LCD_RST_PIN
+#define PICO_LCD_RST_PIN 15
+#endif
 
-static int  nSPIInt = 0;
-
-bool SPI_Int_Claim (void)
+void LCD_SPI_Init (void)
     {
-    if (nSPIInt >= 0)
+    // init GPIO
+    gpio_init (PICO_LCD_CS_PIN);
+    gpio_init (PICO_LCD_DC_PIN);
+    gpio_init (PICO_LCD_RST_PIN);
+
+    gpio_set_dir (PICO_LCD_CS_PIN, GPIO_OUT);
+    gpio_set_dir (PICO_LCD_DC_PIN, GPIO_OUT);
+    gpio_set_dir (PICO_LCD_RST_PIN, GPIO_OUT);
+
+    gpio_put (PICO_LCD_CS_PIN, 1);
+    gpio_put (PICO_LCD_RST_PIN, 1);
+
+    // init SPI
+    gpio_set_function (PICO_LCD_CLK_PIN, GPIO_FUNC_SPI);
+    gpio_set_function (PICO_LCD_TX_PIN, GPIO_FUNC_SPI);
+    gpio_set_function (PICO_LCD_RX_PIN, GPIO_FUNC_SPI);
+    gpio_set_input_hysteresis_enabled (PICO_LCD_RX_PIN, true);
+    int speed = spi_init (SPI_INSTANCE(PICO_LCD_SPI), PICO_LCD_SPEED);
+    printf ("LCD speed = %d\n", speed);
+    }
+
+void LCD_WriteReg (unsigned char data)
+    {
+    gpio_put (PICO_LCD_DC_PIN, 0);
+    gpio_put (PICO_LCD_CS_PIN, 0);
+
+    spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), &data, 1);
+
+    gpio_put (PICO_LCD_CS_PIN, 1);
+    }
+
+void LCD_WriteData8 (uint8_t data)
+    {
+    gpio_put (PICO_LCD_DC_PIN, 1);
+    gpio_put (PICO_LCD_CS_PIN, 0);
+    spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), &data, 1);
+    gpio_put (PICO_LCD_CS_PIN, 1);
+    }
+
+void LCD_WriteData16 (uint32_t data)
+    {
+    uint8_t data_array[2];
+    data_array[0] = (data >> 8) & 0xFF;
+    data_array[1] = data & 0xFF;
+
+
+    gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
+    gpio_put (PICO_LCD_CS_PIN, 0);
+    spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data_array, 2);
+    gpio_put (PICO_LCD_CS_PIN, 1);
+    }
+
+void LCD_WriteData24 (uint32_t data)
+    {
+    uint8_t data_array[3];
+    data_array[0] = (data >> 16) & 0xFF;
+    data_array[1] = (data >> 8) & 0xFF;
+    data_array[2] = data & 0xFF;
+
+
+    gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
+    gpio_put (PICO_LCD_CS_PIN, 0);
+    spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data_array, 3);
+    gpio_put (PICO_LCD_CS_PIN, 1);
+    }
+
+void LCD_Data_Init (void)
+    {
+    gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
+    gpio_put (PICO_LCD_CS_PIN, 0);
+    }
+
+void LCD_Data_Term (void)
+    {
+    gpio_put (PICO_LCD_CS_PIN, 1);
+    }
+
+void LCD_WriteColour (colour_t clr, int nRpt)
+    {
+#if RGB == 18
+    uint8_t data[3];
+    data[0] = (clr >> 16) & 0xFF;
+    data[1] = (clr >> 8) & 0xFF;
+    data[2] = clr & 0xFF;
+    while (nRpt)
         {
-        ++nSPIInt;
-        return true;
+        spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data, 2);
+        --nRpt;
         }
-    return false;
-    }
-
-void SPI_Int_Release (void)
-    {
-    if (nSPIInt > 0) --nSPIInt;
-    }
-
-void SPI_Claim (void)
-    {
-    uint32_t    intsta = save_and_disable_interrupts ();
-    if (nSPIInt <= 0) --nSPIInt;
-    restore_interrupts (intsta);
-    }
-
-void SPI_Release (void)
-    {
-    if (nSPIInt < 0) ++nSPIInt;
-    }
-
-void gsize (uint32_t *pwth, uint32_t *phgt)
-    {
-    if (bLScape)
+#else
+    uint8_t data[2];
+    data[0] = (clr >> 8) & 0xFF;
+    data[1] = clr & 0xFF;
+    while (nRpt)
         {
-        *pwth = 480;
-        *phgt = 320;
+        spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data, 2);
+        --nRpt;
         }
-    else
+#endif
+    }
+
+void setup_vdu (void)
+    {
+    LCD_SPI_Init ();
+    
+    // Reset LCD
+    gpio_put (PICO_LCD_RST_PIN, 1);
+    sleep_us (10000);
+    gpio_put (PICO_LCD_RST_PIN, 0);
+    sleep_us (10000);
+    gpio_put (PICO_LCD_RST_PIN, 1);
+    sleep_us (200000);
+
+    LCD_WriteReg (0xE0); // Positive Gamma Control
+    LCD_WriteData8 (0x00);
+    LCD_WriteData8 (0x03);
+    LCD_WriteData8 (0x09);
+    LCD_WriteData8 (0x08);
+    LCD_WriteData8 (0x16);
+    LCD_WriteData8 (0x0A);
+    LCD_WriteData8 (0x3F);
+    LCD_WriteData8 (0x78);
+    LCD_WriteData8 (0x4C);
+    LCD_WriteData8 (0x09);
+    LCD_WriteData8 (0x0A);
+    LCD_WriteData8 (0x08);
+    LCD_WriteData8 (0x16);
+    LCD_WriteData8 (0x1A);
+    LCD_WriteData8 (0x0F);
+
+    LCD_WriteReg (0XE1); // Negative Gamma Control
+    LCD_WriteData8 (0x00);
+    LCD_WriteData8 (0x16);
+    LCD_WriteData8 (0x19);
+    LCD_WriteData8 (0x03);
+    LCD_WriteData8 (0x0F);
+    LCD_WriteData8 (0x05);
+    LCD_WriteData8 (0x32);
+    LCD_WriteData8 (0x45);
+    LCD_WriteData8 (0x46);
+    LCD_WriteData8 (0x04);
+    LCD_WriteData8 (0x0E);
+    LCD_WriteData8 (0x0D);
+    LCD_WriteData8 (0x35);
+    LCD_WriteData8 (0x37);
+    LCD_WriteData8 (0x0F);
+
+    LCD_WriteReg (0XC0); // Power Control 1
+    LCD_WriteData8 (0x17);
+    LCD_WriteData8 (0x15);
+
+    LCD_WriteReg (0xC1); // Power Control 2
+    LCD_WriteData8 (0x41);
+
+    LCD_WriteReg (0xC5); // VCOM Control
+    LCD_WriteData8 (0x00);
+    LCD_WriteData8 (0x12);
+    LCD_WriteData8 (0x80);
+
+    LCD_WriteReg (0x36); // Memory Access Control
+    LCD_WriteData8 (0x48); // MX, BGR
+
+    LCD_WriteReg (0x3A); // Pixel Interface Format
+#if RGB == 18
+    LCD_WriteData8 (0x66); // 18 bit colour for SPI
+#else
+    // LCD_WriteData8 (0x55); // 16 bit colour for SPI
+    LCD_WriteData8 (0x65); // 16 bit colour for SPI
+#endif
+    
+    LCD_WriteReg (0xB0); // Interface Mode Control
+    LCD_WriteData8 (0x00);
+
+    LCD_WriteReg (0xB1); // Frame Rate Control
+    LCD_WriteData8 (0xA0);
+
+    LCD_WriteReg (0x21); // Display Inversion On
+
+    LCD_WriteReg (0xB4); // Display Inversion Control
+    LCD_WriteData8 (0x02);
+
+    LCD_WriteReg (0xB6); // Display Function Control
+    LCD_WriteData8 (0x02);
+    LCD_WriteData8 (0x02);
+    LCD_WriteData8 (0x3B);
+
+    LCD_WriteReg (0xB7); // Entry Mode Set
+    LCD_WriteData8 (0xC6);
+    
+    LCD_WriteReg (0xE9); // Set image function
+#if RGB == 18
+    LCD_WriteData8 (0x01);    // 1 = Enable 24-bit input
+#else
+    LCD_WriteData8 (0x00);    // 1 = Enable 24-bit input
+#endif
+
+    LCD_WriteReg (0xF7); // Adjust Control 3 - Is this required?
+    LCD_WriteData8 (0xA9);
+    LCD_WriteData8 (0x51);
+    LCD_WriteData8 (0x2C);
+    LCD_WriteData8 (0x82);    // DSI write DCS command, use loose packet RGB 666
+
+    LCD_WriteReg (0x11); //Exit Sleep
+    sleep_ms (120);
+
+    LCD_WriteReg (0x29); //Display on
+    sleep_ms (120);
+
+    LCD_WriteReg (0x36); // Memory Access Control
+    LCD_WriteData8 (0x48); // MX, BGR
+
+    setup_fbuf (&curmode);
+    memset (singlebuf (), 0, BUF_SIZE);
+    modechg (9);
+    }
+
+void LCD_Scroll (int data)
+    {
+    LCD_WriteReg (0x37);
+    LCD_WriteData16 (data);
+    }
+
+void LCD_ScrollArea (int top, int mid, int bot)
+    {
+    LCD_WriteReg (0x33);
+    LCD_WriteData16 (top);
+    LCD_WriteData16 (mid);
+    LCD_WriteData16 (bot);
+    }
+
+void LCD_SetWindow (int Xstart, int Ystart,	int Xend, int Yend)
+    {	
+	//set the X coordinates
+	LCD_WriteReg(0x2A);
+	LCD_WriteData16 (Xstart);
+	LCD_WriteData16 (Xend - 1);
+
+	//set the Y coordinates
+	LCD_WriteReg(0x2B);
+	LCD_WriteData16 (Ystart);
+	LCD_WriteData16 (Yend - 1);
+
+    LCD_WriteReg(0x2C);                 // Start pixel transfer
+    }
+
+void LCD_SetCursor (int Xpoint, int Ypoint)
+    {
+	LCD_SetWindow (Xpoint, Ypoint, Xpoint + 1, Ypoint + 1);
+    }
+
+void LCD_SetColour (uint32_t Colour , int Xpoint, int Ypoint)
+    {
+    LCD_Data_Init ();
+    LCD_WriteColour (Colour, (uint32_t)Xpoint * (uint32_t)Ypoint);
+    LCD_Data_Term ();
+    }
+
+void LCD_SetPointlColour (int Xpoint, int Ypoint, uint32_t Colour)
+    {
+    if ((Xpoint <= PICO_LCD_COLUMNS) && (Ypoint <= PICO_LCD_ROWS))
         {
-        *pwth = 320;
-        *phgt = 480;
+        LCD_SetCursor (Xpoint, Ypoint);
+        LCD_SetColour(Colour, 1, 1);
         }
     }
 
-void wslcd35_out (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
+void LCD_SetAreaColour (int Xstart, int Ystart, int Xend, int Yend,	uint32_t Colour)
     {
-    SPI_Claim ();
+    if((Xend > Xstart) && (Yend > Ystart))
+        {
+        LCD_SetWindow (Xstart, Ystart, Xend, Yend);
+        LCD_SetColour (Colour, Xend - Xstart, Yend - Ystart);
+        }
+    }
+
+void LCD_Clear (uint32_t Colour)
+    {
+    LCD_SetAreaColour (0, 0, PICO_LCD_COLUMNS, PICO_LCD_ROWS, Colour);
+    }
+
+void pclcd_out (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
+    {
     bool bWrap = false;
     if (scrltop + (yp1 << curmode.yshf) >= nrow)
         {
@@ -194,31 +427,32 @@ void wslcd35_out (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
         }
     else if (scrltop + (yp2 << curmode.yshf) > nrow)
         {
-        wslcd35_out (fbuf, xp1, yp1, xp2, (nrow - scrltop) >> curmode.yshf);
+        pclcd_out (fbuf, xp1, yp1, xp2, (nrow - scrltop) >> curmode.yshf);
         bWrap = true;
         scrltop -= nrow;
         yp1 = (-scrltop) >> curmode.yshf;
         }
-    // bool bShow = nSPIInt <= 0;
-	gpio_set_function (LCD_CLK_PIN, GPIO_FUNC_SPI);
-	gpio_set_function (LCD_MOSI_PIN, GPIO_FUNC_SPI);
-	gpio_set_function (LCD_MISO_PIN, GPIO_FUNC_SPI);
-    // if (bShow) printf ("wslcd35_out (%p, %d, %d, %d, %d)\n", fbuf, xp1, yp1, xp2, yp2);
     if (fbuf != framebuf) return;
-    xp1 = xp1 >> (3 - cdef->bitsh);
-    xp2 = ((xp2 - 1) >> (3 - cdef->bitsh)) + 1;
-    // if (bShow)
-    //     {
-    //     printf ("ncbt = %d, bitsh = %d\n", curmode.ncbt, cdef->bitsh);
-    //     printf ("xp1 = %d, xp2 = %d, xscl = %d, yscl = %d\n", xp1, xp2, xscl, yscl);
-    //     printf ("LCD_SetWindow (%d, %d, %d, %d)\n",
-    //         xp1 * curmode.nppb, curmode.vmgn + scrltop + (yp1 << curmode.yshf),
-    //         xp2 * curmode.nppb, curmode.vmgn + scrltop + ((yp2 + 1) << curmode.yshf) - 1);
-    //     }
+    switch (curmode.ncbt)
+        {
+        case 1:
+            xp1 >>= 3;
+            xp2 = ((xp2 - 1) >> 3) + 1;
+            break;
+        case 2:
+            xp1 >>= 2;
+            xp2 = ((xp2 - 1) >> 2) + 1;
+            break;
+        case 4:
+            xp1 >>= 1;
+            xp2 = ((xp2 - 1) >> 1) + 1;
+            break;
+        }
+    
     LCD_SetWindow (xp1 * curmode.nppb, curmode.vmgn + scrltop + (yp1 << curmode.yshf),
         xp2 * curmode.nppb, curmode.vmgn + scrltop + ((yp2 + 1) << curmode.yshf) - 1);
     fbuf += curmode.nbpl * yp1 + xp1;
-    LCD_Write_Init ();
+    LCD_Data_Init ();
     for (int y = yp1; y < yp2; ++y)
         {
         for (int yr = 0; yr < yscl; ++yr)
@@ -232,19 +466,19 @@ void wslcd35_out (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
                 switch (curmode.ncbt)
                     {
                     case 4:
-                        LCD_Write_Words (curpal[pix & 0x0F], xscl);
-                        LCD_Write_Words (curpal[pix >> 4], xscl);
+                        LCD_WriteColour (curpal[pix & 0x0F], xscl);
+                        LCD_WriteColour (curpal[pix >> 4], xscl);
                         break;
                     case 2:
-                        LCD_Write_Words (curpal[pix & 0x03], xscl);
-                        LCD_Write_Words (curpal[(pix >> 2) & 0x03], xscl);
-                        LCD_Write_Words (curpal[(pix >> 4) & 0x03], xscl);
-                        LCD_Write_Words (curpal[pix >> 6], xscl);
+                        LCD_WriteColour (curpal[pix & 0x03], xscl);
+                        LCD_WriteColour (curpal[(pix >> 2) & 0x03], xscl);
+                        LCD_WriteColour (curpal[(pix >> 4) & 0x03], xscl);
+                        LCD_WriteColour (curpal[pix >> 6], xscl);
                         break;
                     case 1:
                         for (int i = 0; i < 8; ++i)
                             {
-                            LCD_Write_Words (curpal[pix & 0x01], xscl);
+                            LCD_WriteColour (curpal[pix & 0x01], xscl);
                             pix >>= 1;
                             }
                         break;
@@ -254,60 +488,45 @@ void wslcd35_out (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
             }
         fbuf += curmode.nbpl;
         }
-    LCD_Write_Term ();
+    LCD_Data_Term ();
     if (bWrap) scrltop += nrow;
-    SPI_Release ();
     }
 
-void wslcd35_out_int (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
-    {
-    if (SPI_Int_Claim ())
-        {
-        wslcd35_out (fbuf, xp1, yp1, xp2, yp2);
-        SPI_Int_Release ();
-        }
-    }
-
-void wslcd35_scroll (uint8_t *fbuf, int lt, int lb, bool bUp)
+void pclcd_scroll (uint8_t *fbuf, int lt, int lb, bool bUp)
     {
     if ((lt != 0) || (lb != curmode.trow - 1))
         {
-        wslcd35_out (fbuf, 0, lt * curmode.thgt, curmode.gcol, (lb + 1) * curmode.thgt);
+        pclcd_out (fbuf, 0, lt * curmode.thgt, curmode.gcol, (lb + 1) * curmode.thgt);
         }
     else if (bUp)
         {
         scrltop += curmode.thgt << curmode.yshf;
         if ( scrltop >= nrow) scrltop -= nrow;
-        SPI_Claim ();
         LCD_Scroll (curmode.vmgn + scrltop);
-        SPI_Release ();
-        wslcd35_out (fbuf, 0, (curmode.trow - 1) * curmode.thgt, curmode.gcol, curmode.grow);
+        pclcd_out (fbuf, 0, (curmode.trow - 1) * curmode.thgt, curmode.gcol, curmode.grow);
         }
     else
         {
         scrltop -= curmode.thgt << curmode.yshf;
         if ( scrltop < 0) scrltop += nrow;
-        SPI_Claim ();
         LCD_Scroll (curmode.vmgn + scrltop);
-        SPI_Release ();
-        wslcd35_out (fbuf, 0, 0, curmode.gcol, curmode.thgt);
+        pclcd_out (fbuf, 0, 0, curmode.gcol, curmode.thgt);
         }
     }
 
 void bufswap (uint8_t *fbuf)
     {
-    if (fbuf == framebuf) wslcd35_out (fbuf, 0, 0, curmode.gcol, curmode.grow);
-    }
-
-uint16_t rgbclr (int r, int g, int b)
-    {
-    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+    if (fbuf == framebuf) pclcd_out (fbuf, 0, 0, curmode.gcol, curmode.grow);
     }
 
 int clrrgb (int clr)
     {
-    clr = curpal[clr]
+    clr = curpal[clr];
+#if RGB == 18
+    return clr;
+#else
     return ((clr & 0xF800) >> 8) | ((clr & 0x07E0) << 5) | ((clr & 0x001F) << 19);
+#endif
     }
 
 void clrreset (const MODE *pmode)
@@ -356,8 +575,8 @@ void clrreset (const MODE *pmode)
 void clrset (int pal, int phy, int r, int g, int b)
     {
     if ( phy < 16 ) curpal[pal] = defpal[phy];
-    else if ( phy == 16 ) curpal[pal] = rgbclr (r, g, b);
-    else if ( phy == 255 ) curpal[pal] = rgbclr (8*r, 8*g, 8*b);
+    else if ( phy == 16 ) curpal[pal] = PIXEL_FROM_RGB8 (r, g, b);
+    else if ( phy == 255 ) curpal[pal] = PIXEL_FROM_RGB8 (8*r, 8*g, 8*b);
 #if DEBUG & 2
     printf ("curpal[%d] = 0x%04X\n", pal, curpal[pal]);
 #endif
@@ -371,27 +590,21 @@ bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd)
     if (( mode >= 0 ) && ( mode < sizeof (modes) / sizeof (modes[0]) ))
         {
         memcpy (&curmode, &modes[mode], sizeof (MODE));
-        bool bNewLS = (curmode.hmgn & LS) != 0;
-        SPI_Claim ();
-        if (bNewLS != bLScape)
-            {
-            LCD_SetGramScanWay (bNewLS ? D2U_L2R : L2R_U2D);
-            bLScape = bNewLS;
-            }
         if (curmode.ncbt == 3) xscl = 1;
         else                   xscl = (curmode.ncbt * curmode.nppb) >> 3;
         yscl = 1 << curmode.yshf;
-        nrow = curmode.grow << curmode.yshf;
+        // nrow = curmode.grow << curmode.yshf;
+        // ILI9488 has 480 rows of graphics memory
+        nrow = 480;
         // printf ("xscl = %d, yscl = %d, nrow = %d, vmgn = %d\n", xscl, yscl, nrow, curmode.vmgn);
         scrltop = 0;
         LCD_ScrollArea (curmode.vmgn, nrow, curmode.vmgn);
         LCD_Scroll (curmode.vmgn + scrltop);
         if (curmode.vmgn > 0)
             {
-            LCD_SetAreaColor (0, 0, curmode.gcol * xscl, curmode.vmgn, 0);
-            LCD_SetAreaColor (0, nrow + curmode.vmgn, curmode.gcol * xscl, nrow + 2 * curmode.vmgn, 0);
+            LCD_SetAreaColour (0, 0, curmode.gcol * xscl, curmode.vmgn, 0);
+            LCD_SetAreaColour (0, nrow + curmode.vmgn, curmode.gcol * xscl, nrow + 2 * curmode.vmgn, 0);
             }
-        SPI_Release ();
         framebuf = singlebuf ();
         nCsrHide |= CSR_OFF;
         if (curmode.ncbt == 3)
@@ -437,14 +650,10 @@ void dispmode (void)
 #endif
     }
 
-static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool bShow)
+static void pclcd_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool bShow)
     {
-    // printf ("wslcd35_out7 (%p, %d, %d, %d, %d)\n", fbuf, xp1, yp1, xp2, yp2);
+    // printf ("pclcd_out7 (%p, %d, %d, %d, %d)\n", fbuf, xp1, yp1, xp2, yp2);
     if (fbuf != framebuf) return;
-    SPI_Claim ();
-	gpio_set_function (LCD_CLK_PIN, GPIO_FUNC_SPI);
-	gpio_set_function (LCD_MOSI_PIN, GPIO_FUNC_SPI);
-	gpio_set_function (LCD_MISO_PIN, GPIO_FUNC_SPI);
     uint16_t blk[TTH][8];
     uint8_t *ttfont = fbuf + curmode.trow * curmode.tcol - 0x20 * TTH;
     bool bDHeight = false;
@@ -598,8 +807,8 @@ static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool
                 int ysr = scrltop + curmode.thgt * yscl * yr;
                 if (ysr >= nrow) ysr -= nrow;
                 LCD_SetWindow (8 * xscl * xc, curmode.vmgn + ysr, 8 * xscl * (xc + 1), curmode.vmgn + ysr + curmode.thgt * yscl);
-                LCD_Write_Init ();
-                // printf ("LCD_Write_Words:");
+                LCD_Data_Init ();
+                // printf ("LCD_WriteColour:");
                 for (int ys = 0; ys < TTH; ++ys)
                     {
                     if (bInverse && (bFlash ||
@@ -607,7 +816,7 @@ static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool
                                     && (ys >= csrtop) && (ys < csrtop + csrhgt)
                                     && (nCsrHide == 0))))
                         {
-                        LCD_Write_Words (bgnd, 8 * xscl * yscl);
+                        LCD_WriteColour (bgnd, 8 * xscl * yscl);
                         // printf (" %0x%02X * %d", bgnd, 8 * xscl);
                         }
                     else if (bShow || bFlash)
@@ -616,280 +825,56 @@ static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool
                             {
                             for (int i = 0; i < 8; ++i)
                                 {
-                                LCD_Write_Words (blk[ys][i], xscl);
+                                LCD_WriteColour (blk[ys][i], xscl);
                                 // printf (" 0x%02X", blk[i]);
                                 }
                             }
                         // printf ("\n");
                         }
                     }
-                LCD_Write_Term ();
+                LCD_Data_Term ();
                 }
             ++pch;
             }
         if (bDHeight) bLower = ! bLower;
         else bLower = false;
         }
-    SPI_Release ();
     }
 
-void wslcd35_out7 (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
+void pclcd_out7 (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
     {
-    wslcd35_ttx (fbuf, xp1, yp1, xp2, yp2, true);
+    pclcd_ttx (fbuf, xp1, yp1, xp2, yp2, true);
     }
 
-void wslcd35_scroll7 (uint8_t *fbuf, int lt, int lb, bool bUp)
+void pclcd_scroll7 (uint8_t *fbuf, int lt, int lb, bool bUp)
     {
     if ((lt != 0) || (lb != curmode.trow - 1))
         {
-        wslcd35_out7 (fbuf, 0, lt, curmode.tcol - 1, lb);
+        pclcd_out7 (fbuf, 0, lt, curmode.tcol - 1, lb);
         }
     else if (bUp)
         {
         scrltop += curmode.thgt << curmode.yshf;
         if ( scrltop >= nrow) scrltop -= nrow;
-        SPI_Claim ();
         LCD_Scroll (curmode.vmgn + scrltop);
-        SPI_Release ();
-        wslcd35_out7 (fbuf, 0, curmode.trow - 1, curmode.tcol - 1, curmode.trow - 1);
+        pclcd_out7 (fbuf, 0, curmode.trow - 1, curmode.tcol - 1, curmode.trow - 1);
         }
     else
         {
         scrltop -= curmode.thgt << curmode.yshf;
         if ( scrltop < 0) scrltop += nrow;
-        SPI_Claim ();
         LCD_Scroll (curmode.vmgn + scrltop);
-        SPI_Release ();
-        wslcd35_out7 (fbuf, 0, 0, curmode.tcol - 1, 0);
+        pclcd_out7 (fbuf, 0, 0, curmode.tcol - 1, 0);
         }
     }
 
 void mode7flash (void)
     {
-    if (SPI_Int_Claim ())
-		{
-		bInverse = ! bInverse;
-		wslcd35_ttx (framebuf, 0, 0, curmode.tcol - 1, curmode.trow - 1, false);
-        SPI_Int_Release ();
-		}
+    pclcd_ttx (framebuf, 0, 0, curmode.tcol - 1, curmode.trow - 1, false);
     }
 
-#if HAVE_MOUSE
-#include "LCD_Touch.h"
-static int ncal = 0;
-static double *pcal = NULL;
-static const double defxcal[] = {-0.186488118,  700.0};
-static const double defycal[] = { 0.288979808, -112.0};
-
-static inline int nint (double d)
+void gsize (uint32_t *pwth, uint32_t *phgt)
     {
-    int n;
-    if (d >= 0.0)   n = (int)(d + 0.5);
-    else            n = (int)(d - 0.5);
-    return n;
-    }
-
-// MOUSE x%, y%, b%
-void mouse (int *px, int *py, int *pb)
-    {
-    uint16_t    mx, my;
-    int xp = -1;
-    int yp = -1;
-    int mb = 0;
-    SPI_Claim ();
-	gpio_set_function (LCD_CLK_PIN, GPIO_FUNC_SPI);
-	gpio_set_function (LCD_MOSI_PIN, GPIO_FUNC_SPI);
-	gpio_set_function (LCD_MISO_PIN, GPIO_FUNC_SPI);
-    if (TP_Read_TwiceADC (&mx, &my))
-        {
-        if ((mx != 0) || (my != 4095))
-            {
-            mb = 1;
-            switch (ncal)
-                {
-                case 2:
-                    xp = nint (pcal[0] * mx + pcal[1]);
-                    yp = nint (pcal[2] * my + pcal[3]);
-                    break;
-                case 3:
-                    xp = nint (pcal[0] * mx + pcal[1] * my + pcal[2]);
-                    yp = nint (pcal[3] * mx + pcal[4] * my + pcal[5]);
-                    break;
-                case 6:
-                    xp = nint (pcal[0] * mx * mx + pcal[1] * mx * my + pcal[2] * my * my
-                        + pcal[3] * mx + pcal[4] * my + pcal[5]);
-                    yp = nint (pcal[6] * mx * mx + pcal[7] * mx * my + pcal[8] * my * my
-                        + pcal[9] * mx + pcal[10] * my + pcal[11]);
-                    break;
-                default:
-                    xp = mx;
-                    yp = my;
-                    break;
-                }
-            if ((ncal > 0) && bLScape)
-                {
-                int tmp = xp;
-                xp = yp;
-                yp = 640 - xp;
-                }
-            }
-        }
-    if (px) *px = xp;
-    if (py) *py = yp;
-    if (pb) *pb = mb;
-    SPI_Release ();
-    }
-
-// MOUSE ON [type]
-void mouseon (int type)
-    {
-    }
-
-// MOUSE OFF
-void mouseoff (void)
-    {
-    }
-
-// MOUSE TO x%, y%
-void mouseto (int x, int y)
-    {
-    }
-#endif
-                      
-void mouse_config (int n, const double *xc, const double *yc)
-    {
-    if (n > ncal)
-        {
-        if (pcal != NULL) free (pcal);
-        pcal = (double *) malloc (2 * n * sizeof (double));
-        if (pcal == NULL)
-            {
-            ncal = 0;
-            error (0, NULL);
-            }
-        }
-    memcpy (pcal, xc, n * sizeof (double));
-    memcpy (pcal + n, yc, n * sizeof (double));
-    ncal = n;
-    if (ncal > 0)
-        {
-        FILE *f = fopen ("/mouse.cfg", "w");
-        if (f)
-            {
-            fwrite (&ncal, sizeof (ncal), 1, f);
-            fwrite (pcal, sizeof (double), 2 * ncal, f);
-            fclose (f);
-            }
-        }
-    }
-
-static PRD_FUNC pnext = NULL;
-static bool bMouseDown = false;
-
-static void mouse_periodic (void)
-    {
-    if (moutrp)
-        {
-        // printf ("mouse_periodic\n");
-        if (SPI_Int_Claim ())
-            {
-            // printf ("SPI claimed: moutrp = %p\n", moutrp);
-            int mx, my, mb;
-            mouse (&mx, &my, &mb);
-            // printf ("mouse_periodic: moutrp = %p, mx = %d, my = %d, mb = %d\n", moutrp, mx, my, mb);
-            if (mb)
-                {
-                if (! bMouseDown)
-                    {
-                    // printf ("putevt: mx = %d, my = %d\n", mx, my);
-                    putevt (moutrp, WM_LBUTTONDOWN, 1, my << 16 | (mx & 0xFFFF));
-                    bMouseDown = true;
-                    }
-                }
-            else
-                {
-                bMouseDown = false;
-                }
-            SPI_Int_Release ();
-            }
-        }
-    if (pnext) pnext ();
-    }
-
-void mouse_init (void)
-    {
-    FILE *f = fopen ("/mouse.cfg", "r");
-    if (f)
-        {
-        int n;
-        if (fread (&n, sizeof (n), 1, f) == 1)
-            {
-            if ((n == 2) || (n == 3) || (n == 6))
-                {
-                if (n > ncal)
-                    {
-                    if (pcal != NULL) free (pcal);
-                    pcal = (double *) malloc (2 * n * sizeof (double));
-                    if (pcal == NULL)
-                        {
-                        ncal = 0;
-                        return;
-                        }
-                    }
-                ncal = n;
-                if (fread (pcal, sizeof (double), 2 * ncal, f) != 2 * ncal) ncal = 0;
-                }
-            }
-        fclose (f);
-        }
-    if (ncal == 0)
-        {
-        // Default calibration values
-        mouse_config (sizeof (defxcal) / sizeof (defxcal[0]), defxcal, defycal);
-        }
-    pnext = add_periodic (mouse_periodic);
-    }
-
-bool brightness (char *cmd)
-    {
-    if (! strncasecmp (cmd, "brightness", 10))
-        {
-        cmd += 10;
-        while (*cmd == ' ') ++cmd;
-        if ((*cmd >= '0') && (*cmd <= '9'))
-            {
-            int n;
-            sscanf (cmd, "%i", &n);
-            LCD_SetBackLight (n);
-            }
-        return true;
-        }
-    else if (excli)
-        {
-        return excli (cmd);
-        }
-    return false;
-    }
-
-void setup_vdu (void)
-    {
-#if DEBUG & 1
-    printf ("setup_vdu: Waveshare 3.5 inch LCD: 320x480 " __DATE__ " " __TIME__ "\n");
-    sleep_ms(500);
-#endif
-    SPI_Claim ();
-	gpio_set_function (LCD_CLK_PIN, GPIO_FUNC_SPI);
-	gpio_set_function (LCD_MOSI_PIN, GPIO_FUNC_SPI);
-	gpio_set_function (LCD_MISO_PIN, GPIO_FUNC_SPI);
-    System_Init ();
-    LCD_Init (L2R_U2D, 100);
-    SPI_Release ();
-    excli = add_cli (brightness);
-    setup_fbuf (&curmode);
-    memset (singlebuf (), 0, BUF_SIZE);
-    modechg (8);
-    }
-
-void setup_keyboard (void)
-    {
+    *pwth = PICO_LCD_COLUMNS;
+    *phgt = PICO_LCD_ROWS;
     }

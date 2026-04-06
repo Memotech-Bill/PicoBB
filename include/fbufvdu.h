@@ -71,15 +71,11 @@ typedef struct
     uint32_t        csrmsk;     // Mask for cursor
     } CLRDEF;
 
-bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd, CLRDEF **ppcd);
+bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd);
 void dispmode (void);
 void hidecsr (void);
 void showcsr (void);
 void csrdef (int data2);
-uint16_t defclr (int clr);
-uint16_t rgbclr (int r, int g, int b);
-int clrrgb (uint16_t clr);
-void genrb (uint16_t *curpal);
 uint8_t *swapbuf (void);
 uint8_t *singlebuf (void);
 uint8_t *doublebuf (void);
@@ -89,5 +85,11 @@ void gsize (uint32_t *pwth, uint32_t *phgt);
 int bufsize (void);
 void bufswap (uint8_t *fbuf);
 void mode7flash (void);
+
+// Support functions defined externally
+
+void clrreset (const MODE *pmode);
+void clrset (int pal, int phy, int r, int g, int b);
+int clrrgb (int clr);
 
 #endif

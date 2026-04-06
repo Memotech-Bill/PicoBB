@@ -128,16 +128,12 @@ int gvr;                                // Right edge of graphics viewport
 static MODE *pmode = NULL;              // Current display mode
 static uint8_t *framebuf;               // Pointer to framebuffer
 CLRDEF *cdef;                           // Colour definitions
-static int fg;                          // Text foreground colour
-static int bg;                          // Text backgound colour
 static uint8_t bgfill;                  // Pixel fill for background colour
 #ifdef HAVE_PRINTER
 static bool bPrint = false;             // Enable output to printer (UART)
 #else
 #define bPrint  false
 #endif
-static int gfg;                         // Graphics foreground colour & mode
-static int gbg;                         // Graphics background colour & mode
 static int xshift;                      // Shift to convert X graphics units to pixels
 static int yshift;                      // Shift to convert Y graphics units to pixels
 static bool bFontExp = false;           // Exploded font flag
@@ -151,7 +147,21 @@ typedef struct
     } GPOINT;
 static GPOINT pltpt[NPLT];              // History of plotted points (graphics units from top left)
 
-uint16_t curpal[16];
+static const uint32_t cpx02[] = { 0x00000000, 0xFFFFFFFF };
+static const uint32_t cpx04[] = { 0x00000000, 0x55555555, 0xAAAAAAAA, 0xFFFFFFFF };
+static const uint32_t cpx16[] = { 0x00000000, 0x11111111, 0x22222222, 0x33333333,
+                                  0x44444444, 0x55555555, 0x66666666, 0x77777777,
+                                  0x88888888, 0x99999999, 0xAAAAAAAA, 0xBBBBBBBB,
+                                  0xCCCCCCCC, 0xDDDDDDDD, 0xEEEEEEEE, 0xFFFFFFFF };
+
+static CLRDEF clrdef[] = {
+//   nclr,   cpx, bsh, clrm,     csrmsk
+    {   0,  NULL,   0, 0x00,       0x00},
+    {   2, cpx02,   0, 0x01, 0x000000FF},
+    {   4, cpx04,   1, 0x03, 0x0000FFFF},
+    {   8,  NULL,   0, 0x07,       0x00},
+    {  16, cpx16,   2, 0x0F, 0xFFFFFFFF}
+    };
 
 #if BBC_FONT
 static const uint8_t pmsk02[256] = {
@@ -625,8 +635,8 @@ static void dispchr (int chr)
         if ( pmode->ncbt == 1 )
             {
             pfb += xcsr;
-            uint8_t fpx = (uint8_t) cdef->cpx[fg];
-            uint8_t bpx = (uint8_t) cdef->cpx[bg];
+            uint8_t fpx = (uint8_t) cdef->cpx[txtfor];
+            uint8_t bpx = (uint8_t) cdef->cpx[txtbak];
             for (int i = 0; i < fhgt; ++i)
                 {
 #if BBC_FONT
@@ -648,8 +658,8 @@ static void dispchr (int chr)
         else if ( pmode->ncbt == 2 )
             {
             pfb += 2 * xcsr;
-            uint16_t fpx = cdef->cpx[fg];
-            uint16_t bpx = cdef->cpx[bg];
+            uint16_t fpx = cdef->cpx[txtfor];
+            uint16_t bpx = cdef->cpx[txtbak];
             for (int i = 0; i < fhgt; ++i)
                 {
                 uint16_t mask = pmsk04[*pch];
@@ -667,8 +677,8 @@ static void dispchr (int chr)
         else if ( pmode->ncbt == 4 )
             {
             pfb += 4 * xcsr;
-            uint32_t fpx = cdef->cpx[fg];
-            uint32_t bpx = cdef->cpx[bg];
+            uint32_t fpx = cdef->cpx[txtfor];
+            uint32_t bpx = cdef->cpx[txtbak];
             for (int i = 0; i < fhgt; ++i)
                 {
                 uint32_t mask = pmsk16[*pch];
@@ -757,63 +767,6 @@ static void twind (int vl, int vb, int vr, int vt)
         home ();
     }
 
-static void clrreset (void)
-    {
-    bg = 0;
-    bgfill = 0;
-    gbg = 0;
-    if ( pmode->ncbt == 1 )
-        {
-#if DEBUG & 2
-        printf ("clrreset: nclr = 2\n");
-#endif
-        curpal[0] = defclr (0);
-        curpal[1] = defclr (15);
-        fg = 1;
-        gfg = 1;
-        }
-    else if ( pmode->ncbt == 2 )
-        {
-#if DEBUG & 2
-        printf ("clrreset: nclr = 4\n");
-#endif
-        curpal[0] = defclr (0);
-        curpal[1] = defclr (9);
-        curpal[2] = defclr (11);
-        curpal[3] = defclr (15);
-        fg = 3;
-        gfg = 3;
-        }
-    else if ( pmode->ncbt == 3 )
-        {
-#if DEBUG & 2
-        printf ("clrreset: nclr = 4\n");
-#endif
-        curpal[0] = defclr (0);
-        for (int i = 1; i < 8; ++i)
-            {
-            curpal[i] = defclr (i+8);
-            }
-        }
-    else
-        {
-#if DEBUG & 2
-        printf ("clrreset: nclr = 16\n");
-#endif
-        for (int i = 0; i < 16; ++i)
-            {
-            curpal[i] = defclr (i);
-            }
-        fg = 15;
-        gfg = 15;
-        }
-    txtfor = fg;
-    txtbak = bg;
-    forgnd = gfg;
-    bakgnd = gbg;
-    genrb (curpal);
-    }
-
 static void rstview (void)
     {
     hidecsr ();
@@ -841,10 +794,11 @@ void modechg (char mode)
     printf ("modechg (%d)\n", mode);
 #endif
     hidecsr ();
-    if ( setmode (mode, &framebuf, &pmode, &cdef) )
+    if ( setmode (mode, &framebuf, &pmode) )
         {
         uint32_t gwth;
         uint32_t ghgt;
+        cdef = &clrdef[pmode->ncbt];
         gsize (&gwth, &ghgt);
 #if DEBUG & 2
         printf ("grow = %d, gcol = %d\n", pmode->grow, pmode->gcol);
@@ -872,7 +826,12 @@ void modechg (char mode)
 #if DEBUG & 2
         printf ("pixelx = %d, xshift = %d, pixely = %d, yshift = %d\n", pixelx, xshift, pixely, yshift);
 #endif
-        clrreset ();
+        txtbak = 0;
+        bgfill = 0;
+        bakgnd = 0;
+        txtfor = cdef->nclr - 1;
+        forgnd = cdef->nclr - 1;
+        clrreset (pmode);
         rstview ();
         cls ();
         bPaletted = 1;
@@ -1229,7 +1188,7 @@ static void clipline (int clrop, int xp1, int yp1, int xp2, int yp2, uint32_t do
 
 static void clrgraph (void)
     {
-    int clr = clrmsk (gbg);
+    int clr = clrmsk (bakgnd);
     for (int yp = gvt; yp <= gvb; ++yp)
         {
         hline (clr, gvl, gvr, yp);
@@ -1482,7 +1441,7 @@ int vtint (int xp, int yp)
     {
     int clr = vpoint (xp, yp);
     if ( clr < 0 ) return -1;
-    return clrrgb (curpal[clr]);
+    return clrrgb (clr);
     }
 
 int vgetc (int x, int y)
@@ -1509,7 +1468,7 @@ int vgetc (int x, int y)
         uint8_t chrow[10];
         uint8_t *prow = chrow;
         memset (chrow, 0, sizeof (chrow));
-        int bgclr = ( vflags & HRGFLG ) ? clrmsk (gbg) : bg;
+        int bgclr = ( vflags & HRGFLG ) ? clrmsk (bakgnd) : txtbak;
         int fhgt = pmode->thgt;
         bool bDbl = false;
         if ( fhgt > 10 )
@@ -2396,13 +2355,13 @@ static void plot (uint8_t code, int16_t xp, int16_t yp)
         case 0:
             return;
         case 1:
-            clrop = gfg;
+            clrop = forgnd;
             break;
         case 2:
             clrop = 0x400;
             break;
         case 3:
-            clrop = gbg;
+            clrop = bakgnd;
             break;
         }
     if ( code < 0x40 )
@@ -2420,7 +2379,7 @@ static void plot (uint8_t code, int16_t xp, int16_t yp)
             break;
         case 0x48:
             linefill (clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift,
-                FT_LEFT | FT_RIGHT, clrmsk (gbg));
+                FT_LEFT | FT_RIGHT, clrmsk (bakgnd));
             break;
         case 0x50:
             triangle (clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift,
@@ -2429,7 +2388,7 @@ static void plot (uint8_t code, int16_t xp, int16_t yp)
             break;
         case 0x55:
             linefill (clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift,
-                FT_RIGHT | FT_EQUAL, clrmsk (gbg));
+                FT_RIGHT | FT_EQUAL, clrmsk (bakgnd));
             break;
         case 0x60:
             rectangle (clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift,
@@ -2437,7 +2396,7 @@ static void plot (uint8_t code, int16_t xp, int16_t yp)
             break;
         case 0x68:
             linefill (clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift,
-                FT_LEFT | FT_RIGHT | FT_EQUAL, clrmsk (gfg));
+                FT_LEFT | FT_RIGHT | FT_EQUAL, clrmsk (forgnd));
             break;
         case 0x70:
             trapizoid (clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift,
@@ -2446,13 +2405,13 @@ static void plot (uint8_t code, int16_t xp, int16_t yp)
             break;
         case 0x78:
             linefill (clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift,
-                FT_RIGHT, clrmsk (gfg));
+                FT_RIGHT, clrmsk (forgnd));
             break;
         case 0x80:
-            flood (true, clrmsk (gbg), clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift);
+            flood (true, clrmsk (bakgnd), clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift);
             break;
         case 0x88:
-            flood (false, clrmsk (gfg), clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift);
+            flood (false, clrmsk (forgnd), clrop, pltpt[0].x >> xshift, pltpt[0].y >> yshift);
             break;
         case 0x90:
         case 0x98:
@@ -2570,7 +2529,7 @@ static void showchr (int chr)
         int xp;
         int yp;
         hrwrap (&xp, &yp);
-        plotchr (gfg, xp, yp, chr);
+        plotchr (forgnd, xp, yp, chr);
         newpix (xp + 8, yp);
         if ( (cmcflg & 1) == 0 ) hrwrap (NULL, NULL);
         }
@@ -2854,19 +2813,17 @@ static void vdu_17 (int code, int data1, int data2)
     {
     if ( code & 0x80 )
         {
-        bg = clrmsk (code);
-        bgfill = (uint8_t) cdef->cpx[bg];
-        txtbak = bg;
+        txtbak = clrmsk (code);
+        bgfill = (uint8_t) cdef->cpx[txtbak];
 #if DEBUG & 2
-        printf ("Background colour %d, bgfill = 0x%02X\n", bg, bgfill);
+        printf ("Background colour %d, bgfill = 0x%02X\n", txtbak, bgfill);
 #endif
         }
     else
         {
-        fg = clrmsk (code);
-        txtfor = fg;
+        txtfor = clrmsk (code);
 #if DEBUG & 2
-        printf ("Foreground colour %d\n", fg);
+        printf ("Foreground colour %d\n", txtfor);
 #endif
         }
 #if VT100_PRT
@@ -2889,13 +2846,11 @@ static void vdu_18 (int code, int data1, int data2)
     {
     if ( code & 0x80 )
         {
-        gbg = clrmsk (code) | (( data1 >> 16 ) & 0x0700);
-        bakgnd = gbg;
+        bakgnd = clrmsk (code) | (( data1 >> 16 ) & 0x0700);
         }
     else
         {
-        gfg = clrmsk (code) | (( data1 >> 16 ) & 0x0700);
-        forgnd = gfg;
+        forgnd = clrmsk (code) | (( data1 >> 16 ) & 0x0700);
         }
 #if VT100_PRT
     if ( bPrint )
@@ -2923,22 +2878,26 @@ static void vdu_19 (int code, int data1, int data2)
 #if DEBUG & 2
     printf ("pal = %d, phy = %d, r = %d, g = %d, b = %d\n", pal, phy, r, g, b);
 #endif
-    if ( pmode->ncbt == 3 ) pal *= 2;
-    if ( phy < 16 ) curpal[pal] = defclr (phy);
-    else if ( phy == 16 ) curpal[pal] = rgbclr (r, g, b);
-    else if ( phy == 255 ) curpal[pal] = rgbclr (8*r, 8*g, 8*b);
-#if DEBUG & 2
-    printf ("curpal[%d] = 0x%04X\n", pal, curpal[pal]);
-#endif
-    if ( pmode->ncbt == 3 ) curpal[pal+1] = curpal[pal];
-    else genrb (curpal);
-    return;
+    if (pmode->ncbt == 3)
+        {
+        clrset (2 * pal, phy, r, g, b);
+        clrset (2 * pal + 1, phy, r, g, b);
+        }
+    else
+        {
+        clrset (pal, phy, r, g, b);
+        }
     }
 
 // 0x14 - RESET COLOURS
 static void vdu_20 (int code, int data1, int data2)
     {
-    clrreset ();
+    txtbak = 0;
+    bgfill = 0;
+    bakgnd = 0;
+    txtfor = cdef->nclr - 1;
+    forgnd = cdef->nclr - 1;
+    clrreset (pmode);
 #if VT100_PRT
     if ( bPrint ) printf ("\033[37m\033[40m");
 #endif
@@ -3060,7 +3019,7 @@ static void vdu_127 (void)
     xeqvdu (0x0800, 0, 0);
     if ( vflags & HRGFLG )
         {
-        rectangle (clrmsk (gbg), pltpt[0].x >> xshift, pltpt[0].y >> yshift,
+        rectangle (clrmsk (bakgnd), pltpt[0].x >> xshift, pltpt[0].y >> yshift,
             pltpt[0].x >> xshift + 7, pltpt[0].y >> yshift + pmode->thgt - 1);
         }
     else
@@ -3444,7 +3403,7 @@ int sdump (FILE *fBmp)
     if ( nWrite != 13 ) return 198;
     for (int iClr = 0; iClr < nClr; ++iClr)
         {
-        iBuff[iClr] = clrrgb (cdef->cpx[iClr]);
+        iBuff[iClr] = clrrgb (iClr);
         }
     nWrite = fwrite (iBuff, sizeof (int), nClr, fBmp);
     if ( nWrite != nClr ) return 198;
@@ -3491,9 +3450,8 @@ int sload (FILE *fBmp)
     if (nRead != nClr) return 255;
     for (int iClr = 0; iClr < nClr; ++iClr)
         {
-        curpal[iClr] = rgbclr (iBuff[iClr] & 0xFF, (iBuff[iClr] >> 8) & 0xFF, (iBuff[iClr] >> 16) & 0xFF);
+        clrset (iClr, 16, iBuff[iClr] & 0xFF, (iBuff[iClr] >> 8) & 0xFF, (iBuff[iClr] >> 16) & 0xFF);
         }
-    genrb (curpal);
     if (iOff > 0) fseek (fBmp, iOff, SEEK_SET);
     const uint8_t *pswap;
     switch (pmode->ncbt)

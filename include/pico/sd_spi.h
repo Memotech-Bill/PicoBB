@@ -30,7 +30,9 @@
 #endif
 
 #ifndef SD_CS_PIN
-#ifdef PICO_SD_DAT0_PIN
+#if defined(PICO_SD_CS_PIN)
+#define SD_CS_PIN       PICO_SD_CS_PIN
+#elif defined(PICO_SD_DAT0_PIN) && defined(PICO_SD_DAT_PIN_INCREMENT)
 #define SD_CS_PIN       ( PICO_SD_DAT0_PIN + 3 * PICO_SD_DAT_PIN_INCREMENT )
 #else
 #error SD Card DAT3 / CS pin not defined. Specify a board including SD card.

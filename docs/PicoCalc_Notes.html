@@ -1,0 +1,201 @@
+<html>
+  <head>
+    <title>PicoCalc Notes</title>
+    <style>
+      table {border-collapse: collapse;}
+      td, th {border-style: solid; border-width: 1px; padding: 2px 10px;}
+    </style>
+  </head>
+  <body>
+
+    <h1>PicoCalc Notes</h1>
+
+    <h2>Pico Connections</h2>
+
+    <table>
+      <tr><th>GPIO</th><th>Description</th></tr>
+      <tr><td>0</td><td>Uart0 TX to USB C Socket via "Debug" circuit & J702 pin 3</td></tr>
+      <tr><td>1</td><td>Uart0 RX from USB C Socket via "Debug" circuit & J702 pin 2</td></tr>
+      <tr><td>2</td><td>ESP-PSRAM64H 8Mbyte PSRAM: SI/SIO0 & J703 pin 2</td></tr>
+      <tr><td>3</td><td>ESP-PSRAM64H 8Mbyte PSRAM: SO/SIO1 & J703 pin 3</td></tr>
+      <tr><td>4</td><td>ESP-PSRAM64H 8Mbyte PSRAM: SIO2 & J703 pin 4</td></tr>
+      <tr><td>5</td><td>ESP-PSRAM64H 8Mbyte PSRAM: SIO3 & J703 pin 5</td></tr>
+      <tr><td>6</td><td>I2C1 SDA to MPU I2C1</td></tr>
+      <tr><td>7</td><td>I2C1 SCL to MPU I2C1</td></tr>
+      <tr><td>8</td><td>Uart1 TX to MPU Uart3 RX</td></tr>
+      <tr><td>9</td><td>Uart1 RX from MPU Uart3 TX</td></tr>
+      <tr><td>10</td><td>SPI1 SCK - LCD WR / SCL</td></tr>
+      <tr><td>11</td><td>SPI1 TX - LCD SDA</td></tr>
+      <tr><td>12</td><td>SPI1 RX - LCD SDO</td></tr>
+      <tr><td>13</td><td>SPI1 CS - LCD CS</td></tr>
+      <tr><td>14</td><td>LCD DC</td></tr>
+      <tr><td>15</td><td>LCD RST</td></tr>
+      <tr><td>16</td><td>SPI0 RX - SD Card DAT0</td></tr>
+      <tr><td>17</td><td>SPI0 CS - SD Card CD / DAT3</td></tr>
+      <tr><td>18</td><td>SPI0 CLK - SD Card Clock</td></tr>
+      <tr><td>19</td><td>SPI0 TX - SD Card CMD</td></tr>
+      <tr><td>20</td><td>ESP-PSRAM64H 8Mbyte PSRAM: CS</td></tr>
+      <tr><td>21</td><td>ESP-PSRAM64H 8Mbyte PSRAM: SCLK & J703 pin 6</td></tr>
+      <tr><td>22</td><td>SD detect</td></tr>
+      <tr><td>26</td><td>PWM L - Sound</td></tr>
+      <tr><td>27</td><td>PWM R - Sound</td></tr>
+      <tr><td>28</td><td>J703 pin 7</td></tr>
+    </table>
+
+    <h2>MPU Connections</h2>
+
+    <table>
+      <tr><th>GPIO</th><th>Description</th></tr>
+      <tr><td>PA0</td><td>Keyboard Row 1</td></tr>
+      <tr><td>PA1</td><td>Keyboard Row 2</td></tr>
+      <tr><td>PA2</td><td>Keyboard Row 3</td></tr>
+      <tr><td>PA3</td><td>Keyboard Row 4</td></tr>
+      <tr><td>PA4</td><td>Keyboard Row 5</td></tr>
+      <tr><td>PA5</td><td>Keyboard Row 6</td></tr>
+      <tr><td>PA6</td><td>Keyboard Row 7</td></tr>
+      <tr><td>PA7</td><td>Keyboard Row 8</td></tr>
+      <tr><td>PA8</td><td>LCD Backlight</td></tr>
+      <tr><td>PA9</td><td>MPU Uart1 TX to Debug circuit & J702 pin 5 - Used for MPU diagnostics</td></tr>
+      <tr><td>PA10</td><td>MPU Uart1 RX to Debug circuit & & J702 pin 4 - Not used?</td></tr>
+      <tr><td>PA11</td><td>MPU USB D+ to USB C connecter via Debug circuit & J702 pin 6</td></tr>
+      <tr><td>PA12</td><td>MPU USB D- to USB C connecter via Debug circuit & J702 pin 7</td></tr>
+      <tr><td>PA13</td><td>Pico Power Enable</td></tr>
+      <tr><td>PA14</td><td>Speaker Amplifier Enable</td></tr>
+      <tr><td>PA15</td><td>No Connection</td></tr>
+      <tr><td>PB0</td><td>Keyboard Key 1</td></tr>
+      <tr><td>PB1</td><td>Keyboard Key 2</td></tr>
+      <tr><td>PB2</td><td>Keyboard Key 3</td></tr>
+      <tr><td>PB3</td><td>Keyboard Key 4</td></tr>
+      <tr><td>PB4</td><td>Keyboard Key 5</td></tr>
+      <tr><td>PB5</td><td>Keyboard Key 6</td></tr>
+      <tr><td>PB6</td><td>Keyboard Key 7</td></tr>
+      <tr><td>PB7</td><td>Keyboard Key 8</td></tr>
+      <tr><td>PB8</td><td>MPU I2C1 SCL to Pico I2C1</td></tr>
+      <tr><td>PB9</td><td>MPU I2C1 SDA to Pico 12C1</td></tr>
+      <tr><td>PB10</td><td>MPU I2C2 SCL to Power Management Unit</td></tr>
+      <tr><td>PB11</td><td>MPU I2C2 SDA to Power Management Unit</td></tr>
+      <tr><td>PB12</td><td>Keyboard Key 9</td></tr>
+      <tr><td>PB13</td><td>Keyboard Key 10</td></tr>
+      <tr><td>PB14</td><td>Keyboard Key 11</td></tr>
+      <tr><td>PB15</td><td>Keyboard Key 12</td></tr>
+      <tr><td>PC0</td><td>Keyboard Column 1</td></tr>
+      <tr><td>PC1</td><td>Keyboard Column 2</td></tr>
+      <tr><td>PC2</td><td>Keyboard Column 3</td></tr>
+      <tr><td>PC3</td><td>Keyboard Column 4</td></tr>
+      <tr><td>PC4</td><td>Keyboard Column 5</td></tr>
+      <tr><td>PC5</td><td>Keyboard Column 6</td></tr>
+      <tr><td>PC6</td><td>Keyboard Column 7</td></tr>
+      <tr><td>PC7</td><td>Keyboard Column 8</td></tr>
+      <tr><td>PC8</td><td>Keyboard Backlight</td></tr>
+      <tr><td>PC9</td><td>Power Management Unit IRQ</td></tr>
+      <tr><td>PC10</td><td>MPU Uart3 TX to Pico Uart1 RX - Not used?</td></tr>
+      <tr><td>PC11</td><td>MPU Uart3 RX from Pico Uart1 TX - Not used?</td></tr>
+      <tr><td>PC12</td><td>HP detect</td></tr>
+      <tr><td>PC13</td><td>LED ?</td></tr>
+      <tr><td>PC14</td><td>32.768KHz Osc In</td></tr>
+      <tr><td>PC15</td><td>32.768KHz Osc Out</td></tr>
+      <tr><td>PD0</td><td>8MHz Osc In</td></tr>
+      <tr><td>PD1</td><td>8MHz Osc Out</td></tr>
+      <tr><td>PD2</td><td>PD (10K pulldown)</td></tr>
+    </table>
+
+    <h2>"Debug" circuit</h2>
+
+    <h3>Components</h3>
+    <table>
+      <tr><th>Identifier</th><th>Component</th><th>Description</th></tr>
+      <tr><td>J701</td><td>TYPEC-31-M-12</td><td>USB C Socket</td></tr>
+      <tr><td>U701</td><td>WAS7227</td><td>Two pole changeover CMOS switch</td></tr>
+      <tr><td>U702</td><td>CH340C</td><td>USB to UART conversion</td></tr>
+      <tr><td>U703</td><td>WAS7227</td><td>Two pole changeover CMOS switch</td></tr>
+    </table>
+
+    <h3>Switch Settings</h3>
+    <p>Despite the indication on the circuit diagram, the two halves of SW701 are not coupled.</p>
+    <table>
+      <tr><th>DIP 1</th><th>DIP 2</th><th>USB C Connection</th></tr>
+      <tr><td>Off</td><td>Off</td><td>Pico UART0 via USB to UART converter</td></tr>
+      <tr><td>Off</td><td>On</td><td>MPU UART1 via USB to UART converter</td></tr>
+      <tr><td>On</td><td>X</td><td>MPU USB</td></tr>
+    </table>
+
+    <h2>Pico to MCU Communication</h2>
+
+    <p>Communication is via I2C using GPIO 6 & 7 on the Pico to PB8 & PB9 on the MCU.
+      Pico is the I2C controller and MPU the I2C target, with a target address of 0x1F.</p>
+
+    <p>The Pico sends a one byte request or two byte command and receives a variable length response
+      depending upon the request. The following table lists the possible requests and
+      resulting responses.</p>
+
+    <h3>Requests</h3>
+    <table>
+      <tr><th>Request byte</th><th>Response Length</th><th>Response Data</th></tr>
+      <tr><td>VER (0x01)</td><td>2</td><td>0: Zero<br>1: MCU BIOS version (0x16)</td></tr>
+      <tr><td>KEY (0x04)</td><td>1</td><td>Get keyboard status:<br>Bits 0-4: Number of entries in FIFO<br>
+          Bit 5: CapsLock<br>Bit 6: NumLock</td></tr>
+      <tr><td>BKL (0x05)</td><td>2</td><td>Get LCD backlight setting:<br>
+          0: BKL (0x05)<br>1: LCD Backlight setting</td></tr>
+      <tr><td>RST (0x08)</td><td>0</td><td>Delay 1s (?) then reset (what?).</td></tr>
+      <tr><td>FIF (0x09)</td><td>2</td><td>The next entry from the keyboard FIFO:<br>
+          0: Idle (0), Pressed (1), Hold (2), Released (3)<br>1: Key code<br>0, 0 if no outstanding entry.</td></tr>
+      <tr><td>BK2 (0x0A)</td><td>2</td><td>Get keyboard backlight setting:<br>
+          0: BK2 (0x0A)<br>1: Keyboard Backlight setting</td></tr>
+      <tr><td>BAT (0x0B)</td><td>2</td><td>Get battery status:<br>0: BAT (0x0B)<br>1: Charge (%?)</td></tr>
+      <tr><td>C64_MTX (0x0C)</td><td>10</td><td>Get current keyboard state:<br>0: C64_MTX (0x0C)<br>
+          1-8: State of keys in each column (0 = Pressed, 1 = Released)<br>9: 0xFF</td></tr>
+      <tr><td>C64_JS (0x0D)</td><td>2</td><td>Get current joystick status:<br>0: C64_JS (0x0D)<br>
+          1: Bit 0: Right, Bit 1: Up, Bit 2: Down, Bit 3: Left, Bit 4: Enter / Fire.</td></tr>
+      <tr><td>OFF (0x0E)</td><td>2</td><td>If write, turn off power:<br>0: OFF (0x0E)<br>1: 1</td></tr>
+    </table>
+
+    <h3>Commands</h3>
+    <table>
+      <tr><th>First byte</th><th>Second byte</th><th>Response Length</th><th>Response Data</th></tr>
+      <tr><td>BKL_W (0x85)</td><td>Setting</td><td>2</td><td>Set and return LCD backlight:<br>
+          0: BKL (0x05)<br>LCD Backlight setting</td></tr>
+      <tr><td>RST_W (0x88)</td><td>Delay</td><td>0</td><td>Delay by given amount then reset.</td></tr>
+      <tr><td>BK2_W (0x8A)</td><td>Setting</td><td>2</td><td>Set and return Keyboard backlight:<br>
+          0: BK2 (0x0A)<br>Keyboard Backlight setting</td></tr>
+      <tr><td>OFF (0x8E)</td><td>PMU Setting</td><td>2</td><td>Controls power management<br>0: OFF (0x0E)<br>1: 1</td></tr>
+    </table>
+
+    <h2>Keyboard</h2>
+    <h3>Key Matrix</h3>
+    <table>
+      <tr><th>Row</th><th>Col 1</th><th>Col 2</th><th>Col 3</th><th>Col 4</th><th>Col 5</th><th>Col 6</th><th>Col 7</th><th>Col 8</th></tr>
+      <tr><td>1</td><td>F5</td><td>F4</td><td>F3</td><td>F2</td><td>F1</td><td>`</td><td>3</td><td>2</td></tr>
+      <tr><td>2</td><td>Backspace</td><td>Del</td><td>Caps Lock</td><td>Tab</td><td>Esc</td><td>4</td><td>E</td><td>W</td></tr>
+      <tr><td>3</td><td>P</td><td>=</td><td>-</td><td>\</td><td>/</td><td>R</td><td>S</td><td>1</td></tr>
+      <tr><td>4</td><td>Enter</td><td>8</td><td>7</td><td>6</td><td>5</td><td>F</td><td>X</td><td>Q</td></tr>
+      <tr><td>5</td><td>.</td><td>I</td><td>U</td><td>Y</td><td>T</td><td>V</td><td>;</td><td>A</td></tr>
+      <tr><td>6</td><td>L</td><td>K</td><td>J</td><td>H</td><td>G</td><td>C</td><td>'</td><td>Z</td></tr>
+      <tr><td>7</td><td>O</td><td>,</td><td>M</td><td>N</td><td>B</td><td>D</td><td>Space</td><td>No Key</td></tr>
+    </table>
+
+    <h3>Single Keys</h3>
+    <table>
+      <tr><th>Position</th><th>Key</th></tr>
+      <tr><td>1</td><td>Alt</td></tr>
+      <tr><td>2</td><td>Control</td></tr>
+      <tr><td>3</td><td>Left Shift</td></tr>
+      <tr><td>4</td><td>Right Shift</td></tr>
+      <tr><td>5</td><td>0</td></tr>
+      <tr><td>6</td><td>9</td></tr>
+      <tr><td>7</td><td>]</td></tr>
+      <tr><td>8</td><td>[</td></tr>
+      <tr><td>9</td><td>Right</td></tr>
+      <tr><td>10</td><td>Up</td></tr>
+      <tr><td>11</td><td>Down</td></tr>
+      <tr><td>12</td><td>Left</td></tr>
+    </table>
+
+    <h2>LCD Display</h2>
+    <p>From Code/picocalc_kbd_tester/lcdspi/lcdspi.h, the LCD controller is an ILI9488.</p>
+
+    <h2>Compilation</h2>
+    <p>In folder PicoBB/bin/pico, execute the command:</p>
+    <code>make BOARD=pico_w ADDON=PicoCalc STDIO=PicoCalc SOUND=SDL</code>
+  </body>
+</html>
+
