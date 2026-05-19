@@ -579,6 +579,24 @@ void LCD_ScrollArea (int top, int mid, int bot)
     LCD_DataTerm ();
     }
 
+void LCD_PartialArea (int top, int rows)
+    {
+    if (top == 0)
+        {
+        LCD_WriteReg (0x13);
+        LCD_DataTerm ();
+        }
+    else
+        {
+        LCD_WriteReg (0x30);
+        LCD_WriteData16 (top);
+        LCD_WriteData16 (top + rows - 1);
+        LCD_DataTerm ();
+        LCD_WriteReg (0x12);
+        LCD_DataTerm ();
+        }
+    }
+
 void LCD_SetWindow (int Xstart, int Ystart,	int Xend, int Yend)
     {
 	//set the X coordinates
@@ -771,15 +789,11 @@ const MODE *setmode (int mode)
         xscl = 1;
         yscl = 1 << pmode->yshf;
         // ILI9488 has 480 rows of graphics memory
-        nrow = SDEPTH - 2 * pmode->vmgn;
         scrltop = 0;
+        LCD_PartialArea (pmode->vmgn, pmode->grow);
+        nrow = SDEPTH - 2 * pmode->vmgn;
         LCD_ScrollArea (pmode->vmgn, nrow, pmode->vmgn);
         LCD_Scroll (pmode->vmgn + scrltop);
-        if (pmode->vmgn > 0)
-            {
-            LCD_SetAreaColour (0, 0, pmode->gcol * xscl, pmode->vmgn, 0);
-            LCD_SetAreaColour (0, nrow + pmode->vmgn, pmode->gcol * xscl, nrow + 2 * pmode->vmgn, 0);
-            }
         return pmode;
         }
     return NULL;
@@ -829,15 +843,15 @@ void dispdn (void)
             Dsp_DataTerm ();
             }
         }
-    int iRow = pmode->vmgn + scrltop + tvt * thgt;
+    int iRow = scrltop + tvt * thgt;
     if (iRow + thgt > nrow)
         {
-        Dsp_SetAreaColour (nC1, iRow, nC2, pmode->vmgn + nrow, curpal[txtbak]);
-        Dsp_SetAreaColour (nC1, pmode->vmgn, nC2, iRow + thgt - nrow, curpal[txtbak]);
+        Dsp_SetAreaColour (nC1, pmode->vmgn + iRow, nC2, pmode->vmgn + nrow, curpal[txtbak]);
+        Dsp_SetAreaColour (nC1, pmode->vmgn, nC2, pmode->vmgn + iRow + thgt - nrow, curpal[txtbak]);
         }
     else
         {
-        Dsp_SetAreaColour (nC1, iRow, nC2, iRow + thgt, curpal[txtbak]);
+        Dsp_SetAreaColour (nC1, iRow, nC2, pmode->vmgn + iRow + thgt, curpal[txtbak]);
         }
     }
 
@@ -876,7 +890,7 @@ void dispup (void)
             ++nR2;
             }
         }
-    int iRow = pmode->vmgn + scrltop + tvb * thgt;
+    int iRow = scrltop + tvb * thgt;
     if (iRow >= nrow) iRow -= nrow;
     if (iRow + thgt > nrow)
         {
@@ -885,7 +899,7 @@ void dispup (void)
         }
     else
         {
-        Dsp_SetAreaColour (nC1, iRow, nC2, iRow + thgt, curpal[txtbak]);
+        Dsp_SetAreaColour (nC1, pmode->vmgn + iRow, nC2, pmode->vmgn + iRow + thgt, curpal[txtbak]);
         }
     }
 
@@ -898,16 +912,14 @@ void cls (void)
     int nR2 = scrltop + (tvb + 1) * thgt;
     if (nR1 >= nrow) nR1 -= nrow;
     if (nR2 >= nrow) nR2 -= nrow;
-    nR1 += pmode->vmgn;
-    nR2 += pmode->vmgn;
     if (nR2 < nR1)
         {
-        Dsp_SetAreaColour (nC1, nR1, nC2, pmode->vmgn + nrow, curpal[txtbak]);
-        Dsp_SetAreaColour (nC1, pmode->vmgn, nC2, nR2, curpal[txtbak]);
+        Dsp_SetAreaColour (nC1, pmode->vmgn + nR1, nC2, pmode->vmgn + nrow, curpal[txtbak]);
+        Dsp_SetAreaColour (nC1, pmode->vmgn, nC2, pmode->vmgn + nR2, curpal[txtbak]);
         }
     else
         {
-        Dsp_SetAreaColour (nC1, nR1, nC2, nR2, curpal[txtbak]);
+        Dsp_SetAreaColour (nC1, pmode->vmgn + nR1, nC2, pmode->vmgn + nR2, curpal[txtbak]);
         }
     }
 
@@ -1369,7 +1381,7 @@ static void flipcsr (int xp, int yp)
     for (int i = 0; i < cursb - cursa + 1; ++i)
         {
         if (yp >= nrow) yp -= nrow;
-        LCD_SetWindow (xp, yp, xp + 8, yp + 1);
+        LCD_SetWindow (xp, pmode->vmgn + yp, xp + 8, pmode->vmgn + yp + 1);
         LCD_DataInput ();
         LCD_ReadPixels (pix, 8);
         LCD_DataTerm ();
