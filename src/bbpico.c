@@ -457,11 +457,11 @@ int testkey (int);
 #ifdef PICO_GRAPH
 #include <hardware/dma.h>
 void setup_vdu (void);
-void getcsrfb(int *px, int *py);
-int vpointfb (int xp, int yp);
-int vtintfb (int xp, int yp);
-int vgetcfb (int x, int y);
-int widthsfb (unsigned char *s, int l);
+void getcsrgr (int *px, int *py);
+int vpointgr (int xp, int yp);
+int vtintgr (int xp, int yp);
+int vgetcgr (int x, int y);
+int widthsgr (unsigned char *s, int l);
 #endif
 
 #ifdef PICO_SOUND
@@ -890,7 +890,7 @@ void getcsr(int *px, int *py)
 #ifdef PICO_GRAPH
     if ( (optval & 0x0F) == 14 )
         {
-        getcsrfb (px, py);
+        getcsrgr (px, py);
         }
 	else
 #endif
@@ -905,7 +905,7 @@ void getcsr(int *px, int *py)
 int vtint (int x, int y)
     {
 #ifdef PICO_GRAPH
-    if ( (optval & 0x0F) >= 14 ) return vtintfb (x, y);
+    if ( (optval & 0x0F) >= 14 ) return vtintgr (x, y);
 #endif
 	error (255, "Sorry, TINT not implemented");
 	return -1;
@@ -915,7 +915,7 @@ int vtint (int x, int y)
 int vpoint (int x, int y)
     {
 #ifdef PICO_GRAPH
-    if ( (optval & 0x0F) >= 14 ) return vpointfb (x, y);
+    if ( (optval & 0x0F) >= 14 ) return vpointgr (x, y);
 #endif
 	error (255, "Sorry, POINT not implemented");
 	return -1;
@@ -924,7 +924,7 @@ int vpoint (int x, int y)
 int vgetc (int x, int y)
     {
 #ifdef PICO_GRAPH
-    if ( (optval & 0x0F) >= 14 ) return vgetcfb (x, y);
+    if ( (optval & 0x0F) >= 14 ) return vgetcgr (x, y);
 #endif
 	error (255, "Sorry, GETXY not implemented");
 	return -1;
@@ -934,7 +934,7 @@ int vgetc (int x, int y)
 int widths (unsigned char *s, int l)
     {
 #ifdef PICO_GRAPH
-    if ( (optval & 0x0F) >= 14 ) return widthsfb (s, l);
+    if ( (optval & 0x0F) >= 14 ) return widthsgr (s, l);
 #endif
 	error (255, "Sorry, WIDTH not implemented");
 	return -1;
@@ -1703,6 +1703,8 @@ void mouseoff (void)
 void mouseto (int x, int y)
     {
     }
+#else
+void mouse_init (void);
 #endif
 
 // Get address of an API function:
@@ -2729,6 +2731,7 @@ void *main_init (int argc, char *argv[])
 #if HAVE_CYW43
         }
 #endif
+#if 0
 	for (int i = 3; i > 0; --i )
 	    {
 	    // printf ("%d seconds to start\n", i);
@@ -2737,6 +2740,7 @@ void *main_init (int argc, char *argv[])
         led_state (0);
 	    sleep_ms (500);
 	    }
+#endif
     // waitconsole();
     // printf ("BBC Basic main build " __DATE__ " " __TIME__ "\n");
     // sleep_ms(500);
@@ -2754,6 +2758,8 @@ void *main_init (int argc, char *argv[])
 #if defined(PICO_GUI) || defined(PICO_GRAPH)
     dma_channel_unclaim (0);  // Free DMA channel for video
     setup_vdu ();
+#endif
+#ifdef PICO_GUI
     setup_keyboard ();
 #endif
 #ifdef PICO_SOUND

@@ -96,31 +96,25 @@
 #ifndef PICO_LCD_RST_PIN
 #define PICO_LCD_RST_PIN    15
 #endif
-#ifndef PICO_LCD_ROWS
-#define PICO_LCD_ROWS       320
-#endif
-#ifndef PICO_LCD_COLUMNS
-#define PICO_LCD_COLUMNS    320
-#endif
 
 // --- PSRAM ---
 #ifndef PICO_PSRAM_SIO0_PIN
-#define PICO_PSRAM_SIO0_PIN 2
+#define PICO_PSRAM_SIO0_PIN     2
 #endif
 #ifndef PICO_PSRAM_SIO1_PIN
-#define PICO_PSRAM_SIO1 3
+#define PICO_PSRAM_SIO1_PIN     3
 #endif
 #ifndef PICO_PSRAM_SIO2_PIN
-#define PICO_PSRAM_SIO2_PIN 4
+#define PICO_PSRAM_SIO2_PIN     4
 #endif
 #ifndef PICO_PSRAM_SIO3_PIN
-#define PICO_PSRAM_SIO3_PIN 5
+#define PICO_PSRAM_SIO3_PIN     5
 #endif
-#ifndef PICO_PSRAM_CST_PIN
-#define PICO_PSRAM_CST_PIN   20
+#ifndef PICO_PSRAM_CS_PIN
+#define PICO_PSRAM_CS_PIN       20
 #endif
 #ifndef PICO_PSRAM_CLK_PIN
-#define PICO_PSRAM_CLK_PIN 21
+#define PICO_PSRAM_CLK_PIN      21
 #endif
 
 // --- SOUND ---
@@ -131,5 +125,17 @@
 #ifndef PICO_AUDIO_PWM_R_PIN
 #define PICO_AUDIO_PWM_R_PIN    27
 #endif
+
+#define SWIDTH      320     // Display width in pixels
+#define SHEIGHT     320     // Display height in pixels
+#define SDEPTH      480     // Height of display controller memory
+#define SOFT_CSR    1       // Cursor flash requires interrupt
+
+//  REF_MODE =      0   Not implemented
+//                  1   Using double buffering
+//                  2   Using VDU queue
+//                  3   User configurable
+#define REF_MODE    3
+#define REFQ_DEF    1024        // Default length for VDU queue
 
 #endif

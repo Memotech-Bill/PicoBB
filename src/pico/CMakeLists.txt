@@ -362,7 +362,8 @@ if (TARGET tinyusb_device)
   if( "${GRAPH}" STREQUAL "VGA" )
     message(STATUS "VGA Graphics Output")
     target_sources(bbcbasic PRIVATE
-      ../../src/fbufvdu.c
+      ../../src/framebuf.c
+      ../../src/vducmd.c
       ../../src/fbufctl.c
       ../../src/pico/periodic.c
       ../../src/pico_gui/picofbuf.c
@@ -388,7 +389,8 @@ if (TARGET tinyusb_device)
   elseif ( "${GRAPH}" STREQUAL "WSLCD35" )
     message(STATUS "Waveshare 3.5 inch LCD Graphics Output")
     target_sources(bbcbasic PRIVATE
-      ../../src/fbufvdu.c
+      ../../src/framebuf.c
+      ../../src/vducmd.c
       ../../src/fbufctl.c
       ../../src/pico/periodic.c
       ../../src/wslcd35/DEV_Config.c
@@ -415,11 +417,12 @@ if (TARGET tinyusb_device)
       )
   elseif ( "${GRAPH}" STREQUAL "PICOCALC" )
     message(STATUS "PicoCalc LCD Graphics Output")
+    pico_generate_pio_header(bbcbasic ${CMAKE_CURRENT_LIST_DIR}/../../src/PicoCalc/qspi.pio)
     target_sources(bbcbasic PRIVATE
-      ../../src/fbufvdu.c
-      ../../src/fbufctl.c
+      ../../src/vducmd.c
       ../../src/pico/periodic.c
       ../../src/PicoCalc/pc_lcd.c
+      ../../src/PicoCalc/qspi.c
       )
     target_compile_definitions(bbcbasic PUBLIC
       -DVDU_OUT=pclcd_out

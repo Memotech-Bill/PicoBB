@@ -70,12 +70,12 @@ ifeq ($(STDIO), PICO)
 GUI_SOURCES = \
     ../../include/pico_gui/tusb_config.h \
     ../../include/font_tt.h \
-    ../../src/fbufvdu.c \
+    ../../src/vducmd.c \
     ../../src/fbufctl.c \
     ../../src/pico_gui/picokbd.c \
     ../../src/pico_gui/picofbuf.c \
     ../../src/pico_gui/framebuffer.S \
-	../../include/fbufvdu.h
+	../../include/vducmd.h
 SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt
 EXAMPLE_FILES += ../../bin/pico/examples/* \
 		../../bin/pico/examples/graphics/*
@@ -83,13 +83,13 @@ else ifeq ($(GRAPH), VGA)
 GUI_SOURCES = \
     ../../include/pico_gui/tusb_config.h \
     ../../include/font_tt.h \
-    ../../src/fbufvdu.c \
+    ../../src/vducmd.c \
     ../../src/fbufctl.c \
 	../../src/pico/periodic.c \
     ../../src/pico_gui/picofbuf.c \
     ../../src/pico_gui/framebuffer.S \
 	../../src/pico/zmodem.c \
-	../../include/fbufvdu.h \
+	../../include/vducmd.h \
 	../../include/periodic.h
 SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
 	../../src/pico/symbols/sdk_stdio_usb.txt
@@ -99,7 +99,7 @@ else ifeq ($(GRAPH), WSLCD35)
 GUI_SOURCES = \
     ../../include/pico_gui/tusb_config.h \
     ../../include/font_tt.h \
-    ../../src/fbufvdu.c \
+    ../../src/vducmd.c \
     ../../src/fbufctl.c \
 	../../src/pico/periodic.c \
 	../../src/wslcd35/DEV_Config.c \
@@ -110,7 +110,7 @@ GUI_SOURCES = \
 	../../src/wslcd35/LCD_Driver.h \
 	../../src/wslcd35/LCD_Touch.h \
 	../../src/pico/zmodem.c \
-	../../include/fbufvdu.h \
+	../../include/vducmd.h \
 	../../include/periodic.h
 SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
 	../../src/pico/symbols/sdk_stdio_usb.txt
@@ -120,13 +120,16 @@ else ifeq ($(STDIO), PicoCalc)
 GUI_SOURCES = \
     ../../boards/picocalc.h \
     ../../include/font_tt.h \
-	../../include/fbufvdu.h \
+	../../include/vducmd.h \
 	../../include/periodic.h \
-    ../../src/fbufvdu.c \
+	../../include/qspi.h \
+    ../../src/vducmd.c \
     ../../src/fbufctl.c \
 	../../src/pico/periodic.c \
 	../../src/PicoCalc/pc_lcd.c \
-	../../src/PicoCalc/pc_kbd.c
+	../../src/PicoCalc/pc_kbd.c \
+	../../src/PicoCalc/qspi.c \
+	../../src/PicoCalc/qspi.pio
 SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
 	../../src/pico/symbols/sdk_stdio_usb.txt
 EXAMPLE_FILES += ../../bin/pico/examples/* \
@@ -208,7 +211,7 @@ SOURCES= \
 	../../src/pico/crctab.c \
 	../../src/pico/picobb_2040.ld \
 	../../src/pico/picobb_2350.ld \
-	../../include/fbufvdu.h \
+	../../include/vducmd.h \
 	../../include/ffconf.h \
 	../../include/lfswrap.h \
 	../../include/sconfig.h \

@@ -1,112 +1,50 @@
-/* pc_lcd.c - Output to the PicoCalc LCD */
+/*  lcddrv.c - Implementation of the low level graphics routines for an LCD display with memory */
 
-#include <stdio.h>
 #include <string.h>
-#include <hardware/sync.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <unistd.h>
 #include <hardware/gpio.h>
 #include <hardware/spi.h>
 #include <pico/time.h>
-#include "fbufvdu.h"
-#include "lfswrap.h"
+#include <pico/sync.h>
 #include "bbccon.h"
-#include "picocli.h"
+#include "vducmd.h"
 #include "periodic.h"
+#include "qspi.h"
 
 #include "font_tt.h"
 
+#ifndef RGB
 #define RGB     16
-
-void modechg (char mode);
-void error (int iErr, const char *psErr);
-void *oshwm (void *addr, int mark);
-int putevt (heapptr handler, int msg, int wparam, int lparam);
-
-// VDU variables declared in bbcdata_*.s:
-extern int lastx;                       // Graphics cursor x-position (pixels)
-extern int lasty;                       // Graphics cursor y-position (pixels)
-extern unsigned char cursa;             // Start (top) line of cursor
-extern unsigned char cursb;             // Finish (bottom) line of cursor
-extern void *vpage;                     // Address of start of BASIC program memory
-extern short int forgnd;                // Graphics foreground colour/action
-extern short int bakgnd;                // Graphics background colour/action
-extern unsigned char txtfor;            // Text foreground colour
-extern unsigned char txtbak;            // Text background colour
-
-// Variables defined in fbufvdu.c
-extern int xcsr;                        // Text cursor horizontal position
-extern int ycsr;                        // Text cursor vertical position
-extern int tvt;                         // Top of text viewport
-extern int tvb;	                        // Bottom of text viewport
-extern int tvl;	                        // Left edge of text viewport
-extern int tvr;	                        // Right edge of text viewport
-extern int gvt;                         // Top of graphics viewport
-extern int gvb;	                        // Bottom of graphics viewport
-extern int gvl;	                        // Left edge of graphics viewport
-extern int gvr;	                        // Right edge of graphics viewport
-
-// Variables defined in fbufctl.c
-extern int nCsrHide;                    // Non-zero to hide cursor
-extern int csrhgt;                      // Height of cursor
-extern int csrtop;                      // Top of cursor in text line
-
-#if RGB == 18
-#define colour_t uint32_t
-#define PIXEL_FROM_RGB8(r, g, b)    (((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b))
-#else
-#define colour_t uint16_t
-#define PIXEL_FROM_RGB8(r, g, b)    (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3))
 #endif
 
-static colour_t curpal[16];             // Current palette
+#if RGB == 18
+typedef uint32_t colour_t;
+#elif RGB == 16
+typedef uint16_t colour_t;
+#else
+#error Invalid colour bit size
+#endif
 
-static const colour_t defpal[16] =
-    {
-    PIXEL_FROM_RGB8(  0u,   0u,   0u),
-    PIXEL_FROM_RGB8(128u,   0u,   0u),
-    PIXEL_FROM_RGB8(  0u, 128u,   0u),
-    PIXEL_FROM_RGB8(128u, 128u,   0u),
-    PIXEL_FROM_RGB8(  0u,   0u, 128u),
-    PIXEL_FROM_RGB8(128u,   0u, 128u),
-    PIXEL_FROM_RGB8(  0u, 128u, 128u),
-    PIXEL_FROM_RGB8(128u, 128u, 128u),
-    PIXEL_FROM_RGB8( 64u,  64u,  64u),
-    PIXEL_FROM_RGB8(255u,   0u,   0u),
-    PIXEL_FROM_RGB8(  0u, 255u,   0u),
-    PIXEL_FROM_RGB8(255u, 255u,   0u),
-    PIXEL_FROM_RGB8(  0u,   0u, 255u),
-    PIXEL_FROM_RGB8(255u,   0u, 255u),
-    PIXEL_FROM_RGB8(  0u, 255u, 255u),
-    PIXEL_FROM_RGB8(255u, 255u, 255u)
-    };
+#if REF_MODE & 1
+#define RAMBLK  1024                // Block size of PSRAM
+#define RAMBMSK (~(RAMBLK - 1))     // Mask to address start of block
 
-static const MODE modes[] = {
-// ncbt gcol grow tcol trw  vmg hmg pb nbpl ys thg
-    { 1, 320, 256,  40, 32,  32,  0,  8,  40, 0,  8},   // Mode  0 - 10KB
-    { 2, 320, 256,  40, 32,  32,  0,  4,  80, 0,  8},   // Mode  1 - 20KB
-    { 4, 160, 256,  20, 32,  32,  0,  4,  80, 0,  8},   // Mode  2 - 20KB
-    { 1, 320, 225,  40, 25,  47,  0,  8,  40, 0,  9},   // Mode  3 - 10KB
-    { 1, 320, 256,  40, 32,  32,  0,  8,  40, 0,  8},   // Mode  4 - 10KB
-    { 2, 160, 256,  20, 32,  32,  0,  8,  40, 0,  8},   // Mode  5 - 10KB
-    { 1, 320, 225,  40, 25,  47,  0,  8,  40, 0,  9},   // Mode  6 - 10KB
-    { 3, 320, 225,  40, 25,  47,  0,  8, 160, 0,TTH},   // Mode  7 - ~1KB - Teletext
-    { 1, 320, 320,  40, 20,   0,  0,  8,  40, 0, 16},   // Mode  8 - 19KB
-    { 2, 320, 320,  40, 20,   0,  0,  4,  80, 0, 16},   // Mode  9 - 37.5KB
-    { 4, 160, 320,  20, 20,   0,  0,  4,  80, 0, 16},   // Mode 10 - 37.5KB
-    { 1, 320, 288,  40, 16,  15,  0,  8,  40, 0, 18},   // Mode 11 - 19KB
-    { 1, 320, 320,  40, 40,   0,  0,  8,  40, 0,  8},   // Mode 12 - 19KB
-    { 2, 320, 320,  40, 40,   0,  0,  4,  80, 0,  8},   // Mode 13 - 37.5KB
-    { 4, 160, 320,  20, 40,   0,  0,  4,  80, 0,  8},   // Mode 14 - 37.5KB
-    { 1, 320, 288,  40, 32,  15,  0,  8,  40, 0,  9},   // Mode 15 - 19KB
-    };
+static void load_lcd (void);
+static void save_lcd (void);
+static void save_pixels (colour_t *pix, int nPix);
+static void save_colour (colour_t clr, int nClr);
+static void save_scroll (int data);
+static void load_pixels (colour_t *pix, int nPix);
+static colour_t load_colour (void);
+#endif
 
-static CLIFUNC excli = NULL;
-static MODE curmode;
-static uint8_t *framebuf = NULL;
-static bool bInverse = false;
-static int nrow = 480;
-static int scrltop = 0;
-static int xscl = 1;
-static int yscl = 1;
+#if REF_MODE == 3
+RFM rfm = rfmBuffer;
+#endif
+
+static void video_periodic (void);
 
 #include "pico/binary_info.h"
 bi_decl (bi_1pin_with_name (PICO_LCD_DC_PIN,    "LCD command / data"));
@@ -135,7 +73,85 @@ bi_decl (bi_1pin_with_name (PICO_LCD_RST_PIN,   "LCD reset"));
 #define PICO_LCD_RST_PIN 15
 #endif
 
-void LCD_SPI_Init (void)
+static const MODE modes[] = {
+// ncbt gcol grow tcol trw  vmg hmg pb nbpl ys thg
+    { 1, 320, 256,  40, 32,  32,  0,  0, 0, 0,  8},   // Mode  0
+    { 2, 320, 256,  40, 32,  32,  0,  0, 0, 0,  8},   // Mode  1
+    { 4, 160, 256,  20, 32,  32,  0,  0, 0, 0,  8},   // Mode  2
+    { 1, 320, 225,  40, 25,  47,  0,  0, 0, 0,  9},   // Mode  3
+    { 1, 320, 256,  40, 32,  32,  0,  0, 0, 0,  8},   // Mode  4
+    { 2, 160, 256,  20, 32,  32,  0,  0, 0, 0,  8},   // Mode  5
+    { 1, 320, 225,  40, 25,  47,  0,  0, 0, 0,  9},   // Mode  6
+    { 3, 320, 225,  40, 25,  47,  0,  0, 0, 0,TTH},   // Mode  7 - Teletext
+    { 4, 320, 320,  40, 20,   0,  0,  0, 0, 0, 16},   // Mode  8
+    { 4, 320, 320,  40, 32,   0,  0,  0, 0, 0, 10},   // Mode  9
+    { 4, 320, 320,  40, 40,   0,  0,  0, 0, 0,  8},   // Mode  10
+    { 7, 320, 320,  40, 20,   0,  0,  0, 0, 0, 16},   // Mode  11
+    { 7, 320, 320,  40, 32,   0,  0,  0, 0, 0, 10},   // Mode  12
+    { 7, 320, 320,  40, 40,   0,  0,  0, 0, 0,  8}    // Mode  13
+    };
+
+#if RGB == 16
+#define PIXEL_FROM_RGB8(r, g, b)    (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3))
+#elif RGB == 18
+#define PIXEL_FROM_RGB8(r, g, b)    (((r & 0xFC) << 16) | ((g & 0xFC) << 8) | (b & 0xFC))
+#endif
+
+static const colour_t defpal[16] =
+    {
+    PIXEL_FROM_RGB8(  0u,   0u,   0u),
+    PIXEL_FROM_RGB8(128u,   0u,   0u),
+    PIXEL_FROM_RGB8(  0u, 128u,   0u),
+    PIXEL_FROM_RGB8(128u, 128u,   0u),
+    PIXEL_FROM_RGB8(  0u,   0u, 128u),
+    PIXEL_FROM_RGB8(128u,   0u, 128u),
+    PIXEL_FROM_RGB8(  0u, 128u, 128u),
+    PIXEL_FROM_RGB8(128u, 128u, 128u),
+    PIXEL_FROM_RGB8( 64u,  64u,  64u),
+    PIXEL_FROM_RGB8(255u,   0u,   0u),
+    PIXEL_FROM_RGB8(  0u, 255u,   0u),
+    PIXEL_FROM_RGB8(255u, 255u,   0u),
+    PIXEL_FROM_RGB8(  0u,   0u, 255u),
+    PIXEL_FROM_RGB8(255u,   0u, 255u),
+    PIXEL_FROM_RGB8(  0u, 255u, 255u),
+    PIXEL_FROM_RGB8(255u, 255u, 255u)
+    };
+
+static colour_t curpal[128];
+
+typedef struct
+    {
+    colour_t    clr;
+    uint8_t     idx;
+    } CLRIDX;
+
+static CLRIDX clridx[128];
+
+static const MODE *pmode;
+static int scrltop = 0;
+static int xscl = 1;
+static int yscl = 1;
+static int nrow;
+
+static bool bBlink = false;
+
+static bool bCsrVis = false;
+static int nCsrHide = 0;
+static uint32_t nFlash = 0;             // Time counter for cursor flash
+static critical_section_t cs_csr;       // Critical section controlling cursor flash
+static PRD_FUNC pnext = NULL;
+
+#if REF_MODE & 1
+static int nRowBeg = 0;
+static int nRowEnd = SWIDTH;
+static int nColBeg = 0;
+static int nColEnd = SHEIGHT;
+static int nRowCur = 0;
+static int nColCur = 0;
+static bool bBuffer = false;
+#endif
+
+static void LCD_SPI_Init (void)
     {
     // init GPIO
     gpio_init (PICO_LCD_CS_PIN);
@@ -151,45 +167,45 @@ void LCD_SPI_Init (void)
 
     // init SPI
     gpio_set_function (PICO_LCD_CLK_PIN, GPIO_FUNC_SPI);
-    gpio_set_function (PICO_LCD_TX_PIN, GPIO_FUNC_SPI);
+    // gpio_set_function (PICO_LCD_TX_PIN, GPIO_FUNC_SPI);
     gpio_set_function (PICO_LCD_RX_PIN, GPIO_FUNC_SPI);
     gpio_set_input_hysteresis_enabled (PICO_LCD_RX_PIN, true);
     int speed = spi_init (SPI_INSTANCE(PICO_LCD_SPI), PICO_LCD_SPEED);
-    printf ("LCD speed = %d\n", speed);
+    // printf ("LCD speed = %d\n", speed);
     }
 
-void LCD_WriteReg (unsigned char data)
+static inline void LCD_WriteReg (unsigned char data)
     {
+    gpio_set_function (PICO_LCD_TX_PIN, GPIO_FUNC_SPI);
     gpio_put (PICO_LCD_DC_PIN, 0);
     gpio_put (PICO_LCD_CS_PIN, 0);
 
     spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), &data, 1);
 
-    gpio_put (PICO_LCD_CS_PIN, 1);
+    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
-void LCD_WriteData8 (uint8_t data)
+static inline void LCD_WriteData8 (uint8_t data)
     {
     gpio_put (PICO_LCD_DC_PIN, 1);
-    gpio_put (PICO_LCD_CS_PIN, 0);
+    // gpio_put (PICO_LCD_CS_PIN, 0);
     spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), &data, 1);
-    gpio_put (PICO_LCD_CS_PIN, 1);
+    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
-void LCD_WriteData16 (uint32_t data)
+static inline void LCD_WriteData16 (uint16_t data)
     {
     uint8_t data_array[2];
     data_array[0] = (data >> 8) & 0xFF;
     data_array[1] = data & 0xFF;
 
-
     gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
-    gpio_put (PICO_LCD_CS_PIN, 0);
+    // gpio_put (PICO_LCD_CS_PIN, 0);
     spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data_array, 2);
-    gpio_put (PICO_LCD_CS_PIN, 1);
+    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
-void LCD_WriteData24 (uint32_t data)
+static inline void LCD_WriteData24 (uint32_t data)
     {
     uint8_t data_array[3];
     data_array[0] = (data >> 16) & 0xFF;
@@ -198,23 +214,88 @@ void LCD_WriteData24 (uint32_t data)
 
 
     gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
-    gpio_put (PICO_LCD_CS_PIN, 0);
+    // gpio_put (PICO_LCD_CS_PIN, 0);
     spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data_array, 3);
-    gpio_put (PICO_LCD_CS_PIN, 1);
+    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
-void LCD_Data_Init (void)
+static inline void LCD_WriteData (uint8_t *data, int nLen)
     {
     gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
-    gpio_put (PICO_LCD_CS_PIN, 0);
+    // gpio_put (PICO_LCD_CS_PIN, 0);
+    spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data, nLen);
+    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
-void LCD_Data_Term (void)
+static inline void LCD_ReadData (uint8_t *data, int nLen)
+    {
+    gpio_set_function (PICO_LCD_TX_PIN, GPIO_FUNC_SPI);
+    gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
+    // gpio_put (PICO_LCD_CS_PIN, 0);
+    spi_read_blocking (SPI_INSTANCE(PICO_LCD_SPI), 0, data, nLen);
+    // gpio_put (PICO_LCD_CS_PIN, 1);
+    }
+
+static inline void LCD_DataInput (void)
+    {
+    LCD_WriteReg (0x2E);
+    gpio_init (PICO_LCD_TX_PIN);
+    gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
+    // gpio_put (PICO_LCD_CS_PIN, 0);
+    uint8_t data;
+    spi_read_blocking (SPI_INSTANCE(PICO_LCD_SPI), 0, &data, 1);
+    }
+
+static inline void Dsp_DataInput (void)
+    {
+#if REF_MODE & 1
+    if (bBuffer)
+        {
+        qspi_cfg_qread ();
+        return;
+        }
+#endif
+    LCD_DataInput ();
+    }
+
+static inline void LCD_DataOutput (void)
+    {
+    LCD_WriteReg (0x2C);
+    gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
+    // gpio_put (PICO_LCD_CS_PIN, 0);
+    }
+
+static inline void Dsp_DataOutput (void)
+    {
+#if REF_MODE & 1
+    if (bBuffer)
+        {
+        // printf ("Dsp_DataOutput:\n");
+        qspi_cfg_qwrite ();
+        return;
+        }
+#endif
+    LCD_DataOutput ();
+    }
+
+static inline void LCD_DataTerm (void)
     {
     gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
-void LCD_WriteColour (colour_t clr, int nRpt)
+static inline void Dsp_DataTerm (void)
+    {
+#if REF_MODE & 1
+    if (bBuffer)
+        {
+        qspi_free ();
+        return;
+        }
+#endif
+    LCD_DataTerm ();
+    }
+
+static void LCD_WriteColour (colour_t clr, int nRpt)
     {
 #if RGB == 18
     uint8_t data[3];
@@ -223,7 +304,7 @@ void LCD_WriteColour (colour_t clr, int nRpt)
     data[2] = clr & 0xFF;
     while (nRpt)
         {
-        spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data, 2);
+        spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data, 3);
         --nRpt;
         }
 #else
@@ -236,6 +317,104 @@ void LCD_WriteColour (colour_t clr, int nRpt)
         --nRpt;
         }
 #endif
+    }
+
+static void Dsp_WriteColour (colour_t clr, int nRpt)
+    {
+#if REF_MODE & 1
+    if (bBuffer)
+        {
+        save_colour (clr, nRpt);
+        return;
+        }
+#endif
+    LCD_WriteColour (clr, nRpt);
+    }
+
+static colour_t LCD_ReadColour (void)
+    {
+    colour_t clr;
+#if RGB == 18
+    uint8_t data[3];
+    spi_read_blocking (SPI_INSTANCE(PICO_LCD_SPI), 0, data, 3);
+    clr = (data[0] << 16) | (data[1] << 8) | data[2];
+#else
+    uint8_t data[2];
+    spi_read_blocking (SPI_INSTANCE(PICO_LCD_SPI), 0, data, 2);
+    clr = (data[0] << 8) | data[1];
+#endif
+    return clr;
+    }
+
+static colour_t Dsp_ReadColour (void)
+    {
+#if REF_MODE & 1
+    if (bBuffer) return load_colour ();
+#endif
+    return LCD_ReadColour ();
+    }
+
+static void LCD_WritePixels (colour_t *pix, int nPix)
+    {
+    while (nPix)
+        {
+#if RGB == 18
+        uint8_t data[3];
+        data[0] = (*pix >> 16) & 0xFF;
+        data[1] = (*pix >> 8) & 0xFF;
+        data[2] = *pix & 0xFF;
+        spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data, 3);
+#else
+        uint8_t data[2];
+        data[0] = (*pix >> 8) & 0xFF;
+        data[1] = *pix & 0xFF;
+        spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data, 2);
+#endif
+        ++pix;
+        --nPix;
+        }
+    }
+
+static void Dsp_WritePixels (colour_t *pix, int nPix)
+    {
+#if REF_MODE & 1
+    if (bBuffer)
+        {
+        save_pixels (pix, nPix);
+        return;
+        }
+#endif
+    LCD_WritePixels (pix, nPix);
+    }
+
+static void LCD_ReadPixels (colour_t *pix, int nPix)
+    {
+    while (nPix)
+        {
+#if RGB == 18
+        uint8_t data[3];
+        spi_read_blocking (SPI_INSTANCE(PICO_LCD_SPI), 0, data, 3);
+        *pix = (data[0] << 16) | (data[1] << 8) | data[2];
+#else
+        uint8_t data[2];
+        spi_read_blocking (SPI_INSTANCE(PICO_LCD_SPI), 0, data, 2);
+        *pix = (data[0] << 8) | data[1];
+#endif
+        ++pix;
+        --nPix;
+        }
+    }
+
+static void Dsp_ReadPixels (colour_t *pix, int nPix)
+    {
+#if REF_MODE & 1
+    if (bBuffer)
+        {
+        load_pixels (pix, nPix);
+        return;
+        }
+#endif
+    LCD_ReadPixels (pix, nPix);
     }
 
 void setup_vdu (void)
@@ -266,6 +445,7 @@ void setup_vdu (void)
     LCD_WriteData8 (0x16);
     LCD_WriteData8 (0x1A);
     LCD_WriteData8 (0x0F);
+    LCD_DataTerm ();
 
     LCD_WriteReg (0XE1); // Negative Gamma Control
     LCD_WriteData8 (0x00);
@@ -283,21 +463,26 @@ void setup_vdu (void)
     LCD_WriteData8 (0x35);
     LCD_WriteData8 (0x37);
     LCD_WriteData8 (0x0F);
+    LCD_DataTerm ();
 
     LCD_WriteReg (0XC0); // Power Control 1
     LCD_WriteData8 (0x17);
     LCD_WriteData8 (0x15);
+    LCD_DataTerm ();
 
     LCD_WriteReg (0xC1); // Power Control 2
     LCD_WriteData8 (0x41);
+    LCD_DataTerm ();
 
     LCD_WriteReg (0xC5); // VCOM Control
     LCD_WriteData8 (0x00);
     LCD_WriteData8 (0x12);
     LCD_WriteData8 (0x80);
+    LCD_DataTerm ();
 
     LCD_WriteReg (0x36); // Memory Access Control
     LCD_WriteData8 (0x48); // MX, BGR
+    LCD_DataTerm ();
 
     LCD_WriteReg (0x3A); // Pixel Interface Format
 #if RGB == 18
@@ -306,25 +491,32 @@ void setup_vdu (void)
     // LCD_WriteData8 (0x55); // 16 bit colour for SPI
     LCD_WriteData8 (0x65); // 16 bit colour for SPI
 #endif
+    LCD_DataTerm ();
     
     LCD_WriteReg (0xB0); // Interface Mode Control
     LCD_WriteData8 (0x00);
+    LCD_DataTerm ();
 
     LCD_WriteReg (0xB1); // Frame Rate Control
     LCD_WriteData8 (0xA0);
+    LCD_DataTerm ();
 
     LCD_WriteReg (0x21); // Display Inversion On
+    LCD_DataTerm ();
 
     LCD_WriteReg (0xB4); // Display Inversion Control
     LCD_WriteData8 (0x02);
+    LCD_DataTerm ();
 
     LCD_WriteReg (0xB6); // Display Function Control
     LCD_WriteData8 (0x02);
     LCD_WriteData8 (0x02);
     LCD_WriteData8 (0x3B);
+    LCD_DataTerm ();
 
     LCD_WriteReg (0xB7); // Entry Mode Set
     LCD_WriteData8 (0xC6);
+    LCD_DataTerm ();
     
     LCD_WriteReg (0xE9); // Set image function
 #if RGB == 18
@@ -332,31 +524,50 @@ void setup_vdu (void)
 #else
     LCD_WriteData8 (0x00);    // 1 = Enable 24-bit input
 #endif
+    LCD_DataTerm ();
 
     LCD_WriteReg (0xF7); // Adjust Control 3 - Is this required?
     LCD_WriteData8 (0xA9);
     LCD_WriteData8 (0x51);
     LCD_WriteData8 (0x2C);
     LCD_WriteData8 (0x82);    // DSI write DCS command, use loose packet RGB 666
+    LCD_DataTerm ();
 
     LCD_WriteReg (0x11); //Exit Sleep
+    LCD_DataTerm ();
     sleep_ms (120);
 
     LCD_WriteReg (0x29); //Display on
+    LCD_DataTerm ();
     sleep_ms (120);
 
     LCD_WriteReg (0x36); // Memory Access Control
     LCD_WriteData8 (0x48); // MX, BGR
+    LCD_DataTerm ();
 
-    setup_fbuf (&curmode);
-    memset (singlebuf (), 0, BUF_SIZE);
-    modechg (9);
+    critical_section_init (&cs_csr);
+    pnext = add_periodic (video_periodic);
+
+    modechg (8);
     }
 
 void LCD_Scroll (int data)
     {
     LCD_WriteReg (0x37);
     LCD_WriteData16 (data);
+    LCD_DataTerm ();
+    }
+
+void Dsp_Scroll (int data)
+    {
+#if REF_MODE & 1
+    if (bBuffer)
+        {
+        save_scroll (data);
+        return;
+        }
+#endif
+    LCD_Scroll (data);
     }
 
 void LCD_ScrollArea (int top, int mid, int bot)
@@ -365,42 +576,39 @@ void LCD_ScrollArea (int top, int mid, int bot)
     LCD_WriteData16 (top);
     LCD_WriteData16 (mid);
     LCD_WriteData16 (bot);
+    LCD_DataTerm ();
     }
 
 void LCD_SetWindow (int Xstart, int Ystart,	int Xend, int Yend)
-    {	
+    {
 	//set the X coordinates
 	LCD_WriteReg(0x2A);
 	LCD_WriteData16 (Xstart);
 	LCD_WriteData16 (Xend - 1);
+    LCD_DataTerm ();
 
 	//set the Y coordinates
 	LCD_WriteReg(0x2B);
 	LCD_WriteData16 (Ystart);
 	LCD_WriteData16 (Yend - 1);
-
-    LCD_WriteReg(0x2C);                 // Start pixel transfer
+    LCD_DataTerm ();
     }
 
-void LCD_SetCursor (int Xpoint, int Ypoint)
+void Dsp_SetWindow (int Xstart, int Ystart,	int Xend, int Yend)
     {
-	LCD_SetWindow (Xpoint, Ypoint, Xpoint + 1, Ypoint + 1);
-    }
-
-void LCD_SetColour (uint32_t Colour , int Xpoint, int Ypoint)
-    {
-    LCD_Data_Init ();
-    LCD_WriteColour (Colour, (uint32_t)Xpoint * (uint32_t)Ypoint);
-    LCD_Data_Term ();
-    }
-
-void LCD_SetPointlColour (int Xpoint, int Ypoint, uint32_t Colour)
-    {
-    if ((Xpoint <= PICO_LCD_COLUMNS) && (Ypoint <= PICO_LCD_ROWS))
+#if REF_MODE & 1
+    if (bBuffer)
         {
-        LCD_SetCursor (Xpoint, Ypoint);
-        LCD_SetColour(Colour, 1, 1);
+        nColCur = Xstart;
+        nColBeg = Xstart;
+        nColEnd = Xend;
+        nRowCur = Ystart;
+        nRowBeg = Ystart;
+        nRowEnd = Yend;
+        return;
         }
+#endif
+    LCD_SetWindow (Xstart, Ystart, Xend, Yend);
     }
 
 void LCD_SetAreaColour (int Xstart, int Ystart, int Xend, int Yend,	uint32_t Colour)
@@ -408,133 +616,96 @@ void LCD_SetAreaColour (int Xstart, int Ystart, int Xend, int Yend,	uint32_t Col
     if((Xend > Xstart) && (Yend > Ystart))
         {
         LCD_SetWindow (Xstart, Ystart, Xend, Yend);
-        LCD_SetColour (Colour, Xend - Xstart, Yend - Ystart);
+        LCD_DataOutput ();
+        LCD_WriteColour (Colour, (uint32_t)(Xend - Xstart) * (uint32_t)(Yend - Ystart));
+        LCD_DataTerm ();
         }
     }
 
-void LCD_Clear (uint32_t Colour)
+void Dsp_SetAreaColour (int Xstart, int Ystart, int Xend, int Yend,	uint32_t Colour)
     {
-    LCD_SetAreaColour (0, 0, PICO_LCD_COLUMNS, PICO_LCD_ROWS, Colour);
+    if((Xend > Xstart) && (Yend > Ystart))
+        {
+        Dsp_SetWindow (Xstart, Ystart, Xend, Yend);
+        // printf ("Dsp_SetAreaColour:\n");
+        Dsp_DataOutput ();
+        Dsp_WriteColour (Colour, (uint32_t)(Xend - Xstart) * (uint32_t)(Yend - Ystart));
+        Dsp_DataTerm ();
+        }
     }
 
-void pclcd_out (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
+void Dsp_Clear (uint32_t Colour)
     {
-    bool bWrap = false;
-    if (scrltop + (yp1 << curmode.yshf) >= nrow)
+    Dsp_SetAreaColour (0, 0, SWIDTH, SHEIGHT, Colour);
+    }
+
+static void idxclr (void)
+    {
+    int nclr = 1 << pmode->ncbt;
+    for (int i = 0; i < nclr; ++i)
         {
-        bWrap = true;
-        scrltop -= nrow;
+        clridx[i].clr = curpal[i];
+        clridx[i].idx = i;
         }
-    else if (scrltop + (yp2 << curmode.yshf) > nrow)
+    bool bSorted = false;
+    while (! bSorted)
         {
-        pclcd_out (fbuf, xp1, yp1, xp2, (nrow - scrltop) >> curmode.yshf);
-        bWrap = true;
-        scrltop -= nrow;
-        yp1 = (-scrltop) >> curmode.yshf;
-        }
-    if (fbuf != framebuf) return;
-    switch (curmode.ncbt)
-        {
-        case 1:
-            xp1 >>= 3;
-            xp2 = ((xp2 - 1) >> 3) + 1;
-            break;
-        case 2:
-            xp1 >>= 2;
-            xp2 = ((xp2 - 1) >> 2) + 1;
-            break;
-        case 4:
-            xp1 >>= 1;
-            xp2 = ((xp2 - 1) >> 1) + 1;
-            break;
-        }
-    
-    LCD_SetWindow (xp1 * curmode.nppb, curmode.vmgn + scrltop + (yp1 << curmode.yshf),
-        xp2 * curmode.nppb, curmode.vmgn + scrltop + ((yp2 + 1) << curmode.yshf) - 1);
-    fbuf += curmode.nbpl * yp1 + xp1;
-    LCD_Data_Init ();
-    for (int y = yp1; y < yp2; ++y)
-        {
-        for (int yr = 0; yr < yscl; ++yr)
+        bSorted = true;
+        for (int i = 1; i < nclr; ++i)
             {
-            uint8_t *fp = fbuf;
-            // if (yp2 == yp1 + 1) printf ("y = %d, yr = %d, fp = %p\n", y, yr, fp);
-            for (int x = xp1; x < xp2; ++x)
+            if (clridx[i].clr < clridx[i-1].clr)
                 {
-                uint8_t pix = *fp;
-                // if (yp2 == yp1 + 1) printf ("x = %d, pix = 0x%02X\n", x, pix);
-                switch (curmode.ncbt)
-                    {
-                    case 4:
-                        LCD_WriteColour (curpal[pix & 0x0F], xscl);
-                        LCD_WriteColour (curpal[pix >> 4], xscl);
-                        break;
-                    case 2:
-                        LCD_WriteColour (curpal[pix & 0x03], xscl);
-                        LCD_WriteColour (curpal[(pix >> 2) & 0x03], xscl);
-                        LCD_WriteColour (curpal[(pix >> 4) & 0x03], xscl);
-                        LCD_WriteColour (curpal[pix >> 6], xscl);
-                        break;
-                    case 1:
-                        for (int i = 0; i < 8; ++i)
-                            {
-                            LCD_WriteColour (curpal[pix & 0x01], xscl);
-                            pix >>= 1;
-                            }
-                        break;
-                    }
-                ++fp;
+                bSorted = false;
+                colour_t clr = clridx[i].clr;
+                uint8_t idx = clridx[i].idx;
+                clridx[i].clr = clridx[i-1].clr;
+                clridx[i].idx = clridx[i-1].idx;
+                clridx[i-1].clr = clr;
+                clridx[i-1].idx = idx;
                 }
             }
-        fbuf += curmode.nbpl;
-        }
-    LCD_Data_Term ();
-    if (bWrap) scrltop += nrow;
-    }
-
-void pclcd_scroll (uint8_t *fbuf, int lt, int lb, bool bUp)
-    {
-    if ((lt != 0) || (lb != curmode.trow - 1))
-        {
-        pclcd_out (fbuf, 0, lt * curmode.thgt, curmode.gcol, (lb + 1) * curmode.thgt);
-        }
-    else if (bUp)
-        {
-        scrltop += curmode.thgt << curmode.yshf;
-        if ( scrltop >= nrow) scrltop -= nrow;
-        LCD_Scroll (curmode.vmgn + scrltop);
-        pclcd_out (fbuf, 0, (curmode.trow - 1) * curmode.thgt, curmode.gcol, curmode.grow);
-        }
-    else
-        {
-        scrltop -= curmode.thgt << curmode.yshf;
-        if ( scrltop < 0) scrltop += nrow;
-        LCD_Scroll (curmode.vmgn + scrltop);
-        pclcd_out (fbuf, 0, 0, curmode.gcol, curmode.thgt);
         }
     }
 
-void bufswap (uint8_t *fbuf)
+static uint8_t findclr (colour_t clr)
     {
-    if (fbuf == framebuf) pclcd_out (fbuf, 0, 0, curmode.gcol, curmode.grow);
+    int n1 = -1;
+    int n2 = 1 << pmode->ncbt;
+    while (n2 > n1 + 1)
+        {
+        int n3 = (n1 + n2) / 2;
+        if (clr == clridx[n3].clr)      return clridx[n3].idx;
+        else if (clr < clridx[n3].clr)  n2 = n3;
+        else                            n1 = n3;
+        }
+    return 0;
+    }
+
+colour_t rgbclr (int r, int g, int b)
+    {
+#if RGB == 16
+    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+#elif RGB == 18
+    return ((r & 0xFC) << 16) | ((g & 0xFC) << 8) | (b & 0xFC);
+#endif
     }
 
 int clrrgb (int clr)
     {
     clr = curpal[clr];
-#if RGB == 18
-    return clr;
-#else
+#if RGB == 16
     return ((clr & 0xF800) >> 8) | ((clr & 0x07E0) << 5) | ((clr & 0x001F) << 19);
+#elif RGB == 18
+    return ((clr & 0xFC0000) >> 16) | (clr & 0xFC00) | ((clr & 0x00FC) << 16);
 #endif
     }
 
-void clrreset (const MODE *pmode)
+void clrreset (void)
     {
     if ( pmode->ncbt == 1 )
         {
 #if DEBUG & 2
-        printf ("clrreset: nclr = 2\n");
+        // printf ("clrreset: nclr = 2\n");
 #endif
         curpal[0] = defpal[0];
         curpal[1] = defpal[15];
@@ -542,7 +713,7 @@ void clrreset (const MODE *pmode)
     else if ( pmode->ncbt == 2 )
         {
 #if DEBUG & 2
-        printf ("clrreset: nclr = 4\n");
+        // printf ("clrreset: nclr = 4\n");
 #endif
         curpal[0] = defpal[0];
         curpal[1] = defpal[9];
@@ -552,7 +723,7 @@ void clrreset (const MODE *pmode)
     else if ( pmode->ncbt == 3 )
         {
 #if DEBUG & 2
-        printf ("clrreset: nclr = 4\n");
+        // printf ("clrreset: nclr = 4\n");
 #endif
         curpal[0] = defpal[0];
         for (int i = 1; i < 8; ++i)
@@ -560,14 +731,21 @@ void clrreset (const MODE *pmode)
             curpal[i] = defpal[i+8];
             }
         }
-    else
+    else if ( pmode->ncbt == 4 )
         {
 #if DEBUG & 2
-        printf ("clrreset: nclr = 16\n");
+        // printf ("clrreset: nclr = 16\n");
 #endif
         for (int i = 0; i < 16; ++i)
             {
             curpal[i] = defpal[i];
+            }
+        }
+    else if ( pmode->ncbt == 7 )
+        {
+        for (int i = 0; i < 128; ++i)
+            {
+            curpal[i] = rgbclr (0x55 * (i & 0x03), 0x09 * (i & 0x1C), 0x55 * (i >> 5));
             }
         }
     }
@@ -575,306 +753,1086 @@ void clrreset (const MODE *pmode)
 void clrset (int pal, int phy, int r, int g, int b)
     {
     if ( phy < 16 ) curpal[pal] = defpal[phy];
-    else if ( phy == 16 ) curpal[pal] = PIXEL_FROM_RGB8 (r, g, b);
-    else if ( phy == 255 ) curpal[pal] = PIXEL_FROM_RGB8 (8*r, 8*g, 8*b);
+    else if ( phy == 16 ) curpal[pal] = rgbclr (r, g, b);
+    else if ( phy == 255 ) curpal[pal] = rgbclr (8*r, 8*g, 8*b);
 #if DEBUG & 2
-    printf ("curpal[%d] = 0x%04X\n", pal, curpal[pal]);
+    // printf ("curpal[%d] = 0x%04X\n", pal, curpal[pal]);
 #endif
     }
 
-bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd)
+const MODE *setmode (int mode)
     {
 #if DEBUG & 1
-    printf ("setmode (%d)\n", mode);
+    // printf ("setmode (%d)\n", mode);
 #endif
     if (( mode >= 0 ) && ( mode < sizeof (modes) / sizeof (modes[0]) ))
         {
-        memcpy (&curmode, &modes[mode], sizeof (MODE));
-        if (curmode.ncbt == 3) xscl = 1;
-        else                   xscl = (curmode.ncbt * curmode.nppb) >> 3;
-        yscl = 1 << curmode.yshf;
-        // nrow = curmode.grow << curmode.yshf;
+        pmode = &modes[mode];
+        xscl = 1;
+        yscl = 1 << pmode->yshf;
         // ILI9488 has 480 rows of graphics memory
-        nrow = 480;
-        // printf ("xscl = %d, yscl = %d, nrow = %d, vmgn = %d\n", xscl, yscl, nrow, curmode.vmgn);
+        nrow = SDEPTH - 2 * pmode->vmgn;
         scrltop = 0;
-        LCD_ScrollArea (curmode.vmgn, nrow, curmode.vmgn);
-        LCD_Scroll (curmode.vmgn + scrltop);
-        if (curmode.vmgn > 0)
+        LCD_ScrollArea (pmode->vmgn, nrow, pmode->vmgn);
+        LCD_Scroll (pmode->vmgn + scrltop);
+        if (pmode->vmgn > 0)
             {
-            LCD_SetAreaColour (0, 0, curmode.gcol * xscl, curmode.vmgn, 0);
-            LCD_SetAreaColour (0, nrow + curmode.vmgn, curmode.gcol * xscl, nrow + 2 * curmode.vmgn, 0);
+            LCD_SetAreaColour (0, 0, pmode->gcol * xscl, pmode->vmgn, 0);
+            LCD_SetAreaColour (0, nrow + pmode->vmgn, pmode->gcol * xscl, nrow + 2 * pmode->vmgn, 0);
             }
-        framebuf = singlebuf ();
-        nCsrHide |= CSR_OFF;
-        if (curmode.ncbt == 3)
-            {
-            csrtop = 0;
-            csrhgt = TTH;
-            }
-        else
-            {
-            csrtop = curmode.thgt - 1;
-            csrhgt = 1;
-            }
-        *pfbuf = framebuf;
-        *ppmd = &curmode;
-        if ( curmode.ncbt == 3 ) memcpy (&framebuf[curmode.trow * curmode.tcol], font_tt, sizeof (font_tt));
-        return true;
+        return pmode;
         }
-    return false;
+    return NULL;
     }
 
-bool txtmode (int code, int *pdata1, int *pdata2)
-    {
-    if ((code & 0x7F) >= sizeof (modes) / sizeof (modes[0])) return false;
-    const MODE *pmode = &modes[(code & 0x7F)];
-    *pdata2 = (pmode->gcol << 8) | (pmode->grow << 24);
-    *pdata1 = (pmode->grow >> 8) | 0x0800 | (pmode->thgt << 16) | (0x01000000 << pmode->ncbt);
-    return true;
-    }
-
-int bufsize (void)
-    {
-    int nbyt = curmode.grow * curmode.nbpl;
-    if ( curmode.ncbt == 3 ) nbyt += sizeof (font_tt);
-    return nbyt;
-    }
-
-void dispmode (void)
+void dispenable (void)
     {
     nCsrHide = 0;
     showcsr ();
 #if DEBUG & 1
-    printf ("dispmode: New mode set\n");
+    // printf ("dispmode: New mode set\n");
 #endif
     }
 
-static void pclcd_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool bShow)
+void dispdn (void)
     {
-    // printf ("pclcd_out7 (%p, %d, %d, %d, %d)\n", fbuf, xp1, yp1, xp2, yp2);
-    if (fbuf != framebuf) return;
-    uint16_t blk[TTH][8];
-    uint8_t *ttfont = fbuf + curmode.trow * curmode.tcol - 0x20 * TTH;
-    bool bDHeight = false;
-    bool bDouble = false;
-    bool bLower = false;
-    for (int yr = 0; yr < yp1; ++yr)
+    int thgt = pmode->thgt << pmode->yshf;
+    int nC1 = 8 * xscl * tvl;
+    int nC2 = 8 * xscl * (tvr + 1);
+    if ((tvl == 0) && (tvr == pmode->tcol - 1) && (tvt == 0) && (tvb == pmode->trow - 1))
         {
-        uint8_t *pch = fbuf + yr * curmode.tcol;
-        bDHeight = false;
-        for (int xc = 0; xc < curmode.tcol; ++xc)
-            {
-            if ( *pch & 0x7F == 0x0D )
-                {
-                bDHeight = true;
-                break;
-                }
-            }
-        if (bDHeight) bLower = ! bLower;
-        else bLower = false;
-        }
-    // printf ("LCD_SetWindow (%d, %d, %d, %d)\n", 8 * xscl * xp1, curmode.thgt * yscl * yp1, 8 * xscl * (xp2 + 1), curmode.thgt * yscl * (yp2 + 1));
-    for (int yr = yp1; yr <= yp2; ++yr)
-        {
-        uint8_t *font = ttfont;
-        uint8_t *pch = fbuf + yr * curmode.tcol;
-        int nfg = 7;
-        uint16_t bgnd = curpal[0];
-        uint16_t fgnd = curpal[nfg];
-        bDHeight = false;
-        bDouble = false;
-        bool bFlash = false;
-        bool bGraph = false;
-        bool bCont = true;
-        bool bHold = false;
-        for (int xc = 0; xc < curmode.tcol; ++xc)
-            {
-            uint8_t ch = *pch & 0x7F;
-            // printf ("yr = %d, xc = %d, ch = 0x%02X\n", yr, xc, ch);
-            if ( ch >= 0x20 )
-                {
-                uint16_t *pblk = &blk[0][0];
-                for (int ys = 0; ys < curmode.thgt; ++ys)
-                    {
-                    int iScan = ys;
-                    if (bDouble)
-                        {
-                        if ( bLower )   iScan = ( ys + TTH ) >> 1;
-                        else            iScan = ys >> 1;
-                        }
-                    uint8_t px = font[TTH * ch + iScan];
-                    // printf ("ys = %d, y = %d, px = 0x%02X\n", ys, y, px);
-                    if ( px & 0x01 ) *pblk = fgnd;
-                    else             *pblk = bgnd;
-                    ++pblk;
-                    if ( px & 0x02 ) *pblk = fgnd;
-                    else             *pblk = bgnd;
-                    ++pblk;
-                    if ( px & 0x04 ) *pblk = fgnd;
-                    else             *pblk = bgnd;
-                    ++pblk;
-                    if ( px & 0x08 ) *pblk = fgnd;
-                    else             *pblk = bgnd;
-                    ++pblk;
-                    if ( px & 0x10 ) *pblk = fgnd;
-                    else             *pblk = bgnd;
-                    ++pblk;
-                    if ( px & 0x20 ) *pblk = fgnd;
-                    else             *pblk = bgnd;
-                    ++pblk;
-                    if ( px & 0x40 ) *pblk = fgnd;
-                    else             *pblk = bgnd;
-                    ++pblk;
-                    if ( px & 0x80 ) *pblk = fgnd;
-                    else             *pblk = bgnd;
-                    ++pblk;
-                    }
-                }
-            else
-                {
-                if ( ! bHold )
-                    {
-                    for (int ys = 0; ys < TTH; ++ys)
-                        {
-                        for (int i = 0; i < 8; ++i)
-                            {
-                            blk[ys][i] = bgnd;
-                            }
-                        }
-                    }
-                if ((ch >= 0x00) && (ch <= 0x07))
-                    {
-                    font = ttfont;
-                    bGraph = false;
-                    nfg = ch & 0x07;
-                    fgnd = curpal[nfg];
-                    }
-                else if (ch == 0x08)
-                    {
-                    bFlash = true;
-                    }
-                else if (ch == 0x09)
-                    {
-                    bFlash = false;
-                    }
-                else if (ch == 0x0C)
-                    {
-                    bDouble = false;
-                    }
-                else if (ch == 0x0D)
-                    {
-                    bDouble = true;
-                    bDHeight = true;
-                    }
-                else if ((ch >= 0x10) && (ch <= 0x17))
-                    {
-                    if ( bCont )    font = ttfont + 0x60 * TTH;
-                    else            font = ttfont + 0xC0 * TTH;
-                    bGraph = true;
-                    nfg = ch & 0x07;
-                    fgnd = curpal[nfg];
-                    }
-                else if (ch == 0x19)
-                    {
-                    bCont = true;
-                    if ( bGraph ) font = ttfont + 0x60 * TTH;
-                    }
-                else if (ch == 0x1A)
-                    {
-                    bCont = false;
-                    if ( bGraph ) font = ttfont + 0xC0 * TTH;
-                    }
-                else if (ch == 0x1C)
-                    {
-                    bgnd = curpal[0];
-                    }
-                else if (ch == 0x1D)
-                    {
-                    bgnd = curpal[nfg];
-                    }
-                else if (ch == 0x1E)
-                    {
-                    bHold = true;
-                    }
-                else if (ch == 0x1F)
-                    {
-                    bHold = false;
-                    }
-                }
-            if ((xc >= xp1) && (xc <= xp2))
-                {
-                int ysr = scrltop + curmode.thgt * yscl * yr;
-                if (ysr >= nrow) ysr -= nrow;
-                LCD_SetWindow (8 * xscl * xc, curmode.vmgn + ysr, 8 * xscl * (xc + 1), curmode.vmgn + ysr + curmode.thgt * yscl);
-                LCD_Data_Init ();
-                // printf ("LCD_WriteColour:");
-                for (int ys = 0; ys < TTH; ++ys)
-                    {
-                    if (bInverse && (bFlash ||
-                                    ((xc == xcsr) && (yr == ycsr)
-                                    && (ys >= csrtop) && (ys < csrtop + csrhgt)
-                                    && (nCsrHide == 0))))
-                        {
-                        LCD_WriteColour (bgnd, 8 * xscl * yscl);
-                        // printf (" %0x%02X * %d", bgnd, 8 * xscl);
-                        }
-                    else if (bShow || bFlash)
-                        {
-                        for (int y = 0; y < yscl; ++y)
-                            {
-                            for (int i = 0; i < 8; ++i)
-                                {
-                                LCD_WriteColour (blk[ys][i], xscl);
-                                // printf (" 0x%02X", blk[i]);
-                                }
-                            }
-                        // printf ("\n");
-                        }
-                    }
-                LCD_Data_Term ();
-                }
-            ++pch;
-            }
-        if (bDHeight) bLower = ! bLower;
-        else bLower = false;
-        }
-    }
-
-void pclcd_out7 (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
-    {
-    pclcd_ttx (fbuf, xp1, yp1, xp2, yp2, true);
-    }
-
-void pclcd_scroll7 (uint8_t *fbuf, int lt, int lb, bool bUp)
-    {
-    if ((lt != 0) || (lb != curmode.trow - 1))
-        {
-        pclcd_out7 (fbuf, 0, lt, curmode.tcol - 1, lb);
-        }
-    else if (bUp)
-        {
-        scrltop += curmode.thgt << curmode.yshf;
-        if ( scrltop >= nrow) scrltop -= nrow;
-        LCD_Scroll (curmode.vmgn + scrltop);
-        pclcd_out7 (fbuf, 0, curmode.trow - 1, curmode.tcol - 1, curmode.trow - 1);
+        scrltop -= thgt;
+        if ( scrltop < 0) scrltop += nrow;
+        Dsp_Scroll (pmode->vmgn + scrltop);
         }
     else
         {
-        scrltop -= curmode.thgt << curmode.yshf;
-        if ( scrltop < 0) scrltop += nrow;
-        LCD_Scroll (curmode.vmgn + scrltop);
-        pclcd_out7 (fbuf, 0, 0, curmode.tcol - 1, 0);
+        colour_t pixbuf[pmode->gcol];
+        int nR1 = pmode->vmgn + scrltop + thgt * tvb;
+        int nR2 = nR1 - thgt;
+        int nCol = nC2 - nC1;
+        int nWrap = pmode->vmgn + nrow;
+        for (int iRow = 0; iRow < thgt * (tvb - tvt); ++iRow)
+            {
+            --nR1;
+            --nR2;
+            if (nR1 == pmode->vmgn) nR1 = nWrap;
+            if (nR2 == pmode->vmgn) nR2 = nWrap;
+            Dsp_SetWindow (nC1, nR2, nC2, nR2 + 1);
+            Dsp_DataInput ();
+            Dsp_ReadPixels (pixbuf, nCol);
+            Dsp_DataTerm ();
+            Dsp_SetWindow (nC1, nR1, nC2, nR1 + 1);
+            // printf ("dispdn:\n");
+            Dsp_DataOutput ();
+            Dsp_WritePixels (pixbuf, nCol);
+            Dsp_DataTerm ();
+            }
+        }
+    int iRow = pmode->vmgn + scrltop + tvt * thgt;
+    if (iRow + thgt > nrow)
+        {
+        Dsp_SetAreaColour (nC1, iRow, nC2, pmode->vmgn + nrow, curpal[txtbak]);
+        Dsp_SetAreaColour (nC1, pmode->vmgn, nC2, iRow + thgt - nrow, curpal[txtbak]);
+        }
+    else
+        {
+        Dsp_SetAreaColour (nC1, iRow, nC2, iRow + thgt, curpal[txtbak]);
         }
     }
 
-void mode7flash (void)
+void dispup (void)
     {
-    pclcd_ttx (framebuf, 0, 0, curmode.tcol - 1, curmode.trow - 1, false);
+    int thgt = pmode->thgt << pmode->yshf;
+    int nC1 = 8 * xscl * tvl;
+    int nC2 = 8 * xscl * (tvr + 1);
+    if ((tvl == 0) && (tvr == pmode->tcol - 1) && (tvt == 0) && (tvb == pmode->trow - 1))
+        {
+        scrltop += thgt;
+        if ( scrltop >= nrow) scrltop -= nrow;
+        Dsp_Scroll (pmode->vmgn + scrltop);
+        }
+    else
+        {
+        uint16_t pixbuf[2 * pmode->gcol];
+        int nR1 = pmode->vmgn + scrltop + thgt * tvt;
+        int nR2 = nR1 + thgt;
+        int nCol = nC2 - nC1;
+        int nWrap = pmode->vmgn + nrow;
+        for (int iRow = 0; iRow < thgt * (tvb - tvt); ++iRow)
+            {
+            if (nR1 == nWrap) nR1 = pmode->vmgn;
+            if (nR2 == nWrap) nR2 = pmode->vmgn;
+            Dsp_SetWindow (nC1, nR2, nC2, nR2 + 1);
+            Dsp_DataInput ();
+            Dsp_ReadPixels (pixbuf, nCol);
+            Dsp_DataTerm ();
+            Dsp_SetWindow (nC1, nR1, nC2, nR1 + 1);
+            // printf ("dispup:\n");
+            Dsp_DataOutput ();
+            Dsp_WritePixels (pixbuf, nCol);
+            Dsp_DataTerm ();
+            ++nR1;
+            ++nR2;
+            }
+        }
+    int iRow = pmode->vmgn + scrltop + tvb * thgt;
+    if (iRow >= nrow) iRow -= nrow;
+    if (iRow + thgt > nrow)
+        {
+        Dsp_SetAreaColour (nC1, iRow, nC2, pmode->vmgn + nrow, curpal[txtbak]);
+        Dsp_SetAreaColour (nC1, pmode->vmgn, nC2, iRow + thgt - nrow, curpal[txtbak]);
+        }
+    else
+        {
+        Dsp_SetAreaColour (nC1, iRow, nC2, iRow + thgt, curpal[txtbak]);
+        }
+    }
+
+void cls (void)
+    {
+    int thgt = pmode->thgt << pmode->yshf;
+    int nC1 = 8 * xscl * tvl;
+    int nC2 = 8 * xscl * (tvr + 1);
+    int nR1 = scrltop + tvt * thgt;
+    int nR2 = scrltop + (tvb + 1) * thgt;
+    if (nR1 >= nrow) nR1 -= nrow;
+    if (nR2 >= nrow) nR2 -= nrow;
+    nR1 += pmode->vmgn;
+    nR2 += pmode->vmgn;
+    if (nR2 < nR1)
+        {
+        Dsp_SetAreaColour (nC1, nR1, nC2, pmode->vmgn + nrow, curpal[txtbak]);
+        Dsp_SetAreaColour (nC1, pmode->vmgn, nC2, nR2, curpal[txtbak]);
+        }
+    else
+        {
+        Dsp_SetAreaColour (nC1, nR1, nC2, nR2, curpal[txtbak]);
+        }
+    }
+
+typedef enum {dhNone, dhUpper, dhLower} DBLHGT;
+
+typedef struct
+    {
+    uint16_t    ttd[32];
+    uint8_t     ch[32];
+    uint32_t    iChg;
+    DBLHGT      dh;
+    } TTX_ROW;
+
+static TTX_ROW ttx_disp[26];
+
+void ttx_scanrow (TTX_ROW *pttx, DBLHGT dh)
+    {
+    pttx->iChg = 0;
+    int bg = 0;
+    int fg = 7 << 12;
+    pttx->dh = dhNone;
+    bool bDblHgt = false;
+    bool bFlash = false;
+    bool bGraph = false;
+    bool bCont = true;
+    bool bHold = false;
+    bool bHide = false;
+    uint16_t ttd;
+    for (int i = 0; i < pmode->tcol; ++i)
+        {
+        uint8_t ch = pttx->ch[i];
+        if (ch > 0x20)
+            {
+            if (bHide)
+                {
+                ttd = bg;
+                }
+            else if (bGraph)
+                {
+                ttd = (ch + (bCont ? 0xA0 : 0x40)) | bg | fg | (bFlash ? 0x8000 : 0x00);
+                }
+            else
+                {
+                ttd = (ch + (bDblHgt ? 0x100 : 0x00)) | bg | fg | (bFlash ? 0x8000 : 0x00);
+                }
+            }
+        else if (ch == 0x20)
+            {
+            ttd = bg;
+            }
+        else
+            {
+            bHide = false;
+            if (ch < 0x08)
+                {
+                bGraph = false;
+                fg = ch << 12;
+                }
+            else if (ch == 0x08)
+                {
+                bFlash = true;
+                }
+            else if (ch == 0x09)
+                {
+                bFlash = false;
+                }
+            else if (ch == 0x0C)
+                {
+                bDblHgt = false;
+                }
+            else if (ch == 0x0D)
+                {
+                pttx->dh = (dh == dhUpper) ? dhLower : dhUpper;
+                bDblHgt = true;
+                }
+            else if ((ch >= 0x10) && (ch <= 0x17))
+                {
+                bGraph = true;
+                fg = (ch & 0x07) << 12;
+                }
+            else if (ch == 0x18)
+                {
+                bHide = true;
+                }
+            else if (ch == 0x19)
+                {
+                bCont = true;
+                }
+            else if (ch == 0x1A)
+                {
+                bCont = false;
+                }
+            else if (ch == 0x1C)
+                {
+                bg = 0;
+                }
+            else if (ch == 0x1D)
+                {
+                bg = fg >> 3;
+                }
+            else if (ch == 0x1E)
+                {
+                bHold = true;
+                }
+            else if (ch == 0x1F)
+                {
+                bHold = false;
+                }
+            if (! bHold) ttd = bg;
+            }
+        pttx->iChg <<= 1;
+        if (ttd != pttx->ttd[i])
+            {
+            pttx->ttd[i] = ttd;
+            pttx->iChg |= 1;
+            }
+        }
+    }
+
+void ttx_disprow (const TTX_ROW *pttx, int iRow)
+    {
+    int thgt = pmode->thgt << pmode->yshf;
+    int nR1 = scrltop + thgt * iRow;
+    if (nR1 >= nrow) nR1 -= nrow;
+    nR1 += pmode->vmgn;
+    int nR2 = nR1 + thgt;
+    uint32_t iChg = pttx->iChg;
+    for (int iCol = 0; iCol < pmode->tcol; ++iCol)
+        {
+        if (iChg & 0x80000000)
+            {
+            bool bDblHgt = false;
+            uint16_t ttd = pttx->ttd[iCol];
+            uint16_t ch = ttd & 0x1FF;
+            if (ch >= 0x120)
+                {
+                ch -= 0x120;
+                bDblHgt = true;
+                }
+            int nC1 = 8 * xscl * iCol;
+            int nC2 = nC1 + 8 * xscl;
+            
+            colour_t bg = curpal[(ttd & 0x0E00) >> 8];
+            colour_t fg = curpal[ttd >> 12];
+            if (bBlink)
+                {
+                if ((iCol == xcsr) && (iRow == ycsr))
+                    {
+                    colour_t tc = bg;
+                    bg = fg;
+                    fg = tc;
+                    }
+                else if (ttd & 0x8000)
+                    {
+                    fg = bg;
+                    }
+                }
+            Dsp_SetWindow (nC1, nR1, nC2, nR2);
+            // printf ("ttx_disprow:\n");
+            Dsp_DataOutput ();
+            for (int iScan = 0; iScan < pmode->thgt; ++iScan)
+                {
+                int iFRow = iScan >> pmode->yshf;
+                if (bDblHgt)
+                    {
+                    if (pttx->dh == dhLower) iFRow += TTH;
+                    iFRow /= 2;
+                    }
+                uint8_t pix = font_tt[ch][iFRow];
+                for (int j = 0; j < 8; ++j)
+                    {
+                    if (pix & 0x80) Dsp_WriteColour (fg, xscl);
+                    else Dsp_WriteColour (bg, xscl);
+                    pix <<= 1;
+                    }
+                }
+            Dsp_DataTerm ();
+            }
+        iChg <<= 1;
+        }
+    }
+
+void disp_ttx (char chr)
+    {
+    ttx_disp[ycsr].ch[xcsr] = chr & 0x7F;
+    DBLHGT dh = dhNone;
+    if (ycsr > 0) dh = ttx_disp[ycsr-1].dh;
+    int iRow = ycsr;
+    while (true)
+        {
+        ttx_scanrow (&ttx_disp[iRow], dh);
+        if (ttx_disp[iRow].iChg == 0) break;
+        ttx_disprow (&ttx_disp[iRow], iRow);
+        dh = ttx_disp[iRow].dh;
+        if (iRow == pmode->trow) break;
+        ++iRow;
+        if (ttx_disp[iRow].dh == dhNone)
+            {
+            break;
+            }
+        else if (ttx_disp[iRow].dh == dhUpper)
+            {
+            if (dh != dhUpper) break;
+            }
+        else
+            {
+            if (dh == dhUpper) break;
+            }
+        }
+    }
+
+static void mode7flash (void)
+    {
+    bBlink = ! bBlink;
+    for (int iRow = 0; iRow < pmode->trow; ++iRow)
+        {
+        TTX_ROW *pttx = &ttx_disp[iRow];
+        uint32_t iSave = pttx->iChg;
+        pttx->iChg = 0;
+        for (int iCol = 0; iCol < pmode->tcol; ++iCol)
+            {
+            pttx->iChg <<= 1;
+            if (pttx->ttd[iCol] & 0x8000) pttx->iChg |= 1;
+            if ((iCol == xcsr) && (iRow == ycsr)) pttx->iChg |= 1;
+            }
+        ttx_disprow (pttx, iRow);
+        pttx->iChg = iSave;
+        }
+    }
+
+void scrldn (void)
+    {
+    int savebg = txtbak;
+    hidecsr ();
+    if (pmode->ncbt == 3)
+        {
+        for (int iRow = tvb; iRow > tvt; --iRow)
+            {
+            memcpy (&ttx_disp[iRow].ttd[tvl], &ttx_disp[iRow-1].ttd[tvl], 2 * (tvr - tvl + 1));
+            memcpy (&ttx_disp[iRow].ch[tvl], &ttx_disp[iRow-1].ch[tvl], tvr - tvl + 1);
+            }
+        uint16_t bg = 0;
+        if (tvl > 0) bg = ttx_disp[tvt].ttd[tvl-1] & 0xFE00;
+        for (int iCol = tvl; iCol <= tvr; ++iCol)
+            {
+            ttx_disp[tvt].ttd[iCol] = bg;
+            ttx_disp[tvt].ch[iCol] = ' ';
+            }
+        txtbak = (bg >> 9) & 0x07;
+        }
+    dispdn ();
+    txtbak = savebg;
+    showcsr ();
+    }
+
+void scrlup (void)
+    {
+    int savebg = txtbak;
+    hidecsr ();
+    if (pmode->ncbt == 3)
+        {
+        for (int iRow = tvt; iRow < tvb; ++iRow)
+            {
+            memcpy (&ttx_disp[iRow].ttd[tvl], &ttx_disp[iRow+1].ttd[tvl], 2 * (tvr - tvl + 1));
+            memcpy (&ttx_disp[iRow].ch[tvl], &ttx_disp[iRow+1].ch[tvl], tvr - tvl + 1);
+            }
+        uint16_t bg = 0;
+        if (tvl > 0) bg = ttx_disp[tvb].ttd[tvl-1] & 0xFE00;
+        for (int iCol = tvl; iCol <= tvr; ++iCol)
+            {
+            ttx_disp[tvb].ttd[iCol] = bg;
+            ttx_disp[tvb].ch[iCol] = ' ';
+            }
+        txtbak = (bg >> 9) & 0x07;
+        }
+    dispup ();
+    txtbak = savebg;
+    showcsr ();
+    }
+
+void disp_glyph (uint8_t *pch)
+    {
+    int thgt = pmode->thgt << pmode->yshf;
+    int yshf = pmode->yshf;
+    if (thgt > 8) ++yshf;
+    int nR1 = scrltop + thgt * ycsr;
+    if (nR1 >= nrow) nR1 -= nrow;
+    nR1 += pmode->vmgn;
+    int nR2 = nR1 + thgt;
+    int nC1 = 8 * xscl * xcsr;
+    int nC2 = nC1 + 8 * xscl;
+    uint16_t bg = curpal[txtbak];
+    uint16_t fg = curpal[txtfor];
+    Dsp_SetWindow (nC1, nR1, nC2, nR2);
+    // printf ("disp_glyph:\n");
+    Dsp_DataOutput ();
+    for (int iScan = 0; iScan < pmode->thgt; ++iScan)
+        {
+        uint8_t pix = pch[iScan >> yshf];
+        for (int j = 0; j < 8; ++j)
+            {
+            // printf ("Row %d, Column %d\n", iScan, j);
+            if (pix & 0x80) Dsp_WriteColour (fg, xscl);
+            else Dsp_WriteColour (bg, xscl);
+            pix <<= 1;
+            }
+        }
+    Dsp_DataTerm ();
+    }
+
+static inline void pixop (int op, uint16_t *fb, uint16_t cpx)
+    {
+    switch (op)
+        {
+        case 0:
+            *fb = cpx;
+            break;
+        case 1:
+            *fb |= cpx;
+            break;
+        case 2:
+            *fb &= cpx;
+            break;
+        case 3:
+            *fb ^= cpx;
+            break;
+        case 4:
+            *fb = ~(*fb);
+            break;
+        case 5:
+            break;
+        case 6:
+            *fb &= ~ cpx;
+            break;
+        case 7:
+            *fb |= ~ cpx;
+            break;
+        }
+    }
+
+void hline (int clrop, int xp1, int xp2, int yp)
+    {
+    if (( yp < gvt ) || ( yp > gvb )) return;
+    if ( xp1 > xp2 )
+        {
+        int tmp = xp1;
+        xp1 = xp2;
+        xp2 = tmp;
+        }
+    if (( xp2 < gvl ) || ( xp1 > gvr )) return;
+    if ( xp1 < gvl ) xp1 = gvl;
+    if ( xp2 > gvr ) xp2 = gvr;
+    xp1 = xscl * xp1;
+    xp2 = xscl * (xp2 + 1);
+    yp = scrltop + (yp << pmode->yshf);
+    if (yp >= nrow) yp -= nrow;
+    uint16_t pix[pmode->gcol];
+    for (int i = 0; i < (1 << pmode->yshf); ++i)
+        {
+        Dsp_SetWindow (xp1, yp, xp2, yp + 1);
+        Dsp_DataInput ();
+        Dsp_ReadPixels (pix, xp2 - xp1);
+        uint16_t cpx = curpal[clrop & 0x7F];
+        int op = clrop >> 8;
+        for (int i = 0; i <= xp2 - xp1; ++i)
+            pixop (op, &pix[i], cpx);
+        Dsp_DataTerm ();
+        // printf ("hline:\n");
+        Dsp_DataOutput ();
+        Dsp_WritePixels (pix, xp2 - xp1);
+        Dsp_DataTerm ();
+        ++yp;
+        }
+    }
+
+void point (int clrop, uint32_t xp, uint32_t yp)
+    {
+    hline (clrop, xp, xp, yp);
+    }
+
+void clrgraph (void)
+    {
+    gvl = xscl * gvl;
+    gvr = xscl * gvr;
+    gvt = scrltop + (gvt << pmode->yshf);
+    gvb = scrltop + (gvb << pmode->yshf);
+    if (gvt >= nrow)
+        {
+        gvt -= nrow;
+        gvb -= nrow;
+        }
+    if (gvb <= nrow)
+        {
+        Dsp_SetAreaColour (gvl, gvt, gvr, gvb, curpal[bakgnd]);
+        }
+    else
+        {
+        gvb -= nrow;
+        Dsp_SetAreaColour (gvl, gvt, gvr, nrow, curpal[bakgnd]);
+        Dsp_SetAreaColour (gvl, scrltop, gvr, gvb, curpal[bakgnd]);
+        }
+    }
+
+static colour_t getcolour (int xp, int yp)
+    {
+    xp = xscl * xp;
+    yp = scrltop + (yp << pmode->yshf);
+    if (yp >= nrow) yp -= nrow;
+    yp += pmode->vmgn;
+    Dsp_SetWindow (xp, yp, xp + 1, yp + 1);
+    Dsp_DataInput ();
+    colour_t clr;
+    Dsp_ReadPixels (&clr, 1);
+    Dsp_DataTerm ();
+    return clr;
+    }
+
+uint8_t getpix (int xp, int yp)
+    {
+    return findclr (getcolour (xp, yp));
+    }
+
+int get_ttx (int x, int y)
+    {
+    int chr = ttx_disp[y].ch[x];
+    if ( chr < 0x20 ) chr += 0x80;
+    return chr;
+    }
+
+void get_glyph (int x, int y, int bgclr, uint8_t *prow)
+    {
+    bgclr = curpal[bgclr];
+    int fhgt = pmode->thgt;
+    int ystep = 1 << pmode->yshf;
+    if ( fhgt > 10 )
+        {
+        fhgt >> 1;
+        ystep << 1;
+        }
+    fhgt = 8;
+    x *= 8;
+    y *= pmode->thgt << pmode->yshf;
+    for (int j = 0; j < fhgt; ++j)
+        {
+        for (int i = 0; i < 8; ++i)
+            {
+            *prow <<= 1;
+            if ( getpix (x+i, y) != bgclr ) *prow |= 0x01;
+            }
+        y += ystep;
+        ++prow;
+        }
+    }
+
+static void flipcsr (int xp, int yp)
+    {
+    yp += scrltop + cursa;
+    colour_t pix[8];
+    for (int i = 0; i < cursb - cursa + 1; ++i)
+        {
+        if (yp >= nrow) yp -= nrow;
+        LCD_SetWindow (xp, yp, xp + 8, yp + 1);
+        LCD_DataInput ();
+        LCD_ReadPixels (pix, 8);
+        LCD_DataTerm ();
+        for (int j = 0; j < 8; ++j) pix[j] = ~ pix[j];
+        LCD_DataOutput ();
+        LCD_WritePixels (pix, 8);
+        LCD_DataTerm ();
+        ++yp;
+        }
+    bCsrVis = ! bCsrVis;
+    }
+
+void hidecsr (void)
+    {
+    ++nCsrHide;
+    if ( pmode->ncbt != 3 )
+        {
+        int xp;
+        int yp;
+        if (! csrpos (&xp, &yp))
+            {
+            nCsrHide |= CSR_INV;
+            return;
+            }
+        critical_section_enter_blocking (&cs_csr);
+        if ( bCsrVis ) flipcsr (xp, yp);
+        critical_section_exit (&cs_csr);
+        }
+    }
+
+void showcsr (void)
+    {
+    int xp;
+    int yp;
+    if ( ( nCsrHide & CSR_CNT ) > 0 ) --nCsrHide;
+    if (csrpos (&xp, &yp))  nCsrHide &= ~CSR_INV;
+    else                    nCsrHide |= CSR_INV;
+    if ((nCsrHide == 0) && (! bBuffer))
+        {
+        if ( pmode->ncbt != 3 )
+            {
+            critical_section_enter_blocking (&cs_csr);
+            if ( ! bCsrVis ) flipcsr (xp, yp);
+            critical_section_exit (&cs_csr);
+            }
+        }
+    }
+
+void flashcsr (void)
+    {
+    if ( pmode->ncbt == 3 )
+        {
+        mode7flash ();
+        }
+    else if ((nCsrHide == 0) && (! bBuffer))
+        {
+        int xp;
+        int yp;
+        if (csrpos (&xp, &yp))
+            {
+            critical_section_enter_blocking (&cs_csr);
+            flipcsr (xp, yp);
+            critical_section_exit (&cs_csr);
+            }
+        }
+    }
+
+void enablecsr (bool bEnable)
+    {
+    if (bEnable)    nCsrHide &= ~CSR_OFF;
+    else            nCsrHide |= CSR_OFF;
+    }
+
+static void video_periodic (void)
+    {
+    if ( ++nFlash >= 5 )
+        {
+        flashcsr ();
+        nFlash = 0;
+        }
+    if (pnext) pnext ();
     }
 
 void gsize (uint32_t *pwth, uint32_t *phgt)
     {
-    *pwth = PICO_LCD_COLUMNS;
-    *phgt = PICO_LCD_ROWS;
+    *pwth = SWIDTH;
+    *phgt = SHEIGHT;
     }
+
+int sdump (FILE *fBmp)
+    {
+    int nWrite = fwrite ("BM", 1, 2, fBmp);
+    if ( nWrite != 2 ) return 198;
+    int nClr = 1 << pmode->ncbt;
+    uint8_t pBuff[320];
+    int *iBuff = (int *) pBuff;
+    iBuff[0] = 54 + 4 * nClr + pmode->grow * pmode->gcol;   // File size
+    iBuff[1] = 0;                                           // Reserved
+    iBuff[2] = 54 + 4 * nClr;                               // Offset to pixel data
+    iBuff[3] = 40;                                          // BITMAPINFOHEADER size
+    iBuff[4] = pmode->gcol;                                 // Width in pixels
+    iBuff[5] = pmode->grow;                                 // Height in pixels
+    iBuff[6] = 0x80001;                                     // Number of colour planes (low word) + Number of bits per pixel (high word)
+    iBuff[7] = 0;                                           // No compression
+    iBuff[8] = 0;                                           // Raw image size (dummy value)
+    iBuff[9] = 3000;                                        // Horizontal resolution (pixels / meter)
+    iBuff[10] = 3000;                                       // Vertical resolution (pxels / meter)
+    iBuff[11] = nClr;                                       // Number of colours
+    iBuff[12] = 0;                                          // All colours important
+    nWrite = fwrite (iBuff, sizeof (int), 13, fBmp);
+    if ( nWrite != 13 ) return 198;
+    for (int iClr = 0; iClr < nClr; ++iClr)
+        {
+        iBuff[iClr] = clrrgb (iClr);
+        }
+    nWrite = fwrite (iBuff, sizeof (int), nClr, fBmp);
+    if ( nWrite != nClr ) return 198;
+    for (int iRow = pmode->grow - 1; iRow >= 0 ; --iRow)
+        {
+        Dsp_SetWindow (0, iRow, pmode->gcol, iRow + 1);
+        Dsp_DataInput ();
+        for (int iCol = 0; iCol < pmode->gcol; ++iCol)
+            {
+            pBuff[iCol] = findclr (Dsp_ReadColour ());
+            }
+        Dsp_DataTerm ();
+        nWrite = fwrite (pBuff, 1, pmode->gcol, fBmp);
+        if ( nWrite != pmode->gcol ) return 198;
+        }
+    return 0;
+    }
+
+int sload (FILE *fBmp)
+    {
+    uint16_t iBM;
+    int nRead = fread (&iBM, sizeof (iBM), 1, fBmp);
+    if ((nRead != 1) || (iBM != 0x4D42)) return 255;
+    int nClr = 1 << pmode->ncbt;
+    uint8_t pBuff[320];
+    int *iBuff = (int *) pBuff;
+    nRead = fread (iBuff, sizeof (int), 13, fBmp);
+    if ((nRead != 13) || (iBuff[3] != 40)) return 255;
+    if ((iBuff[4] != pmode->gcol) || (iBuff[5] != pmode->grow)
+        || (iBuff[6] != 0x80001) || (iBuff[11] != nClr)) return 25;
+    int iOff = iBuff[2];
+    if (iBuff[2] == 54 + 4 * nClr) iOff = -1;
+    nRead = fread (iBuff, sizeof (int), nClr, fBmp);
+    if (nRead != nClr) return 255;
+    for (int iClr = 0; iClr < nClr; ++iClr)
+        {
+        clrset (iClr, 16, iBuff[iClr] & 0xFF, (iBuff[iClr] >> 8) & 0xFF, (iBuff[iClr] >> 16) & 0xFF);
+        }
+    if (iOff > 0) fseek (fBmp, iOff, SEEK_SET);
+    for (int iRow = pmode->grow - 1; iRow >= 0 ; --iRow)
+        {
+        Dsp_SetWindow (0, iRow, pmode->gcol, iRow + 1);
+        // printf ("sload:\n");
+        Dsp_DataOutput ();
+        nRead = fread (pBuff, 1, pmode->gcol, fBmp);
+        if (nRead != pmode->gcol) return 255;
+        for (int iCol = 0; iCol < pmode->gcol; ++iCol)
+            {
+            Dsp_WriteColour (curpal[pBuff[iCol]], 1);
+            }
+        Dsp_DataTerm ();
+        }
+    return 0;
+    }
+
+void prtscrn (void)
+    {
+    static int iPrt = 0;
+    if ( ++iPrt >= 100 ) iPrt = 1;
+#if defined(HAVE_LFS) && defined(HAVE_FAT)
+    char sPath[20];
+    sprintf (sPath, "sdcard/prtscr%02d.bmp", iPrt);
+#else    
+    char sPath[13];
+    sprintf (sPath, "prtscr%02d.bmp", iPrt);
+#endif
+    FILE *fBmp = fopen (sPath, "wb");
+    sdump (fBmp);
+    fclose (fBmp);
+    }
+
+static void show_buf (uint32_t addr, int nByte, uint8_t *buffer)
+    {
+    while (nByte > 0)
+        {
+        printf ("%08X:", addr);
+        for (int i = 0; i < 15; ++i)
+            {
+            if (nByte <= 1) break;
+            printf (" %02X", *buffer);
+            ++buffer;
+            ++addr;
+            --nByte;
+            }
+        printf (" %02X\n", *buffer);
+        ++buffer;
+        ++addr;
+        --nByte;
+        }
+    printf ("\n");
+    }
+
+static void save_lcd (void)
+    {
+    uint8_t sbuf[2][RAMBLK];
+    bool bWrite = false;
+    int ibuf = 0;
+    uint32_t laddr = 0;
+    uint32_t raddr = 0;
+    int npix = RAMBLK / sizeof (colour_t);
+    // printf ("save_lcd\n");
+    qspi_cfg_qwrite ();
+    hidecsr ();
+    LCD_SetWindow (0, 0, SWIDTH, SDEPTH);
+    LCD_DataInput ();
+    while (true)
+        {
+        if (laddr + npix > SWIDTH * SDEPTH) npix = SWIDTH * SDEPTH - laddr;
+        LCD_ReadPixels ((colour_t *) sbuf[ibuf], npix);
+        if (bWrite) qspi_wait ();
+        // show_buf (raddr, npix * sizeof (colour_t), sbuf[ibuf]);
+        qspi_qwrite (raddr, npix * sizeof (colour_t), sbuf[ibuf]);
+        bWrite = true;
+        laddr += npix;
+        raddr += npix * sizeof (colour_t);
+        if (laddr >= SWIDTH * SDEPTH) break;
+        ibuf = 1 - ibuf;
+        }
+    LCD_DataTerm ();
+    qspi_wait ();
+    // printf ("Write scrltop\n");
+    // show_buf (raddr, sizeof (scrltop), (uint8_t *) &scrltop);
+    qspi_qwrite (raddr, sizeof (scrltop), (uint8_t *) &scrltop);
+    qspi_wait ();
+    qspi_free ();
+    showcsr ();
+    }
+
+static void load_lcd (void)
+    {
+    uint8_t sbuf[2][RAMBLK];
+    int ibuf = 0;
+    uint32_t laddr = 0;
+    uint32_t raddr = 0;
+    int npix = RAMBLK / sizeof (colour_t);
+    // printf ("load_lcd\n");
+    qspi_cfg_qread ();
+    hidecsr ();
+    LCD_SetWindow (0, 0, SWIDTH, SDEPTH);
+    LCD_DataOutput ();
+    qspi_qread (raddr, RAMBLK, sbuf[ibuf]);
+    // show_buf (raddr, RAMBLK, sbuf[ibuf]);
+    while (true)
+        {
+        qspi_wait ();
+        raddr += npix * sizeof (colour_t);
+        if (raddr >= SWIDTH * SDEPTH * sizeof (colour_t)) break;
+        if (raddr + npix > SWIDTH * SDEPTH * sizeof (colour_t)) npix = SWIDTH * SDEPTH - raddr / sizeof (colour_t);
+        qspi_qread (raddr, npix * sizeof (colour_t), sbuf[1 - ibuf]);
+        // show_buf (raddr, npix * sizeof (colour_t), sbuf[1 - ibuf]);
+        LCD_WritePixels ((colour_t *) sbuf[ibuf], RAMBLK / sizeof (colour_t));
+        laddr += RAMBLK / sizeof (colour_t);
+        ibuf = 1 - ibuf;
+        }
+    // printf ("Read scrltop\n");
+    qspi_qread (raddr, sizeof (scrltop), (uint8_t *) &scrltop);
+    // show_buf (raddr, sizeof (scrltop), (uint8_t *) &scrltop);
+    LCD_WritePixels ((colour_t *) sbuf[ibuf], npix);
+    LCD_DataTerm ();
+    qspi_wait ();
+    LCD_Scroll (pmode->vmgn + scrltop);
+    qspi_free ();
+    showcsr ();
+    }
+
+static void save_pixels (colour_t *pix, int nPix)
+    {
+    uint8_t *pbyt = (uint8_t *) pix;
+    // printf ("save_pixels (0x%08X, %d)\n", pix, nPix);
+    while (nPix > 0)
+        {
+        int nCol = nColEnd - nColCur;
+        if (nCol > nPix) nCol = nPix;
+        uint32_t addr_1 = (SWIDTH * nRowCur + nColCur) * sizeof (colour_t);
+        uint32_t addr_2 = addr_1 + nCol * sizeof (colour_t);
+        while (addr_1 < addr_2)
+            {
+            int nByte = addr_2 - addr_1;
+            if ((addr_2 & RAMBMSK) != (addr_1 & RAMBMSK)) nByte = RAMBLK + (addr_1 & RAMBMSK) - addr_1;
+            qspi_qwrite (addr_1, nByte, pbyt);
+            qspi_wait ();
+            addr_1 += nByte;
+            pbyt += nByte;
+            }
+        nPix -= nCol;
+        nColCur += nCol;
+        if (nColCur == nColEnd)
+            {
+            nColCur = nColBeg;
+            ++nRowCur;
+            if (nRowCur == nRowEnd) nRowCur = nRowBeg;
+            }
+        }
+    }
+
+static void save_colour (colour_t clr, int nClr)
+    {
+    // printf ("save_colour (0x%08X, %d)\n", clr, nClr);
+    colour_t cbuf[RAMBLK / sizeof (colour_t)];
+    int nPix = nClr;
+    if (nPix > RAMBLK / sizeof (colour_t)) nPix = RAMBLK / sizeof (colour_t);
+    for (int i = 0; i < nPix; ++i) cbuf[i] = clr;
+    while (nClr > 0)
+        {
+        if (nPix > nClr) nPix = nClr;
+        save_pixels (cbuf, nPix);
+        nClr -= nPix;
+        }
+    }
+
+static void save_scroll (int data)
+    {
+    uint32_t addr = SWIDTH * SDEPTH * sizeof (colour_t);
+    // printf ("save_scroll\n");
+    qspi_cfg_qwrite ();
+    qspi_qwrite (addr, sizeof (scrltop), (uint8_t *) &data);
+    qspi_wait ();
+    qspi_free ();
+    }
+
+static void load_pixels (colour_t *pix, int nPix)
+    {
+    uint8_t *pbyt = (uint8_t *) pix;
+    // printf ("load_pixels\n");
+    while (nPix > 0)
+        {
+        int nCol = nColEnd - nColCur;
+        if (nCol > nPix) nCol = nPix;
+        uint32_t addr_1 = (SWIDTH * nRowCur + nColCur) * sizeof (colour_t);
+        uint32_t addr_2 = addr_1 + nCol * sizeof (colour_t);
+        while (addr_1 < addr_2)
+            {
+            int nByte = addr_2 - addr_1;
+            if ((addr_2 & RAMBMSK) != (addr_1 & RAMBMSK)) nByte = RAMBLK + (addr_1 & RAMBMSK) - addr_1;
+            qspi_qread (addr_1, nByte, pbyt);
+            qspi_wait ();
+            addr_1 += nByte;
+            pbyt += nByte;
+            }
+        nPix -= nCol;
+        nColCur += nCol;
+        if (nColCur == nColEnd)
+            {
+            nColCur = nColBeg;
+            ++nRowCur;
+            if (nRowCur == nRowEnd) nRowCur = nRowBeg;
+            }
+        }
+    }
+
+static colour_t load_colour (void)
+    {
+    colour_t clr;
+    load_pixels (&clr, 1);
+    return clr;
+    }
+
+#if REF_MODE == 1
+void refresh_now (void)
+    {
+    if (bBuffer) load_lcd ();
+    }
+
+void refresh_on (void)
+    {
+    if (bBuffer) load_lcd ();
+    bBuffer = false;
+    reflag = 2;
+    }
+
+void refresh_rst (void)
+    {
+    bBuffer = false;
+    reflag = 2;
+    }
+
+void refresh_off (void)
+    {
+    reflag = 1;
+    bBuffer = true;
+    if (! bBuffer) save_lcd ();
+    }
+
+#elif REF_MODE == 3
+#define LIMIT   0x4B000
+// #define LIMIT   0x1000
+
+void refresh_now (void)
+    {
+    // printf ("refresh_now...\n");
+    if ( rfm == rfmBuffer )
+        {
+        if (bBuffer) load_lcd ();
+        }
+    else if ( rfm == rfmQueue )
+        {
+        vduflush ();
+        }
+    // printf ("...done\n");
+    }
+
+void refresh_on (void)
+    {
+    // printf ("refresh_on...\n");
+    if ( rfm == rfmBuffer )
+        {
+        if (bBuffer) load_lcd ();
+        bBuffer = false;
+        }
+    else if ( rfm == rfmQueue )
+        {
+        vduqterm ();
+        }
+    reflag = 2;
+    // printf ("...done\n");
+    }
+
+void refresh_rst (void)
+    {
+    // printf ("refresh_rst...\n");
+    if ( rfm == rfmBuffer )
+        {
+        bBuffer = false;
+        }
+    reflag = 2;
+    // printf ("...done\n");
+    }
+
+void refresh_off (void)
+    {
+    // printf ("refresh_off...\n");
+    reflag = 1;
+    if ( rfm == rfmBuffer )
+        {
+        if (! bBuffer)
+            {
+            bBuffer = true;
+            save_lcd ();
+            }
+        }
+    else if ( rfm == rfmQueue )
+        {
+        vduqinit ();
+        }
+    // printf ("...done\n");
+    }
+
+const char *checkbuf (void)
+    {
+    return NULL;
+    }
+#endif

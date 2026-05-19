@@ -1213,6 +1213,13 @@ int mount (char *psMsg)
         syserror ("Failed to mount SD card.");
         istat |= 1;
         }
+/*
+    else
+        {
+        psMsg += strlen (psMsg);
+        sprintf (psMsg, "FAT filesystem mounted.\r\n");
+        }
+*/
 #endif
     return istat;
     }

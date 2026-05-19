@@ -1,0 +1,159 @@
+.program    qspi
+.in         32 left
+.out        4 left
+.set        4
+.side_set   1
+.clock_div  2
+.fifo       txrx
+
+start:
+    pull                side 0      ; Fetch next word from fifo.
+    out     exec, 16    side 0      ; Execute instruction in lower 16 bits
+    jmp     start       side 0      ; Get next instruction
+qout:
+    out     null, 8     side 0      ; Discard 8 bits
+    out     pins, 4     side 0      ; Output 4 msb
+    nop                 side 1 [5]  ; Clock high
+    out     pins, 4     side 0 [5]  ; Output 4 lsb
+    nop                 side 1 [5]  ; Clock high
+    jmp     start       side 0
+qin:
+    in      pins, 4     side 1 [5]  ; Input 4 msb
+    nop                 side 0 [5]  ; Clock low
+    in      pins, 4     side 1 [5]  ; Input 4 msb
+    push                side 0      ; Push input data
+    jmp     start       side 0
+sio:
+    out     x, 8        side 0      ; Bit / Clock count
+shft:
+    out     pins, 1     side 0      ; Output 1 bit
+    in      pins, 2     side 1 [5]  ; Input a bit, only second bit significant
+    jmp     x--, shft   side 0      ; Repeat for each bit
+    push                side 0      ; Push fetched data (in even bits)
+    jmp     start       side 0
+
+.program    qread
+.in         32 left
+.out        4 left
+.set        4
+.side_set   2
+.clock_div  2
+.fifo       txrx
+
+.wrap_target
+    set     pindirs, 15 side 1      ; I/O pins output, CS high, CLK low
+    set     x, 7        side 1      ; Number of output clocks
+    pull                side 1      ; Pull read command and address
+addr:
+    out     pins, 4     side 0 [2]  ; 4 msb of read command, CS and CLK low
+    nop                 side 2      ; Clock high
+    jmp     x--, addr   side 2      ; Count outputs
+    set     pindirs, 0  side 0      ; Set IO pins to input.
+    pull                side 0      ; Pull number of bytes
+    out     y, 32       side 2      ; Save byte count.
+    set     x, 4        side 2      ; Wait duration
+idle:
+    nop                 side 0      ; Clock low
+    nop                 side 2 [2]  ; Clock high
+    jmp     x--, idle   side 0      ; Clock low
+    nop                 side 0
+rd:
+    in      pins, 4     side 2 [2]  ; Clock high, Read 4 msb
+    nop                 side 0 [2]  ; Clock low
+    in      pins, 4     side 2 [2]  ; Clock high, Read 4 lsb
+    push                side 0      ; Push byte
+    jmp     y--, rd     side 0      ; Repeat for each byte
+    irq     set 7       side 1      ; Flag completion
+    .wrap
+
+.program    qwrite
+.in         32 left
+.out        4 left
+.set        4
+.side_set   2
+.clock_div  2
+.fifo       tx
+
+.wrap_target
+    set     pindirs, 15 side 1      ; I/O pins output, CS high, CLK low
+    pull                side 1      ; Pull number of bytes
+    out     y, 32       side 1      ; Save in Y
+    set     x, 6        side 1      ; Number of output clocks
+    pull                side 1      ; Pull write command and address
+addr:
+    out     pins, 4     side 0 [2]  ; 4 msb of read command, CS and CLK low
+    nop                 side 2      ; Clock high
+    jmp     x--, addr   side 2      ; Count outputs
+    out     pins, 4     side 0 [2]  ; 4 lsb of address
+wr:
+    pull                side 2      ; Pull byte
+    out     null, 24    side 2      ; Discard leading bits
+    out     pins, 4     side 0 [2]  ; Output 4 msb
+    nop                 side 2 [2]  ; Clock high
+    out     pins, 4     side 0      ; Output 4 lsb
+    jmp     y--, wr     side 0      ; Repeat for each byte
+    nop                 side 2 [2]  ; Final clock
+    nop                 side 0 [2]
+    irq     set 7       side 1      ; Flag completion
+    .wrap
+
+.program    qcmd
+.in         32 left
+.out        4 left
+.set        4
+.side_set   2
+.clock_div  2
+.fifo       txrx
+
+.wrap_target
+    set     pindirs, 1  side 1      ; Pin 2 output, CS high, CLK low
+    pull                side 1      ; Pull byte
+    out     null, 24    side 1      ; Discard high bits
+loop:
+    out     pins, 4     side 0 [2]  ; Output 4 msb, CS low, CLK low
+    nop                 side 2      ; CLK high
+    out     pins, 4     side 0 [2]  ; Output 4 lsb, CS low, CLK low
+    nop                 side 2      ; CLK high
+    irq     set 7       side 1      ; Flag completion
+    .wrap
+
+.program    scmd
+.in         32 left
+.out        1 left
+.set        2
+.side_set   2
+.clock_div  2
+.fifo       txrx
+
+.wrap_target
+    set     pindirs, 1  side 1      ; Pin 2 output, CS high, CLK low
+    set     x, 7        side 1      ; Initialise bit counter
+    pull                side 1      ; Pull byte
+    out     null, 24    side 1      ; Discard high bits
+loop:
+    out     pins, 1     side 0 [2]  ; Output a bit, CS low, CLK low
+    nop                 side 2      ; CLK high
+    jmp     x--, loop   side 2      ; Repeat for bits 6 to 0
+    irq     set 7       side 1      ; Flag completion
+    .wrap
+
+.program    sio
+.in         32 left
+.out        1 left
+.set        2
+.side_set   1
+.clock_div  2
+.fifo       txrx
+
+.wrap_target
+    set     pindirs, 1  side 0      ; Pin 2 output, CLK low
+    set     x, 7        side 0      ; Initialise bit counter
+    pull                side 0      ; Pull byte
+    out     null, 24    side 0      ; Discard high bits
+loop:
+    out     pins, 1     side 0 [2]  ; Output a bit, CLK low
+    in      pins, 1     side 1      ; Input a bit, CLK high
+    jmp     x--, loop   side 1      ; Repeat for bits 6 to 0
+    push                side 0
+    irq     set 7       side 0      ; Flag completion
+    .wrap

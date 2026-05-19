@@ -14,13 +14,11 @@
 #if ( defined(STDIO_USB) || defined(STDIO_UART) )
 bool bBBCtl = false;
 #endif
-#ifdef PICO_GUI
-void refresh (const char *p);
-#endif
 #ifdef PICO_GRAPH
-void fbufvdu (int code, int data1, int data2);
+void graphvdu (int code, int data1, int data2);
 #endif
 #if defined(PICO_GUI) || defined(PICO_GRAPH)
+void refresh (const char *p);
 #undef MAX_PATH
 #define MAX_PATH 260
 int sdump (FILE *fBmp);
@@ -234,7 +232,7 @@ bool txtmode (int code, int *pdata1, int *pdata2);
 
 void xeqvdu (int code, int data1, int data2)
     {
-    if ((optval & 0x0F) >= 14) fbufvdu (code, data1, data2);
+    if ((optval & 0x0F) >= 14) graphvdu (code, data1, data2);
     if ((optval & 0x0F) == 14) return;
     if ((code && 0xFF00) == 0x1600)
         {

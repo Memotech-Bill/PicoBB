@@ -34,6 +34,8 @@ the stack pointer is reset above the guard region.
 #include <stdint.h>
 #include <stdbool.h>
 
+void refresh_rst (void);
+
 extern uintptr_t stk_guard;
 void text (const char *psTxt);
 void error (int err, const char *msg);
@@ -58,6 +60,7 @@ void crash_report (int *pReport)
     {
     // uintptr_t save_guard = stk_guard;
     // install_stack_guard ((void *) 0);
+    refresh_rst ();
     bool bHaveFrame = ( pReport[5] == pReport[9] ) && ( pReport[6] == pReport[10] )
         && ( pReport[7] == pReport[11] ) && ( pReport[8] == pReport[12] );
     text ("\r\nR0 = ");

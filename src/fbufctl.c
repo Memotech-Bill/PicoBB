@@ -7,50 +7,24 @@
 //          8   Buffer swap
 #define DEBUG       0
 
-// DBUF_MODE =  0 No double buffer
-//              1 One fixed buffer and second buffer above himem
-//              2 One fixed buffer and second buffer below PAGE
-//              3 Two buffers both below PAGE
-#define DBUF_MODE   1
-
-#include "pico.h"
-#include "pico/stdlib.h"
-#include "pico/time.h"
-#include "pico/sync.h"
-#include "hardware/clocks.h"
-#include "fbufvdu.h"
+#include <pico.h>
+#include <pico/stdlib.h>
+#include <pico/time.h>
+#include <hardware/clocks.h>
+#include "vducmd.h"
+#include "fbufctl.h"
 #include "periodic.h"
 #include <stdio.h>
 #include <string.h>
 #include "bbccon.h"
 
-void modechg (char mode);
 void error (int iErr, const char *psErr);
 void *oshwm (void *addr, int mark);
 
-// VDU variables declared in bbcdata_*.s:
-extern int lastx;                       // Graphics cursor x-position (pixels)
-extern int lasty;                       // Graphics cursor y-position (pixels)
-extern unsigned char cursa;             // Start (top) line of cursor
-extern unsigned char cursb;             // Finish (bottom) line of cursor
-extern void *vpage;                     // Address of start of BASIC program memory
-
-// Variables defined in fbufvdu.c
-extern int xcsr;                        // Text cursor horizontal position
-extern int ycsr;                        // Text cursor vertical position
-extern int tvt;                         // Top of text viewport
-extern int tvb;	                        // Bottom of text viewport
-extern int tvl;	                        // Left edge of text viewport
-extern int tvr;	                        // Right edge of text viewport
-extern int gvt;                         // Top of graphics viewport
-extern int gvb;	                        // Bottom of graphics viewport
-extern int gvl;	                        // Left edge of graphics viewport
-extern int gvr;	                        // Right edge of graphics viewport
-
 #if DBUF_MODE == 0
 static uint8_t  framebuf[BUF_SIZE] __attribute((__aligned__(4)));
-#define displaybuf framebuf
-#define shadowbuf framebuf
+#define displaybuf  framebuf
+#define shadowbuf   framebuf
 #elif DBUF_MODE <= 2
 static uint8_t  fbuffer[BUF_SIZE] __attribute((__aligned__(4)));
 static uint8_t  *vbuffer[2] = {fbuffer, NULL};
@@ -72,164 +46,9 @@ extern void *himem;
 extern void *libase;
 extern void *libtop;
 #endif
-
-int nCsrHide = 0;			            // Cursor hide count (Bit 7 = Cursor off, Bit 6 = Outside screen)
-int csrtop;						        // Top of cursor
-int csrhgt;						        // Height of cursor
-
-static const MODE *pmode = NULL;        // Pointer to current mode.
-static bool bBlank = true;              // Blank video screen
-static bool bCsrVis = false;            // Cursor currently rendered
-static uint32_t nFlash = 0;             // Time counter for cursor flash
-static critical_section_t cs_csr;       // Critical section controlling cursor flash
-
-static const uint32_t cpx02[] = { 0x00000000, 0xFFFFFFFF };
-static const uint32_t cpx04[] = { 0x00000000, 0x55555555, 0xAAAAAAAA, 0xFFFFFFFF };
-static const uint32_t cpx16[] = { 0x00000000, 0x11111111, 0x22222222, 0x33333333,
-                                  0x44444444, 0x55555555, 0x66666666, 0x77777777,
-                                  0x88888888, 0x99999999, 0xAAAAAAAA, 0xBBBBBBBB,
-                                  0xCCCCCCCC, 0xDDDDDDDD, 0xEEEEEEEE, 0xFFFFFFFF };
-
-static CLRDEF clrdef[] = {
-//   nclr,   cpx, bsh, clrm,     csrmsk
-    {   0,  NULL,   0, 0x00,       0x00},
-    {   2, cpx02,   0, 0x01, 0x000000FF},
-    {   4, cpx04,   1, 0x03, 0x0000FFFF},
-    {   8,  NULL,   0, 0x07,       0x00},
-    {  16, cpx16,   2, 0x0F, 0xFFFFFFFF}
-    };
-
-static void flipcsr (void)
-    {
-    int xp;
-    int yp;
-    if ( vflags & HRGFLG )
-        {
-        xp = lastx;
-        yp = lasty;
-        if (( xp < gvl ) || ( xp + 7 > gvr ) || ( yp < gvt ) || ( yp + pmode->thgt - 1 > gvb ))
-            {
-            nCsrHide |= CSR_INV;
-            bCsrVis = false;
-            return;
-            }
-        }
-    else
-        {
-        if (( ycsr < 0 ) || ( ycsr >= pmode->trow ) || ( xcsr < 0 ) || ( xcsr >= pmode->tcol ))
-            {
-            nCsrHide |= CSR_INV;
-            bCsrVis = false;
-            return;
-            }
-        xp = 8 * xcsr;
-        yp = ycsr * pmode->thgt;
-        }
-    yp += csrtop;
-    int xpc = xp;
-    int ypc = yp;
-    CLRDEF *cdef = &clrdef[pmode->ncbt];
-    uint32_t *fb = (uint32_t *)(shadowbuf + yp * pmode->nbpl);
-    xp <<= cdef->bitsh;
-    fb += xp >> 5;
-    xp &= 0x1F;
-    uint32_t msk1 = cdef->csrmsk << xp;
-    uint32_t msk2 = cdef->csrmsk >> ( 32 - xp );
-    for (int i = 0; i < csrhgt; ++i)
-        {
-        *fb ^= msk1;
-        *(fb + 1) ^= msk2;
-        fb += pmode->nbpl / 4;
-        ++yp;
-        }
-    bCsrVis = ! bCsrVis;
-    VDU_OUT_INT (framebuf, xpc, ypc, xpc + 8, ypc + csrhgt);
-    }
-
-void hidecsr (void)
-    {
-    ++nCsrHide;
-    if ( pmode->ncbt != 3 )
-        {
-        critical_section_enter_blocking (&cs_csr);
-        if ( bCsrVis ) flipcsr ();
-        critical_section_exit (&cs_csr);
-        }
-    }
-
-void showcsr (void)
-    {
-    if ( ( nCsrHide & CSR_CNT ) > 0 ) --nCsrHide;
-    if ( vflags & HRGFLG )
-        {
-        if (( lastx >= gvl ) && ( lastx + 7 <= gvr )
-            && ( lasty >= gvt ) && ( lasty + pmode->thgt - 1 <= gvb ))
-            nCsrHide &= ~CSR_INV;
-        else
-            nCsrHide |= CSR_INV;
-        }
-    else
-        {
-        if ( ( ycsr >= tvt ) && ( ycsr <= tvb ) && ( xcsr >= tvl ) && ( xcsr <= tvr ))
-            nCsrHide &= ~CSR_INV;
-        else
-            nCsrHide |= CSR_INV;
-        }
-    if ( nCsrHide == 0 )
-        {
-        if ( pmode->ncbt != 3 )
-            {
-            critical_section_enter_blocking (&cs_csr);
-            if ( ! bCsrVis ) flipcsr ();
-            critical_section_exit (&cs_csr);
-            }
-        }
-    }
-
-static void flashcsr (void)
-    {
-    if ( pmode->ncbt == 3 )
-        {
-        mode7flash ();
-        }
-    else if ( nCsrHide == 0 )
-        {
-        critical_section_enter_blocking (&cs_csr);
-        flipcsr ();
-        critical_section_exit (&cs_csr);
-        }
-    }
-
-void csrdef (int data2)
-    {
-    uint32_t p1 = data2 & 0xFF;
-    uint32_t p2 = ( data2 >> 8 ) & 0xFF;
-    uint32_t p3 = ( data2 >> 16 ) & 0xFF;
-    if ( p1 == 1 )
-        {
-        if ( p2 == 0 ) nCsrHide |= CSR_OFF;
-        else nCsrHide &= ~CSR_OFF;
-        }
-    else if ( p1 == 0 )
-        {
-        if ( p2 == 10 )
-            {
-            if ( p3 < pmode->thgt )
-                {
-                csrtop = p3;
-                cursa = p3;
-                }
-            }
-        else if ( p2 == 11 )
-            {
-            if ( p3 < pmode->thgt )
-                {
-                csrhgt = p3 - csrtop + 1;
-                cursb = p3;
-                }
-            }
-        }
-    }
+#if SOFT_CSR
+static uint32_t nFlash = 0;         // Time counter for cursor flash
+critical_section_t cs_csr;          // Critical section controlling cursor flash
 
 static PRD_FUNC pnext = NULL;
 
@@ -242,17 +61,19 @@ static void video_periodic (void)
         }
     if (pnext) pnext ();
     }
+#endif
 
-void setup_fbuf (const MODE *pm)
+void setup_fbuf (void)
     {
-    pmode = pm;
-    critical_section_init (&cs_csr);
 #if DBUF_MODE > 0
     displaybuf = vbuffer[0];
     shadowbuf = vbuffer[0];
 #endif
     memset (shadowbuf, 0, BUF_SIZE);
+#if SOFT_CSR    
+    critical_section_init (&cs_csr);
     pnext = add_periodic (video_periodic);
+#endif
     }
 
 #include <unistd.h>

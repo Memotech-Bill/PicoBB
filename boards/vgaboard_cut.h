@@ -79,6 +79,29 @@
 #define PICO_AUDIO_PWM_L_PIN VGABOARD_PWM_L_PIN
 #define PICO_AUDIO_PWM_R_PIN VGABOARD_PWM_R_PIN
 
+#define HIRES       0       // CAUTION - Enabling HIRES requires extreme Pico overclock
+#if HIRES
+#define SWIDTH      800     // Display width in pixels
+#define SHEIGHT     600     // Display height in pixels
+#else
+#define SWIDTH      640     // Display width in pixels
+#define SHEIGHT     480     // Display height in pixels
+#endif
+#define BUF_SIZE    (SWIDTH * SHEIGHT / 8)  // Maximum size of a framebuffer
+
+//  REF_MODE =      0   Not implemented
+//                  1   Using double buffering
+//                  2   Using VDU queue
+//                  3   User configurable
+#define REF_MODE    3
+#define REFQ_DEF    1024        // Default length for VDU queue
+
+// DBUF_MODE =      0 No double buffer
+//                  1 One fixed buffer and second buffer above himem
+//                  2 One fixed buffer and second buffer below PAGE
+//                  3 Two buffers both below PAGE
+#define DBUF_MODE   1
+
 #define PICO_VGA_BOARD
 
 #endif

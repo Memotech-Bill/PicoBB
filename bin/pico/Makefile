@@ -8,7 +8,6 @@ ifeq ($(TYPE), pico)
 # Pico without network support
 BOARD ?= pico
 CYW43 ?= NONE
-STDIO ?= USB
 LFS ?= Y
 FAT ?= Y
 SOUND ?= PWM
@@ -47,7 +46,6 @@ $(error $(TYPE) is not a valid board type)
 
 endif
 
-STDIO ?= USB
 LFS ?= Y
 FAT ?= Y
 SOUND ?= PWM
@@ -62,6 +60,6 @@ DEVICE += -d $(ADDON)
 endif
 
 # Required for GUI build
-STDIO=PICO
+STDIO ?= PICO
 
 include ../../src/pico/Makefile

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <hardware/sync.h>
-#include "fbufvdu.h"
+#include "framebuf.h"
 #include "lfswrap.h"
 #include "bbccon.h"
 #include "picocli.h"
@@ -13,38 +13,9 @@
 
 #define WM_LBUTTONDOWN 0x0201
 
-void modechg (char mode);
 void error (int iErr, const char *psErr);
 void *oshwm (void *addr, int mark);
 int putevt (heapptr handler, int msg, int wparam, int lparam);
-
-// VDU variables declared in bbcdata_*.s:
-extern int lastx;                       // Graphics cursor x-position (pixels)
-extern int lasty;                       // Graphics cursor y-position (pixels)
-extern unsigned char cursa;             // Start (top) line of cursor
-extern unsigned char cursb;             // Finish (bottom) line of cursor
-extern void *vpage;                     // Address of start of BASIC program memory
-extern short int forgnd;                // Graphics foreground colour/action
-extern short int bakgnd;                // Graphics background colour/action
-extern unsigned char txtfor;            // Text foreground colour
-extern unsigned char txtbak;            // Text background colour
-
-// Variables defined in fbufvdu.c
-extern int xcsr;                        // Text cursor horizontal position
-extern int ycsr;                        // Text cursor vertical position
-extern int tvt;                         // Top of text viewport
-extern int tvb;	                        // Bottom of text viewport
-extern int tvl;	                        // Left edge of text viewport
-extern int tvr;	                        // Right edge of text viewport
-extern int gvt;                         // Top of graphics viewport
-extern int gvb;	                        // Bottom of graphics viewport
-extern int gvl;	                        // Left edge of graphics viewport
-extern int gvr;	                        // Right edge of graphics viewport
-
-// Variables defined in fbufctl.c
-extern int nCsrHide;                    // Non-zero to hide cursor
-extern int csrhgt;                      // Height of cursor
-extern int csrtop;                      // Top of cursor in text line
 
 #define PIXEL_FROM_RGB8(r, g, b)    (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3))
 
@@ -69,23 +40,7 @@ static const uint16_t defpal[16] =
     PIXEL_FROM_RGB8(  0u, 255u, 255u),
     PIXEL_FROM_RGB8(255u, 255u, 255u)
     };
-/*
-static const uint32_t cpx02[] = { 0x00000000, 0xFFFFFFFF };
-static const uint32_t cpx04[] = { 0x00000000, 0x55555555, 0xAAAAAAAA, 0xFFFFFFFF };
-static const uint32_t cpx16[] = { 0x00000000, 0x11111111, 0x22222222, 0x33333333,
-                                  0x44444444, 0x55555555, 0x66666666, 0x77777777,
-                                  0x88888888, 0x99999999, 0xAAAAAAAA, 0xBBBBBBBB,
-                                  0xCCCCCCCC, 0xDDDDDDDD, 0xEEEEEEEE, 0xFFFFFFFF };
 
-static CLRDEF clrdef[] = {
-//   nclr,   cpx, bsh, clrm,     csrmsk
-    {   0,  NULL,   0, 0x00,       0x00},
-    {   2, cpx02,   0, 0x01, 0x000000FF},
-    {   4, cpx04,   1, 0x03, 0x0000FFFF},
-    {   8,  NULL,   0, 0x07,       0x00},
-    {  16, cpx16,   2, 0x0F, 0xFFFFFFFF}
-    };
-*/
 #define LS  0x10000
 
 static const MODE modes[] = {
@@ -306,13 +261,13 @@ uint16_t rgbclr (int r, int g, int b)
 
 int clrrgb (int clr)
     {
-    clr = curpal[clr]
+    clr = curpal[clr];
     return ((clr & 0xF800) >> 8) | ((clr & 0x07E0) << 5) | ((clr & 0x001F) << 19);
     }
 
-void clrreset (const MODE *pmode)
+void clrreset (void)
     {
-    if ( pmode->ncbt == 1 )
+    if ( curmode.ncbt == 1 )
         {
 #if DEBUG & 2
         printf ("clrreset: nclr = 2\n");
@@ -320,7 +275,7 @@ void clrreset (const MODE *pmode)
         curpal[0] = defpal[0];
         curpal[1] = defpal[15];
         }
-    else if ( pmode->ncbt == 2 )
+    else if ( curmode.ncbt == 2 )
         {
 #if DEBUG & 2
         printf ("clrreset: nclr = 4\n");
@@ -330,7 +285,7 @@ void clrreset (const MODE *pmode)
         curpal[2] = defpal[11];
         curpal[3] = defpal[15];
         }
-    else if ( pmode->ncbt == 3 )
+    else if ( curmode.ncbt == 3 )
         {
 #if DEBUG & 2
         printf ("clrreset: nclr = 4\n");
@@ -363,7 +318,7 @@ void clrset (int pal, int phy, int r, int g, int b)
 #endif
     }
 
-bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd)
+const MODE *setmode (int mode)
     {
 #if DEBUG & 1
     printf ("setmode (%d)\n", mode);
@@ -382,7 +337,6 @@ bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd)
         else                   xscl = (curmode.ncbt * curmode.nppb) >> 3;
         yscl = 1 << curmode.yshf;
         nrow = curmode.grow << curmode.yshf;
-        // printf ("xscl = %d, yscl = %d, nrow = %d, vmgn = %d\n", xscl, yscl, nrow, curmode.vmgn);
         scrltop = 0;
         LCD_ScrollArea (curmode.vmgn, nrow, curmode.vmgn);
         LCD_Scroll (curmode.vmgn + scrltop);
@@ -393,32 +347,17 @@ bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd)
             }
         SPI_Release ();
         framebuf = singlebuf ();
-        nCsrHide |= CSR_OFF;
-        if (curmode.ncbt == 3)
-            {
-            csrtop = 0;
-            csrhgt = TTH;
-            }
-        else
-            {
-            csrtop = curmode.thgt - 1;
-            csrhgt = 1;
-            }
-        *pfbuf = framebuf;
-        *ppmd = &curmode;
         if ( curmode.ncbt == 3 ) memcpy (&framebuf[curmode.trow * curmode.tcol], font_tt, sizeof (font_tt));
-        return true;
+        fbmode (framebuf, &curmode);
+        return &curmode;
         }
     return false;
     }
 
-bool txtmode (int code, int *pdata1, int *pdata2)
+const MODE *modeinfo (int mode)
     {
-    if ((code & 0x7F) >= sizeof (modes) / sizeof (modes[0])) return false;
-    const MODE *pmode = &modes[(code & 0x7F)];
-    *pdata2 = (pmode->gcol << 8) | (pmode->grow << 24);
-    *pdata1 = (pmode->grow >> 8) | 0x0800 | (pmode->thgt << 16) | (0x01000000 << pmode->ncbt);
-    return true;
+    if (mode >= sizeof (modes) / sizeof (modes[0])) return NULL;
+    return &modes[mode];
     }
 
 int bufsize (void)
@@ -428,13 +367,8 @@ int bufsize (void)
     return nbyt;
     }
 
-void dispmode (void)
+void dispenable (void)
     {
-    nCsrHide = 0;
-    showcsr ();
-#if DEBUG & 1
-    printf ("dispmode: New mode set\n");
-#endif
     }
 
 static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool bShow)
@@ -604,8 +538,7 @@ static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool
                     {
                     if (bInverse && (bFlash ||
                                     ((xc == xcsr) && (yr == ycsr)
-                                    && (ys >= csrtop) && (ys < csrtop + csrhgt)
-                                    && (nCsrHide == 0))))
+                                    && (ys >= cursa) && (ys <= cursb))))
                         {
                         LCD_Write_Words (bgnd, 8 * xscl * yscl);
                         // printf (" %0x%02X * %d", bgnd, 8 * xscl);
@@ -885,7 +818,7 @@ void setup_vdu (void)
     LCD_Init (L2R_U2D, 100);
     SPI_Release ();
     excli = add_cli (brightness);
-    setup_fbuf (&curmode);
+    setup_fbuf ();
     memset (singlebuf (), 0, BUF_SIZE);
     modechg (8);
     }

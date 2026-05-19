@@ -70,4 +70,22 @@
 #define SD_CS_PIN	    22
 #endif
 
+#define SWIDTH          320                     // Display width in pixels
+#define SHEIGHT         480                     // Display height in pixels
+#define BUF_SIZE        (SWIDTH * SHEIGHT / 4)  // Maximum size of a framebuffer
+#define SOFT_CSR        1                       // Cursor in framebuffer
+
+//  REF_MODE =      0   Not implemented
+//                  1   Using double buffering
+//                  2   Using VDU queue
+//                  3   User configurable
+#define REF_MODE    3
+#define REFQ_DEF    1024        // Default length for VDU queue
+
+// DBUF_MODE =      0 No double buffer
+//                  1 One fixed buffer and second buffer above himem
+//                  2 One fixed buffer and second buffer below PAGE
+//                  3 Two buffers both below PAGE
+#define DBUF_MODE   1
+
 #endif

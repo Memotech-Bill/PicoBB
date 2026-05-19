@@ -1,7 +1,6 @@
 /*  picofbuf.c - Framebuffer VGA Display for BBC Basic on Pico */
 
 #define USE_INTERP  1
-#define HIRES       0   // CAUTION - Enabling HIRES requires extreme Pico overclock
 
 // DEBUG =  0   No diagnostics
 //          1   General diagnostics
@@ -21,7 +20,7 @@
 #if USE_INTERP
 #include "hardware/interp.h"
 #endif
-#include "fbufvdu.h"
+#include "framebuf.h"
 #include <stdio.h>
 #include <string.h>
 #include "bbccon.h"
@@ -32,41 +31,12 @@
 
 #include "font_tt.h"
 
-void modechg (int mode);
 void error (int iErr, const char *psErr);
 void *oshwm (void *addr, int mark);
 
 #define VGA_FLAG    0x1234                  // Used to syncronise cores
-
-// VDU variables declared in bbcdata_*.s:
-extern int lastx;                       // Graphics cursor x-position (pixels)
-extern int lasty;                       // Graphics cursor y-position (pixels)
-extern unsigned char cursa;             // Start (top) line of cursor
-extern unsigned char cursb;             // Finish (bottom) line of cursor
-extern void *vpage;                     // Address of start of BASIC program memory
-extern short int forgnd;                // Graphics foreground colour/action
-extern short int bakgnd;                // Graphics background colour/action
-extern unsigned char txtfor;            // Text foreground colour
-extern unsigned char txtbak;            // Text background colour
-
-// Variables defined in fbufvdu.c
-extern int xcsr;                        // Text cursor horizontal position
-extern int ycsr;                        // Text cursor vertical position
-extern int tvt;                         // Top of text viewport
-extern int tvb;	                        // Bottom of text viewport
-extern int tvl;	                        // Left edge of text viewport
-extern int tvr;	                        // Right edge of text viewport
-extern int gvt;                         // Top of graphics viewport
-extern int gvb;	                        // Bottom of graphics viewport
-extern int gvl;	                        // Left edge of graphics viewport
-extern int gvr;	                        // Right edge of graphics viewport
-
-// Variables defined in fbufctl.c
-extern int nCsrHide;                    // Non-zero to hide cursor
-extern int csrhgt;                      // Height of cursor
-extern int csrtop;                      // Top of cursor in text line
-
-static bool bBlank = true;              // Blank video screen
+static bool bBlank = true;                  // Blank video screen
+static bool bShowCsr = false;
 static uint16_t renderbuf[256 * 8] __attribute((__aligned__(4)));
 
 static MODE curmode;
@@ -97,23 +67,7 @@ static const uint16_t defpal[16] =
 
 static const uint32_t ttcsr = PICO_SCANVIDEO_PIXEL_FROM_RGB8(255u, 255u, 255u)
     | ( (PICO_SCANVIDEO_PIXEL_FROM_RGB8(255u, 255u, 255u)) << 16 );
-/*
-static const uint32_t cpx02[] = { 0x00000000, 0xFFFFFFFF };
-static const uint32_t cpx04[] = { 0x00000000, 0x55555555, 0xAAAAAAAA, 0xFFFFFFFF };
-static const uint32_t cpx16[] = { 0x00000000, 0x11111111, 0x22222222, 0x33333333,
-                                  0x44444444, 0x55555555, 0x66666666, 0x77777777,
-                                  0x88888888, 0x99999999, 0xAAAAAAAA, 0xBBBBBBBB,
-                                  0xCCCCCCCC, 0xDDDDDDDD, 0xEEEEEEEE, 0xFFFFFFFF };
 
-static CLRDEF clrdef[] = {
-//   nclr,   cpx, bsh, clrm,     csrmsk
-    {   0,  NULL,   0, 0x00,       0x00},
-    {   2, cpx02,   0, 0x01, 0x000000FF},
-    {   4, cpx04,   1, 0x03, 0x0000FFFF},
-    {   8,  NULL,   0, 0x07,       0x00},
-    {  16, cpx16,   2, 0x0F, 0xFFFFFFFF}
-    };
-*/
 #if HIRES    // 800x600 VGA
 static const MODE modes[] = {
 // ncbt gcol grow tcol trw  vmg hmg pb nbpl ys thg
@@ -392,8 +346,8 @@ void __time_critical_func(render_mode7) (void)
             *twopix = COMPOSABLE_EOL_ALIGN << 16;   // Implicit zero (black) in low word
             ++twopix;
             buffer->data_used = twopix - buffer->data;
-            if (( iRow == ycsr ) && ( nCsrHide == 0 ) && ( nFrame & FLASH_BIT )
-                && ( iScan >= csrtop ) && ( iScan < csrtop + csrhgt ))
+            if (( iRow == ycsr ) && ( bShowCsr ) && ( nFrame & FLASH_BIT )
+                && ( iScan >= cursa ) && ( iScan <= cursb ))
                 {
                 twopix = pxline + 8 * xcsr + 1;
                 twopix[0] ^= ttcsr;
@@ -702,9 +656,9 @@ void genrb (uint16_t *curpal)
 #endif
     }
 
-void clrreset (const MODE *pmode)
+void clrreset (void)
     {
-    if ( pmode->ncbt == 1 )
+    if ( curmode.ncbt == 1 )
         {
 #if DEBUG & 2
         printf ("clrreset: nclr = 2\n");
@@ -712,7 +666,7 @@ void clrreset (const MODE *pmode)
         curpal[0] = defpal[0];
         curpal[1] = defpal[15];
         }
-    else if ( pmode->ncbt == 2 )
+    else if ( curmode.ncbt == 2 )
         {
 #if DEBUG & 2
         printf ("clrreset: nclr = 4\n");
@@ -722,7 +676,7 @@ void clrreset (const MODE *pmode)
         curpal[2] = defpal[11];
         curpal[3] = defpal[15];
         }
-    else if ( pmode->ncbt == 3 )
+    else if ( curmode.ncbt == 3 )
         {
 #if DEBUG & 2
         printf ("clrreset: nclr = 4\n");
@@ -757,7 +711,7 @@ void clrset (int pal, int phy, int r, int g, int b)
     genrb (curpal);
     }
 
-bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd)
+const MODE * setmode (int mode)
     {
 #if DEBUG & 1
     printf ("setmode (%d)\n", mode);
@@ -767,15 +721,11 @@ bool setmode (int mode, uint8_t **pfbuf, MODE **ppmd)
         bBlank = true;
         memcpy (&curmode, &modes[mode], sizeof (MODE));
         framebuf = singlebuf ();
-        nCsrHide = CSR_OFF;
-        csrtop = curmode.thgt - 1;
-        csrhgt = 1;
-        *pfbuf = framebuf;
-        *ppmd = &curmode;
         if ( curmode.ncbt == 3 ) memcpy (&framebuf[curmode.trow * curmode.tcol], font_tt, sizeof (font_tt));
-        return true;
+        fbmode (framebuf, &curmode);
+        return &curmode;
         }
-    return false;
+    return NULL;
     }
 
 int bufsize (void)
@@ -785,10 +735,9 @@ int bufsize (void)
     return nbyt;
     }
 
-void dispmode (void)
+void dispenable (void)
     {
-    nCsrHide = 0;
-    showcsr ();
+    bShowCsr = true;
 #if USE_INTERP
     bCfgInt = true;
 #else
@@ -799,13 +748,10 @@ void dispmode (void)
 #endif
     }
 
-bool txtmode (int code, int *pdata1, int *pdata2)
+const MODE *modeinfo (int mode)
     {
-    if ((code & 0x7F) >= sizeof (modes) / sizeof (modes[0])) return false;
-    const MODE *pmode = &modes[(code & 0x7F)];
-    *pdata2 = (pmode->gcol << 8) | (pmode->grow << 24);
-    *pdata1 = (pmode->grow >> 8) | 0x0800 | (pmode->thgt << 16) | (0x01000000 << pmode->ncbt);
-    return true;
+    if (mode >= sizeof (modes) / sizeof (modes[0])) return NULL;
+    return &modes[mode];
     }
 
 void setup_vdu (void)
@@ -833,7 +779,7 @@ void setup_vdu (void)
     sleep_ms(500);
     printf ("setup_vdu: Set clock frequency %d kHz.\n", clock_get_hz (clk_sys) / 1000);
 #endif
-    setup_fbuf (&curmode);
+    setup_fbuf ();
     modechg (8);
     multicore_fifo_drain ();
     multicore_launch_core1 (setup_video);
@@ -846,6 +792,19 @@ void setup_vdu (void)
         printf ("Unexpected value 0x%04X from multicore FIFO\n", test);
         }
 #endif
+    }
+
+void hidecsr (void)
+    {
+    }
+
+void showcsr (void)
+    {
+    }
+
+void enablecsr (bool bEnable)
+    {
+    bShowCsr = bEnable;
     }
 
 void mode7flash (void)

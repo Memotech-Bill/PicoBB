@@ -253,7 +253,7 @@ with power supplied via the Pico USB socket and no host computer.
 To build the version of PicoBB for the Waveshare Pico-ResTouch-LCD-3.5:
 
         cd bin/pico
-        make BOARD=<pico_type> ADDON=wslcd35 GRAPH=wslcd35 SOUND=N FAT=Y
+        make BOARD=<pico_type> ADDON=wslcd35 GRAPH=wslcd35 STDIO=USB SOUND=N FAT=Y
 
 Where <pico_type> is replaced by the type of Pico being used.
         
