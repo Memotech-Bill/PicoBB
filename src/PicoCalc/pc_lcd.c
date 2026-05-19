@@ -927,9 +927,9 @@ typedef enum {dhNone, dhUpper, dhLower} DBLHGT;
 
 typedef struct
     {
-    uint16_t    ttd[32];
-    uint8_t     ch[32];
-    uint32_t    iChg;
+    uint16_t    ttd[40];
+    uint8_t     ch[40];
+    uint64_t    iChg;
     DBLHGT      dh;
     } TTX_ROW;
 
@@ -937,6 +937,7 @@ static TTX_ROW ttx_disp[26];
 
 void ttx_scanrow (TTX_ROW *pttx, DBLHGT dh)
     {
+    // printf ("ttx_scanrow (%p, %d)\n", pttx, dh);
     pttx->iChg = 0;
     int bg = 0;
     int fg = 7 << 12;
@@ -951,6 +952,7 @@ void ttx_scanrow (TTX_ROW *pttx, DBLHGT dh)
     for (int i = 0; i < pmode->tcol; ++i)
         {
         uint8_t ch = pttx->ch[i];
+        // printf ("ch[%d] = 0x%02X\n", i, ch);
         if (ch > 0x20)
             {
             if (bHide)
@@ -1035,8 +1037,22 @@ void ttx_scanrow (TTX_ROW *pttx, DBLHGT dh)
             {
             pttx->ttd[i] = ttd;
             pttx->iChg |= 1;
+            // printf ("ttd[%d] = 0x%04X, iChg = 0x%010llX\n", i, ttd, pttx->iChg);
             }
         }
+    /*
+    printf ("ttx_scanrow:\n");
+    for (int i = 0; i < 39; ++i)
+        {
+        if ((pttx->ch[i] > 0x20) && (pttx->ch[i] < 0x7F)) printf ("    %c", pttx->ch[i]);
+        else printf ("   %02X", pttx->ch[i]);
+        }
+    if ((pttx->ch[39] > 0x20) && (pttx->ch[39] < 0x7F)) printf ("    %c\n", pttx->ch[39]);
+    else printf ("   %02X\n", pttx->ch[39]);
+    for (int i = 0; i < 39; ++i) printf (" %04X", pttx->ttd[i]);
+    printf (" %04X\n", pttx->ttd[39]);
+    printf ("dh = %d, iChg = %010llX, New dh = %d\n", pttx->dh, pttx->iChg, dh);
+    */
     }
 
 void ttx_disprow (const TTX_ROW *pttx, int iRow)
@@ -1046,10 +1062,11 @@ void ttx_disprow (const TTX_ROW *pttx, int iRow)
     if (nR1 >= nrow) nR1 -= nrow;
     nR1 += pmode->vmgn;
     int nR2 = nR1 + thgt;
-    uint32_t iChg = pttx->iChg;
+    uint64_t iChg = pttx->iChg;
+    // printf ("ttx_disprow: iRow = %d, nR1 = %d, nR2 = %d, iChg = 0x%010llX\n", iRow, nR1, nR2, iChg);
     for (int iCol = 0; iCol < pmode->tcol; ++iCol)
         {
-        if (iChg & 0x80000000)
+        if (iChg & 0x8000000000L)
             {
             bool bDblHgt = false;
             uint16_t ttd = pttx->ttd[iCol];
@@ -1077,8 +1094,8 @@ void ttx_disprow (const TTX_ROW *pttx, int iRow)
                     fg = bg;
                     }
                 }
+            // printf ("iCol = %d, nC1 = %d, nC2 = %d, ch = 0x%03X\n", iCol, nC1, nC2, ch);
             Dsp_SetWindow (nC1, nR1, nC2, nR2);
-            // printf ("ttx_disprow:\n");
             Dsp_DataOutput ();
             for (int iScan = 0; iScan < pmode->thgt; ++iScan)
                 {
@@ -1088,12 +1105,12 @@ void ttx_disprow (const TTX_ROW *pttx, int iRow)
                     if (pttx->dh == dhLower) iFRow += TTH;
                     iFRow /= 2;
                     }
-                uint8_t pix = font_tt[ch][iFRow];
+                uint8_t pix = font_tt[ch - 0x20][iFRow];
                 for (int j = 0; j < 8; ++j)
                     {
-                    if (pix & 0x80) Dsp_WriteColour (fg, xscl);
+                    if (pix & 0x01) Dsp_WriteColour (fg, xscl);
                     else Dsp_WriteColour (bg, xscl);
-                    pix <<= 1;
+                    pix >>= 1;
                     }
                 }
             Dsp_DataTerm ();
@@ -1104,12 +1121,14 @@ void ttx_disprow (const TTX_ROW *pttx, int iRow)
 
 void disp_ttx (char chr)
     {
+    // printf ("disp_ttx: xcsr = %d, ycsr = %d, chr = 0x%02X\n", xcsr, ycsr, chr);
     ttx_disp[ycsr].ch[xcsr] = chr & 0x7F;
     DBLHGT dh = dhNone;
     if (ycsr > 0) dh = ttx_disp[ycsr-1].dh;
     int iRow = ycsr;
     while (true)
         {
+        // printf ("iRow = %d, dh = %d\n", iRow, dh);
         ttx_scanrow (&ttx_disp[iRow], dh);
         if (ttx_disp[iRow].iChg == 0) break;
         ttx_disprow (&ttx_disp[iRow], iRow);
@@ -1133,11 +1152,12 @@ void disp_ttx (char chr)
 
 static void mode7flash (void)
     {
+    /*
     bBlink = ! bBlink;
     for (int iRow = 0; iRow < pmode->trow; ++iRow)
         {
         TTX_ROW *pttx = &ttx_disp[iRow];
-        uint32_t iSave = pttx->iChg;
+        uint64_t iSave = pttx->iChg;
         pttx->iChg = 0;
         for (int iCol = 0; iCol < pmode->tcol; ++iCol)
             {
@@ -1148,6 +1168,7 @@ static void mode7flash (void)
         ttx_disprow (pttx, iRow);
         pttx->iChg = iSave;
         }
+    */
     }
 
 void scrldn (void)
