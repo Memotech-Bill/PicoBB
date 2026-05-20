@@ -57,7 +57,6 @@ bool pio_claim_free_sm_for_program (const pio_program_t *program, PIO *pio, uint
 
 void qspi_wait (void)
     {
-    // printf ("qspi_wait...\n");
     while (! pio_interrupt_get (qspi_pio, 7))
         {
         tight_loop_contents ();
@@ -65,15 +64,11 @@ void qspi_wait (void)
 #if USE_DMA
     if (qspi_dma) dma_channel_wait_for_finish_blocking (qspi_dma);
 #endif
-    // printf ("...done\n");
     }
 
 void qspi_free (void)
     {
-    // printf ("qspi_free...\n");
     qspi_wait ();
-    // printf ("TX Remaining = %d\n", pio_sm_get_tx_fifo_level (qspi_pio, qspi_sm));
-    // printf ("RX Remaining = %d\n", pio_sm_get_rx_fifo_level (qspi_pio, qspi_sm));
     pio_sm_set_enabled (qspi_pio, qspi_sm, false);
     pio_remove_program_and_unclaim_sm (qspi_pgm, qspi_pio, qspi_sm, qspi_oset);
     qspi_pio = NULL;
@@ -81,12 +76,10 @@ void qspi_free (void)
     if (qspi_dma) dma_channel_unclaim (qspi_dma);
     qspi_dma = 0;
 #endif
-    // printf ("...freed\n");
     }
 
 bool qspi_cfg_qread (void)
     {
-    // printf ("qspi_cfg_qread\n");
     if (! qspi_qcfg) qspi_qmode ();
     if (! pio_claim_free_sm_for_program (&qread_program, &qspi_pio, &qspi_sm)) return false;
     if (! pio_sm_is_tx_fifo_empty (qspi_pio, qspi_sm)) pio_sm_drain_tx_fifo (qspi_pio, qspi_sm);
@@ -94,7 +87,6 @@ bool qspi_cfg_qread (void)
     pio_sm_set_consecutive_pindirs (qspi_pio, qspi_sm, PICO_PSRAM_CS_PIN, 2, true);
     while (! pio_sm_is_rx_fifo_empty (qspi_pio, qspi_sm)) pio_sm_get (qspi_pio, qspi_sm);
     qspi_oset = pio_add_program (qspi_pio, &qread_program);
-    // printf ("pio = %d, sm = %d, oset = %d\n", pio_get_index (qspi_pio), qspi_sm, qspi_oset);
     qspi_pgm = &qread_program;
 #if USE_DMA
     qspi_dma = dma_claim_unused_channel (true);
@@ -105,7 +97,6 @@ bool qspi_cfg_qread (void)
     sm_config_set_out_pin_base (&cfg, PICO_PSRAM_SIO0_PIN);
     sm_config_set_set_pin_base (&cfg, PICO_PSRAM_SIO0_PIN);
     sm_config_set_sideset_pin_base (&cfg, PICO_PSRAM_CS_PIN);
-    // sm_config_set_fifo_join (&cfg, PIO_FIFO_JOIN_NONE);
     
     pio_gpio_init (qspi_pio, PICO_PSRAM_SIO0_PIN);
     pio_gpio_init (qspi_pio, PICO_PSRAM_SIO1_PIN);
@@ -123,7 +114,6 @@ bool qspi_cfg_qread (void)
 
 void qspi_qread (uint addr, uint len, uint8_t *buffer)
     {
-    // printf ("qspi_qread\n");
 #if USE_DMA
     uint dreq = pio_get_dreq (qspi_pio, qspi_sm, false);
     dma_channel_config_t cfg = dma_channel_get_default_config (qspi_dma);
@@ -142,7 +132,6 @@ void qspi_qread (uint addr, uint len, uint8_t *buffer)
     while (len > 0)
         {
         *buffer = (uint8_t) pio_sm_get_blocking (qspi_pio, qspi_sm);
-        // printf ("Read %d: Value = %d, RX Level = %d\n", len, *buffer, pio_sm_get_rx_fifo_level (qspi_pio, qspi_sm));
         ++buffer;
         --len;
         }
@@ -151,14 +140,12 @@ void qspi_qread (uint addr, uint len, uint8_t *buffer)
 
 bool qspi_cfg_qwrite (void)
     {
-    // printf ("qspi_cfg_qwrite\n");
     if (! qspi_qcfg) qspi_qmode ();
     if (! pio_claim_free_sm_for_program (&qwrite_program, &qspi_pio, &qspi_sm)) return false;
     if (! pio_sm_is_tx_fifo_empty (qspi_pio, qspi_sm)) pio_sm_drain_tx_fifo (qspi_pio, qspi_sm);
     pio_sm_set_pins_with_mask (qspi_pio, qspi_sm, 1 << PICO_PSRAM_CS_PIN, 3 << PICO_PSRAM_CS_PIN);
     pio_sm_set_consecutive_pindirs (qspi_pio, qspi_sm, PICO_PSRAM_CS_PIN, 2, true);
     qspi_oset = pio_add_program (qspi_pio, &qwrite_program);
-    // printf ("pio = %d, sm = %d, oset = %d\n", pio_get_index (qspi_pio), qspi_sm, qspi_oset);
     qspi_pgm = &qwrite_program;
 #if USE_DMA
     qspi_dma = dma_claim_unused_channel (true);
@@ -169,7 +156,6 @@ bool qspi_cfg_qwrite (void)
     sm_config_set_out_pin_base (&cfg, PICO_PSRAM_SIO0_PIN);
     sm_config_set_set_pin_base (&cfg, PICO_PSRAM_SIO0_PIN);
     sm_config_set_sideset_pin_base (&cfg, PICO_PSRAM_CS_PIN);
-    // sm_config_set_fifo_join (&cfg, PIO_FIFO_JOIN_TX);
     
     pio_gpio_init (qspi_pio, PICO_PSRAM_SIO0_PIN);
     pio_gpio_init (qspi_pio, PICO_PSRAM_SIO1_PIN);
@@ -183,7 +169,6 @@ bool qspi_cfg_qwrite (void)
 
 void qspi_qwrite (uint addr, uint len, uint8_t *buffer)
     {
-    // printf ("qspi_qwrite\n");
 #if USE_DMA
     uint dreq = pio_get_dreq (qspi_pio, qspi_sm, true);
     dma_channel_config_t cfg = dma_channel_get_default_config (qspi_dma);
@@ -201,36 +186,30 @@ void qspi_qwrite (uint addr, uint len, uint8_t *buffer)
 #else
     while (len > 0)
         {
-        // printf ("Write %d: Value = %d, TX Level = %d\n", len, *buffer, pio_sm_get_tx_fifo_level (qspi_pio, qspi_sm));
         pio_sm_put_blocking (qspi_pio, qspi_sm, *buffer);
         ++buffer;
         --len;
         }
     while (! pio_sm_is_tx_fifo_empty (qspi_pio, qspi_sm))
         {
-        // printf ("Waiting: TX Level = %d\n", pio_sm_get_tx_fifo_level (qspi_pio, qspi_sm));
         tight_loop_contents ();
         }
-    // printf ("qspi_qwrite done.\n");
 #endif
     }
 
 bool qspi_cfg_scmd (void)
     {
-    // printf ("qspi_cfg_scmd\n");
     if (! pio_claim_free_sm_for_program (&scmd_program, &qspi_pio, &qspi_sm)) return false;
     if (! pio_sm_is_tx_fifo_empty (qspi_pio, qspi_sm)) pio_sm_drain_tx_fifo (qspi_pio, qspi_sm);
     pio_sm_set_pins_with_mask (qspi_pio, qspi_sm, 1 << PICO_PSRAM_CS_PIN, 3 << PICO_PSRAM_CS_PIN);
     pio_sm_set_consecutive_pindirs (qspi_pio, qspi_sm, PICO_PSRAM_CS_PIN, 2, true);
     qspi_oset = pio_add_program (qspi_pio, &scmd_program);
-    // printf ("pio = %d, sm = %d, oset = %d\n", pio_get_index (qspi_pio), qspi_sm, qspi_oset);
     qspi_pgm = &scmd_program;
     
     pio_sm_config cfg = scmd_program_get_default_config (qspi_oset);
     sm_config_set_out_pin_base (&cfg, PICO_PSRAM_SIO0_PIN);
     sm_config_set_set_pin_base (&cfg, PICO_PSRAM_SIO0_PIN);
     sm_config_set_sideset_pin_base (&cfg, PICO_PSRAM_CS_PIN);
-    // sm_config_set_fifo_join (&cfg, PIO_FIFO_JOIN_NONE);
     
     pio_gpio_init (qspi_pio, PICO_PSRAM_SIO0_PIN);
     pio_gpio_init (qspi_pio, PICO_PSRAM_CS_PIN);
@@ -242,7 +221,6 @@ bool qspi_cfg_scmd (void)
 
 void qspi_cmd (uint8_t data)
     {
-    // printf ("qspi_cmd\n");
     pio_interrupt_clear (qspi_pio, 7);
     pio_sm_put_blocking (qspi_pio, qspi_sm, data);
     while (! pio_interrupt_get (qspi_pio, 7))
@@ -253,7 +231,6 @@ void qspi_cmd (uint8_t data)
 
 void qspi_qmode (void)
     {
-    // printf ("qspi_qmode\n");
     gpio_pull_up (PICO_PSRAM_CS_PIN);
     qspi_cfg_scmd ();
     qspi_cmd (0x35);
@@ -263,13 +240,11 @@ void qspi_qmode (void)
 
 bool qspi_cfg_qcmd (void)
     {
-    // printf ("qspi_cfg_qcmd\n");
     if (! pio_claim_free_sm_for_program (&qcmd_program, &qspi_pio, &qspi_sm)) return false;
     if (! pio_sm_is_tx_fifo_empty (qspi_pio, qspi_sm)) pio_sm_drain_tx_fifo (qspi_pio, qspi_sm);
     pio_sm_set_pins_with_mask (qspi_pio, qspi_sm, 1 << PICO_PSRAM_CS_PIN, 3 << PICO_PSRAM_CS_PIN);
     pio_sm_set_consecutive_pindirs (qspi_pio, qspi_sm, PICO_PSRAM_CS_PIN, 2, true);
     qspi_oset = pio_add_program (qspi_pio, &qcmd_program);
-    // printf ("pio = %d, sm = %d, oset = %d\n", pio_get_index (qspi_pio), qspi_sm, qspi_oset);
     qspi_pgm = &qcmd_program;
     
     pio_sm_config cfg = qcmd_program_get_default_config (qspi_oset);
@@ -290,7 +265,6 @@ bool qspi_cfg_qcmd (void)
 
 void qspi_smode (void)
     {
-    // printf ("qspi_smode\n");
     gpio_pull_up (PICO_PSRAM_CS_PIN);
     qspi_cfg_qcmd ();
     qspi_cmd (0xF5);
@@ -300,7 +274,6 @@ void qspi_smode (void)
 
 bool qspi_cfg_sio (void)
     {
-    // printf ("qspi_cfg_sio\n");
     if (qspi_qcfg) qspi_smode ();
     gpio_init (PICO_PSRAM_CS_PIN);
     gpio_set_dir (PICO_PSRAM_CS_PIN, true);
@@ -311,7 +284,6 @@ bool qspi_cfg_sio (void)
     pio_sm_set_consecutive_pindirs (qspi_pio, qspi_sm, PICO_PSRAM_CLK_PIN, 1, true);
     while (! pio_sm_is_rx_fifo_empty (qspi_pio, qspi_sm)) pio_sm_get (qspi_pio, qspi_sm);
     qspi_oset = pio_add_program (qspi_pio, &sio_program);
-    // printf ("pio = %d, sm = %d, oset = %d\n", pio_get_index (qspi_pio), qspi_sm, qspi_oset);
     qspi_pgm = &sio_program;
 #if USE_DMA
     qspi_dma = dma_claim_unused_channel (true);
@@ -322,7 +294,6 @@ bool qspi_cfg_sio (void)
     sm_config_set_out_pin_base (&cfg, PICO_PSRAM_SIO0_PIN);
     sm_config_set_set_pin_base (&cfg, PICO_PSRAM_SIO0_PIN);
     sm_config_set_sideset_pin_base (&cfg, PICO_PSRAM_CLK_PIN);
-    // sm_config_set_fifo_join (&cfg, PIO_FIFO_JOIN_NONE);
     
     pio_gpio_init (qspi_pio, PICO_PSRAM_SIO0_PIN);
     pio_gpio_init (qspi_pio, PICO_PSRAM_CLK_PIN);
@@ -333,7 +304,6 @@ bool qspi_cfg_sio (void)
 
 void qspi_sread (uint addr, uint len, uint8_t *buffer)
     {
-    // printf ("qspi_sread\n");
 #if USE_DMA
     uint dreq = pio_get_dreq (qspi_pio, qspi_sm, false);
     dma_channel_config_t cfg = dma_channel_get_default_config (qspi_dma);
@@ -369,13 +339,10 @@ void qspi_sread (uint addr, uint len, uint8_t *buffer)
     dma_channel_wait_for_finish_blocking (qspi_dma);
 #endif
     gpio_put (PICO_PSRAM_CS_PIN, true);
-    // uint instr = pio_encode_irq_set (7, false) | pio_encode_sideset (1, 0);
-    // pio_sm_exec_wait_blocking (qspi_pio, qspi_sm, instr);
     }
 
 void qspi_swrite (uint addr, uint len, uint8_t *buffer)
     {
-    // printf ("qspi_swrite\n");
 #if USE_DMA
     uint dreq = pio_get_dreq (qspi_pio, qspi_sm, false);
     dma_channel_config_t cfg = dma_channel_get_default_config (qspi_dma);
@@ -412,6 +379,4 @@ void qspi_swrite (uint addr, uint len, uint8_t *buffer)
     dma_channel_wait_for_finish_blocking (qspi_dma);
 #endif
     gpio_put (PICO_PSRAM_CS_PIN, true);
-    // uint instr = pio_encode_irq_set (7, false) | pio_encode_sideset (1, 0);
-    // pio_sm_exec_wait_blocking (qspi_pio, qspi_sm, instr);
     }

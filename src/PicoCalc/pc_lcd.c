@@ -168,11 +168,9 @@ static void LCD_SPI_Init (void)
 
     // init SPI
     gpio_set_function (PICO_LCD_CLK_PIN, GPIO_FUNC_SPI);
-    // gpio_set_function (PICO_LCD_TX_PIN, GPIO_FUNC_SPI);
     gpio_set_function (PICO_LCD_RX_PIN, GPIO_FUNC_SPI);
     gpio_set_input_hysteresis_enabled (PICO_LCD_RX_PIN, true);
     int speed = spi_init (SPI_INSTANCE(PICO_LCD_SPI), PICO_LCD_SPEED);
-    // printf ("LCD speed = %d\n", speed);
     }
 
 static inline void LCD_WriteReg (unsigned char data)
@@ -182,16 +180,12 @@ static inline void LCD_WriteReg (unsigned char data)
     gpio_put (PICO_LCD_CS_PIN, 0);
 
     spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), &data, 1);
-
-    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
 static inline void LCD_WriteData8 (uint8_t data)
     {
     gpio_put (PICO_LCD_DC_PIN, 1);
-    // gpio_put (PICO_LCD_CS_PIN, 0);
     spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), &data, 1);
-    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
 static inline void LCD_WriteData16 (uint16_t data)
@@ -201,9 +195,7 @@ static inline void LCD_WriteData16 (uint16_t data)
     data_array[1] = data & 0xFF;
 
     gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
-    // gpio_put (PICO_LCD_CS_PIN, 0);
     spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data_array, 2);
-    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
 static inline void LCD_WriteData24 (uint32_t data)
@@ -215,26 +207,20 @@ static inline void LCD_WriteData24 (uint32_t data)
 
 
     gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
-    // gpio_put (PICO_LCD_CS_PIN, 0);
     spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data_array, 3);
-    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
 static inline void LCD_WriteData (uint8_t *data, int nLen)
     {
     gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
-    // gpio_put (PICO_LCD_CS_PIN, 0);
     spi_write_blocking (SPI_INSTANCE(PICO_LCD_SPI), data, nLen);
-    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
 static inline void LCD_ReadData (uint8_t *data, int nLen)
     {
     gpio_set_function (PICO_LCD_TX_PIN, GPIO_FUNC_SPI);
     gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
-    // gpio_put (PICO_LCD_CS_PIN, 0);
     spi_read_blocking (SPI_INSTANCE(PICO_LCD_SPI), 0, data, nLen);
-    // gpio_put (PICO_LCD_CS_PIN, 1);
     }
 
 static inline void LCD_DataInput (void)
@@ -242,7 +228,6 @@ static inline void LCD_DataInput (void)
     LCD_WriteReg (0x2E);
     gpio_init (PICO_LCD_TX_PIN);
     gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
-    // gpio_put (PICO_LCD_CS_PIN, 0);
     uint8_t data;
     spi_read_blocking (SPI_INSTANCE(PICO_LCD_SPI), 0, &data, 1);
     }
@@ -263,7 +248,6 @@ static inline void LCD_DataOutput (void)
     {
     LCD_WriteReg (0x2C);
     gpio_put (PICO_LCD_DC_PIN, 1); // Data mode
-    // gpio_put (PICO_LCD_CS_PIN, 0);
     }
 
 static inline void Dsp_DataOutput (void)
@@ -271,7 +255,6 @@ static inline void Dsp_DataOutput (void)
 #if REF_MODE & 1
     if (bBuffer)
         {
-        // printf ("Dsp_DataOutput:\n");
         qspi_cfg_qwrite ();
         return;
         }
@@ -489,7 +472,6 @@ void setup_vdu (void)
 #if RGB == 18
     LCD_WriteData8 (0x66); // 18 bit colour for SPI
 #else
-    // LCD_WriteData8 (0x55); // 16 bit colour for SPI
     LCD_WriteData8 (0x65); // 16 bit colour for SPI
 #endif
     LCD_DataTerm ();
@@ -646,7 +628,6 @@ void Dsp_SetAreaColour (int Xstart, int Ystart, int Xend, int Yend,	uint32_t Col
     if((Xend > Xstart) && (Yend > Ystart))
         {
         Dsp_SetWindow (Xstart, Ystart, Xend, Yend);
-        // printf ("Dsp_SetAreaColour:\n");
         Dsp_DataOutput ();
         Dsp_WriteColour (Colour, (uint32_t)(Xend - Xstart) * (uint32_t)(Yend - Ystart));
         Dsp_DataTerm ();
@@ -723,17 +704,11 @@ void clrreset (void)
     {
     if ( pmode->ncbt == 1 )
         {
-#if DEBUG & 2
-        // printf ("clrreset: nclr = 2\n");
-#endif
         curpal[0] = defpal[0];
         curpal[1] = defpal[15];
         }
     else if ( pmode->ncbt == 2 )
         {
-#if DEBUG & 2
-        // printf ("clrreset: nclr = 4\n");
-#endif
         curpal[0] = defpal[0];
         curpal[1] = defpal[9];
         curpal[2] = defpal[11];
@@ -741,9 +716,6 @@ void clrreset (void)
         }
     else if ( pmode->ncbt == 3 )
         {
-#if DEBUG & 2
-        // printf ("clrreset: nclr = 4\n");
-#endif
         curpal[0] = defpal[0];
         for (int i = 1; i < 8; ++i)
             {
@@ -752,9 +724,6 @@ void clrreset (void)
         }
     else if ( pmode->ncbt == 4 )
         {
-#if DEBUG & 2
-        // printf ("clrreset: nclr = 16\n");
-#endif
         for (int i = 0; i < 16; ++i)
             {
             curpal[i] = defpal[i];
@@ -774,16 +743,10 @@ void clrset (int pal, int phy, int r, int g, int b)
     if ( phy < 16 ) curpal[pal] = defpal[phy];
     else if ( phy == 16 ) curpal[pal] = rgbclr (r, g, b);
     else if ( phy == 255 ) curpal[pal] = rgbclr (8*r, 8*g, 8*b);
-#if DEBUG & 2
-    // printf ("curpal[%d] = 0x%04X\n", pal, curpal[pal]);
-#endif
     }
 
 const MODE *setmode (int mode)
     {
-#if DEBUG & 1
-    // printf ("setmode (%d)\n", mode);
-#endif
     if (( mode >= 0 ) && ( mode < sizeof (modes) / sizeof (modes[0]) ))
         {
         pmode = &modes[mode];
@@ -791,7 +754,6 @@ const MODE *setmode (int mode)
         yscl = 1 << pmode->yshf;
         // ILI9488 has 480 rows of graphics memory
         scrltop = 0;
-#if 1
         if (pmode->vmgn == 0)
             {
             nrow = SDEPTH;
@@ -804,11 +766,6 @@ const MODE *setmode (int mode)
             Dsp_SetAreaColour (0, 0, pmode->gcol, pmode->vmgn, curpal[txtbak]);
             Dsp_SetAreaColour (0, pmode->vmgn + nrow, pmode->gcol, SHEIGHT, curpal[txtbak]);
             }
-#else
-        LCD_PartialArea (pmode->vmgn, pmode->grow);
-        nrow = SDEPTH - 2 * pmode->vmgn;
-        LCD_ScrollArea (pmode->vmgn, nrow, pmode->vmgn);
-#endif
         LCD_Scroll (pmode->vmgn + scrltop);
         return pmode;
         }
@@ -819,9 +776,6 @@ void dispenable (void)
     {
     nCsrHide = 0;
     showcsr ();
-#if DEBUG & 1
-    // printf ("dispmode: New mode set\n");
-#endif
     }
 
 void dispdn (void)
@@ -853,7 +807,6 @@ void dispdn (void)
             Dsp_ReadPixels (pixbuf, nCol);
             Dsp_DataTerm ();
             Dsp_SetWindow (nC1, nR1, nC2, nR1 + 1);
-            // printf ("dispdn:\n");
             Dsp_DataOutput ();
             Dsp_WritePixels (pixbuf, nCol);
             Dsp_DataTerm ();
@@ -898,7 +851,6 @@ void dispup (void)
             Dsp_ReadPixels (pixbuf, nCol);
             Dsp_DataTerm ();
             Dsp_SetWindow (nC1, nR1, nC2, nR1 + 1);
-            // printf ("dispup:\n");
             Dsp_DataOutput ();
             Dsp_WritePixels (pixbuf, nCol);
             Dsp_DataTerm ();
@@ -958,7 +910,6 @@ static TTX_ROW ttx_disp[25];
 
 void ttx_scanrow (TTX_ROW *pttx, DBLHGT dh)
     {
-    // printf ("ttx_scanrow (%p, %d)\n", pttx, dh);
     pttx->iChg = 0;
     int bg = 0;
     int fg = 7 << 12;
@@ -973,7 +924,6 @@ void ttx_scanrow (TTX_ROW *pttx, DBLHGT dh)
     for (int i = 0; i < pmode->tcol; ++i)
         {
         uint8_t ch = pttx->ch[i];
-        // printf ("ch[%d] = 0x%02X\n", i, ch);
         if (ch > 0x20)
             {
             if (bHide)
@@ -1058,22 +1008,8 @@ void ttx_scanrow (TTX_ROW *pttx, DBLHGT dh)
             {
             pttx->ttd[i] = ttd;
             pttx->iChg |= 1;
-            // printf ("ttd[%d] = 0x%04X, iChg = 0x%010llX\n", i, ttd, pttx->iChg);
             }
         }
-    /*
-    printf ("ttx_scanrow:\n");
-    for (int i = 0; i < 39; ++i)
-        {
-        if ((pttx->ch[i] > 0x20) && (pttx->ch[i] < 0x7F)) printf ("    %c", pttx->ch[i]);
-        else printf ("   %02X", pttx->ch[i]);
-        }
-    if ((pttx->ch[39] > 0x20) && (pttx->ch[39] < 0x7F)) printf ("    %c\n", pttx->ch[39]);
-    else printf ("   %02X\n", pttx->ch[39]);
-    for (int i = 0; i < 39; ++i) printf (" %04X", pttx->ttd[i]);
-    printf (" %04X\n", pttx->ttd[39]);
-    printf ("dh = %d, iChg = %010llX, New dh = %d\n", pttx->dh, pttx->iChg, dh);
-    */
     }
 
 void ttx_disprow (const TTX_ROW *pttx, int iRow)
@@ -1084,7 +1020,6 @@ void ttx_disprow (const TTX_ROW *pttx, int iRow)
     nR1 += pmode->vmgn;
     int nR2 = nR1 + thgt;
     uint64_t iChg = pttx->iChg;
-    // printf ("ttx_disprow: iRow = %d, nR1 = %d, nR2 = %d, iChg = 0x%010llX\n", iRow, nR1, nR2, iChg);
     for (int iCol = 0; iCol < pmode->tcol; ++iCol)
         {
         if (iChg & 0x8000000000L)
@@ -1118,7 +1053,6 @@ void ttx_disprow (const TTX_ROW *pttx, int iRow)
                     fg = bg;
                     }
                 }
-            // printf ("iCol = %d, nC1 = %d, nC2 = %d, ch = 0x%03X, fg = 0x%04X, bg = 0x%04X\n", iCol, nC1, nC2, ch, fg, bg);
             Dsp_SetWindow (nC1, nR1, nC2, nR2);
             Dsp_DataOutput ();
             for (int iScan = 0; iScan < pmode->thgt; ++iScan)
@@ -1145,14 +1079,12 @@ void ttx_disprow (const TTX_ROW *pttx, int iRow)
 
 void disp_ttx (char chr)
     {
-    // printf ("disp_ttx: xcsr = %d, ycsr = %d, chr = 0x%02X\n", xcsr, ycsr, chr);
     ttx_disp[ycsr].ch[xcsr] = chr & 0x7F;
     DBLHGT dh = dhNone;
     if (ycsr > 0) dh = ttx_disp[ycsr-1].dh;
     int iRow = ycsr;
     while (true)
         {
-        // printf ("iRow = %d, dh = %d\n", iRow, dh);
         ttx_scanrow (&ttx_disp[iRow], dh);
         if (ttx_disp[iRow].iChg == 0) break;
         ttx_disprow (&ttx_disp[iRow], iRow);
@@ -1277,14 +1209,12 @@ void disp_glyph (uint8_t *pch)
     uint16_t bg = curpal[txtbak];
     uint16_t fg = curpal[txtfor];
     Dsp_SetWindow (nC1, nR1, nC2, nR2);
-    // printf ("disp_glyph:\n");
     Dsp_DataOutput ();
     for (int iScan = 0; iScan < pmode->thgt; ++iScan)
         {
         uint8_t pix = pch[iScan >> yshf];
         for (int j = 0; j < 8; ++j)
             {
-            // printf ("Row %d, Column %d\n", iScan, j);
             if (pix & 0x80) Dsp_WriteColour (fg, xscl);
             else Dsp_WriteColour (bg, xscl);
             pix <<= 1;
@@ -1350,7 +1280,6 @@ void hline (int clrop, int xp1, int xp2, int yp)
         for (int i = 0; i <= xp2 - xp1; ++i)
             pixop (op, &pix[i], cpx);
         Dsp_DataTerm ();
-        // printf ("hline:\n");
         Dsp_DataOutput ();
         Dsp_WritePixels (pix, xp2 - xp1);
         Dsp_DataTerm ();
@@ -1610,7 +1539,6 @@ int sload (FILE *fBmp)
     for (int iRow = pmode->grow - 1; iRow >= 0 ; --iRow)
         {
         Dsp_SetWindow (0, iRow, pmode->gcol, iRow + 1);
-        // printf ("sload:\n");
         Dsp_DataOutput ();
         nRead = fread (pBuff, 1, pmode->gcol, fBmp);
         if (nRead != pmode->gcol) return 255;
@@ -1668,7 +1596,6 @@ static void save_lcd (void)
     uint32_t laddr = 0;
     uint32_t raddr = 0;
     int npix = RAMBLK / sizeof (colour_t);
-    // printf ("save_lcd\n");
     qspi_cfg_qwrite ();
     hidecsr ();
     LCD_SetWindow (0, 0, SWIDTH, SDEPTH);
@@ -1678,7 +1605,6 @@ static void save_lcd (void)
         if (laddr + npix > SWIDTH * SDEPTH) npix = SWIDTH * SDEPTH - laddr;
         LCD_ReadPixels ((colour_t *) sbuf[ibuf], npix);
         if (bWrite) qspi_wait ();
-        // show_buf (raddr, npix * sizeof (colour_t), sbuf[ibuf]);
         qspi_qwrite (raddr, npix * sizeof (colour_t), sbuf[ibuf]);
         bWrite = true;
         laddr += npix;
@@ -1688,8 +1614,6 @@ static void save_lcd (void)
         }
     LCD_DataTerm ();
     qspi_wait ();
-    // printf ("Write scrltop\n");
-    // show_buf (raddr, sizeof (scrltop), (uint8_t *) &scrltop);
     qspi_qwrite (raddr, sizeof (scrltop), (uint8_t *) &scrltop);
     qspi_wait ();
     qspi_free ();
@@ -1703,13 +1627,11 @@ static void load_lcd (void)
     uint32_t laddr = 0;
     uint32_t raddr = 0;
     int npix = RAMBLK / sizeof (colour_t);
-    // printf ("load_lcd\n");
     qspi_cfg_qread ();
     hidecsr ();
     LCD_SetWindow (0, 0, SWIDTH, SDEPTH);
     LCD_DataOutput ();
     qspi_qread (raddr, RAMBLK, sbuf[ibuf]);
-    // show_buf (raddr, RAMBLK, sbuf[ibuf]);
     while (true)
         {
         qspi_wait ();
@@ -1717,14 +1639,11 @@ static void load_lcd (void)
         if (raddr >= SWIDTH * SDEPTH * sizeof (colour_t)) break;
         if (raddr + npix > SWIDTH * SDEPTH * sizeof (colour_t)) npix = SWIDTH * SDEPTH - raddr / sizeof (colour_t);
         qspi_qread (raddr, npix * sizeof (colour_t), sbuf[1 - ibuf]);
-        // show_buf (raddr, npix * sizeof (colour_t), sbuf[1 - ibuf]);
         LCD_WritePixels ((colour_t *) sbuf[ibuf], RAMBLK / sizeof (colour_t));
         laddr += RAMBLK / sizeof (colour_t);
         ibuf = 1 - ibuf;
         }
-    // printf ("Read scrltop\n");
     qspi_qread (raddr, sizeof (scrltop), (uint8_t *) &scrltop);
-    // show_buf (raddr, sizeof (scrltop), (uint8_t *) &scrltop);
     LCD_WritePixels ((colour_t *) sbuf[ibuf], npix);
     LCD_DataTerm ();
     qspi_wait ();
@@ -1736,7 +1655,6 @@ static void load_lcd (void)
 static void save_pixels (colour_t *pix, int nPix)
     {
     uint8_t *pbyt = (uint8_t *) pix;
-    // printf ("save_pixels (0x%08X, %d)\n", pix, nPix);
     while (nPix > 0)
         {
         int nCol = nColEnd - nColCur;
@@ -1765,7 +1683,6 @@ static void save_pixels (colour_t *pix, int nPix)
 
 static void save_colour (colour_t clr, int nClr)
     {
-    // printf ("save_colour (0x%08X, %d)\n", clr, nClr);
     colour_t cbuf[RAMBLK / sizeof (colour_t)];
     int nPix = nClr;
     if (nPix > RAMBLK / sizeof (colour_t)) nPix = RAMBLK / sizeof (colour_t);
@@ -1781,7 +1698,6 @@ static void save_colour (colour_t clr, int nClr)
 static void save_scroll (int data)
     {
     uint32_t addr = SWIDTH * SDEPTH * sizeof (colour_t);
-    // printf ("save_scroll\n");
     qspi_cfg_qwrite ();
     qspi_qwrite (addr, sizeof (scrltop), (uint8_t *) &data);
     qspi_wait ();
@@ -1791,7 +1707,6 @@ static void save_scroll (int data)
 static void load_pixels (colour_t *pix, int nPix)
     {
     uint8_t *pbyt = (uint8_t *) pix;
-    // printf ("load_pixels\n");
     while (nPix > 0)
         {
         int nCol = nColEnd - nColCur;
@@ -1852,12 +1767,9 @@ void refresh_off (void)
     }
 
 #elif REF_MODE == 3
-#define LIMIT   0x4B000
-// #define LIMIT   0x1000
 
 void refresh_now (void)
     {
-    // printf ("refresh_now...\n");
     if ( rfm == rfmBuffer )
         {
         if (bBuffer) load_lcd ();
@@ -1866,12 +1778,10 @@ void refresh_now (void)
         {
         vduflush ();
         }
-    // printf ("...done\n");
     }
 
 void refresh_on (void)
     {
-    // printf ("refresh_on...\n");
     if ( rfm == rfmBuffer )
         {
         if (bBuffer) load_lcd ();
@@ -1882,23 +1792,19 @@ void refresh_on (void)
         vduqterm ();
         }
     reflag = 2;
-    // printf ("...done\n");
     }
 
 void refresh_rst (void)
     {
-    // printf ("refresh_rst...\n");
     if ( rfm == rfmBuffer )
         {
         bBuffer = false;
         }
     reflag = 2;
-    // printf ("...done\n");
     }
 
 void refresh_off (void)
     {
-    // printf ("refresh_off...\n");
     reflag = 1;
     if ( rfm == rfmBuffer )
         {
@@ -1912,7 +1818,6 @@ void refresh_off (void)
         {
         vduqinit ();
         }
-    // printf ("...done\n");
     }
 
 const char *checkbuf (void)
