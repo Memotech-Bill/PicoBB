@@ -44,6 +44,7 @@ static colour_t load_colour (void);
 RFM rfm = rfmBuffer;
 #endif
 
+static void ttx_cls (void);
 static void video_periodic (void);
 
 #include "pico/binary_info.h"
@@ -790,9 +791,24 @@ const MODE *setmode (int mode)
         yscl = 1 << pmode->yshf;
         // ILI9488 has 480 rows of graphics memory
         scrltop = 0;
+#if 1
+        if (pmode->vmgn == 0)
+            {
+            nrow = SDEPTH;
+            LCD_ScrollArea (0, nrow, 0);
+            }
+        else
+            {
+            nrow = pmode->grow;
+            LCD_ScrollArea (pmode->vmgn, nrow, SDEPTH - nrow - pmode->vmgn);
+            Dsp_SetAreaColour (0, 0, pmode->gcol, pmode->vmgn, curpal[txtbak]);
+            Dsp_SetAreaColour (0, pmode->vmgn + nrow, pmode->gcol, SHEIGHT, curpal[txtbak]);
+            }
+#else
         LCD_PartialArea (pmode->vmgn, pmode->grow);
         nrow = SDEPTH - 2 * pmode->vmgn;
         LCD_ScrollArea (pmode->vmgn, nrow, pmode->vmgn);
+#endif
         LCD_Scroll (pmode->vmgn + scrltop);
         return pmode;
         }
@@ -905,6 +921,11 @@ void dispup (void)
 
 void cls (void)
     {
+    if (pmode->ncbt == 3)
+        {
+        ttx_cls ();
+        return;
+        }
     int thgt = pmode->thgt << pmode->yshf;
     int nC1 = 8 * xscl * tvl;
     int nC2 = 8 * xscl * (tvr + 1);
@@ -933,7 +954,7 @@ typedef struct
     DBLHGT      dh;
     } TTX_ROW;
 
-static TTX_ROW ttx_disp[26];
+static TTX_ROW ttx_disp[25];
 
 void ttx_scanrow (TTX_ROW *pttx, DBLHGT dh)
     {
@@ -961,11 +982,11 @@ void ttx_scanrow (TTX_ROW *pttx, DBLHGT dh)
                 }
             else if (bGraph)
                 {
-                ttd = (ch + (bCont ? 0xA0 : 0x40)) | bg | fg | (bFlash ? 0x8000 : 0x00);
+                ttd = (ch + (bCont ? 0x60 : 0xC0)) | bg | fg | (bFlash ? 0x8000 : 0x00);
                 }
             else
                 {
-                ttd = (ch + (bDblHgt ? 0x100 : 0x00)) | bg | fg | (bFlash ? 0x8000 : 0x00);
+                ttd = (ch + (bDblHgt ? 0x120 : 0x00)) | bg | fg | (bFlash ? 0x8000 : 0x00);
                 }
             }
         else if (ch == 0x20)
@@ -1071,30 +1092,33 @@ void ttx_disprow (const TTX_ROW *pttx, int iRow)
             bool bDblHgt = false;
             uint16_t ttd = pttx->ttd[iCol];
             uint16_t ch = ttd & 0x1FF;
-            if (ch >= 0x120)
+            if (ch >= 0x140)
                 {
                 ch -= 0x120;
                 bDblHgt = true;
                 }
+            else if (ch < 0x20)
+                {
+                ch = 0x20;
+                }
             int nC1 = 8 * xscl * iCol;
             int nC2 = nC1 + 8 * xscl;
             
-            colour_t bg = curpal[(ttd & 0x0E00) >> 8];
-            colour_t fg = curpal[ttd >> 12];
+            colour_t bg = curpal[(ttd & 0x0E00) >> 9];
+            colour_t fg = curpal[(ttd & 0x7000) >> 12];
             if (bBlink)
                 {
                 if ((iCol == xcsr) && (iRow == ycsr))
                     {
-                    colour_t tc = bg;
-                    bg = fg;
-                    fg = tc;
+                    bg ^= (colour_t) -1;
+                    fg ^= (colour_t) -1;
                     }
                 else if (ttd & 0x8000)
                     {
                     fg = bg;
                     }
                 }
-            // printf ("iCol = %d, nC1 = %d, nC2 = %d, ch = 0x%03X\n", iCol, nC1, nC2, ch);
+            // printf ("iCol = %d, nC1 = %d, nC2 = %d, ch = 0x%03X, fg = 0x%04X, bg = 0x%04X\n", iCol, nC1, nC2, ch, fg, bg);
             Dsp_SetWindow (nC1, nR1, nC2, nR2);
             Dsp_DataOutput ();
             for (int iScan = 0; iScan < pmode->thgt; ++iScan)
@@ -1150,9 +1174,28 @@ void disp_ttx (char chr)
         }
     }
 
+static void ttx_cls (void)
+    {
+    for (int iRow = 0; iRow < pmode->trow; ++iRow)
+        {
+        TTX_ROW *pttx = &ttx_disp[iRow];
+        pttx->iChg = 0;
+        pttx->dh = dhNone;
+        for (int iCol = 0; iCol < pmode->tcol; ++iCol)
+            {
+            pttx->ch[iCol] = ' ';
+            pttx->ttd[iCol] = 0x20;
+            pttx->iChg <<= 1;
+            pttx->iChg |= 1;
+            }
+        ttx_disprow (pttx, iRow);
+        }
+    xcsr = 0;
+    ycsr = 0;
+    }
+
 static void mode7flash (void)
     {
-    /*
     bBlink = ! bBlink;
     for (int iRow = 0; iRow < pmode->trow; ++iRow)
         {
@@ -1168,7 +1211,6 @@ static void mode7flash (void)
         ttx_disprow (pttx, iRow);
         pttx->iChg = iSave;
         }
-    */
     }
 
 void scrldn (void)
@@ -1182,8 +1224,8 @@ void scrldn (void)
             memcpy (&ttx_disp[iRow].ttd[tvl], &ttx_disp[iRow-1].ttd[tvl], 2 * (tvr - tvl + 1));
             memcpy (&ttx_disp[iRow].ch[tvl], &ttx_disp[iRow-1].ch[tvl], tvr - tvl + 1);
             }
-        uint16_t bg = 0;
-        if (tvl > 0) bg = ttx_disp[tvt].ttd[tvl-1] & 0xFE00;
+        uint16_t bg = 0x20;
+        if (tvl > 0) bg = (ttx_disp[tvt].ttd[tvl-1] & 0xFE00) | 0x20;
         for (int iCol = tvl; iCol <= tvr; ++iCol)
             {
             ttx_disp[tvt].ttd[iCol] = bg;
@@ -1207,8 +1249,8 @@ void scrlup (void)
             memcpy (&ttx_disp[iRow].ttd[tvl], &ttx_disp[iRow+1].ttd[tvl], 2 * (tvr - tvl + 1));
             memcpy (&ttx_disp[iRow].ch[tvl], &ttx_disp[iRow+1].ch[tvl], tvr - tvl + 1);
             }
-        uint16_t bg = 0;
-        if (tvl > 0) bg = ttx_disp[tvb].ttd[tvl-1] & 0xFE00;
+        uint16_t bg = 0x20;
+        if (tvl > 0) bg = (ttx_disp[tvt].ttd[tvl-1] & 0xFE00) | 0x20;
         for (int iCol = tvl; iCol <= tvr; ++iCol)
             {
             ttx_disp[tvb].ttd[iCol] = bg;
@@ -1418,19 +1460,31 @@ static void flipcsr (int xp, int yp)
 void hidecsr (void)
     {
     ++nCsrHide;
-    if ( pmode->ncbt != 3 )
+    int xp;
+    int yp;
+    if (! csrpos (&xp, &yp))
         {
-        int xp;
-        int yp;
-        if (! csrpos (&xp, &yp))
-            {
-            nCsrHide |= CSR_INV;
-            return;
-            }
-        critical_section_enter_blocking (&cs_csr);
-        if ( bCsrVis ) flipcsr (xp, yp);
-        critical_section_exit (&cs_csr);
+        nCsrHide |= CSR_INV;
+        return;
         }
+    critical_section_enter_blocking (&cs_csr);
+    if ( pmode->ncbt == 3 )
+        {
+        if (bBlink)
+            {
+            TTX_ROW *pttx = &ttx_disp[yp];
+            uint64_t iChg = pttx->iChg;
+            pttx->iChg = ((uint64_t) 1) << (pmode->tcol - xp - 1);
+            bBlink = false;
+            ttx_disprow (pttx, yp);
+            pttx->iChg = iChg;
+            }
+        }
+    else
+        {
+        if ( bCsrVis ) flipcsr (xp, yp);
+        }
+    critical_section_exit (&cs_csr);
     }
 
 void showcsr (void)
@@ -1453,18 +1507,15 @@ void showcsr (void)
 
 void flashcsr (void)
     {
-    if ( pmode->ncbt == 3 )
-        {
-        mode7flash ();
-        }
-    else if ((nCsrHide == 0) && (! bBuffer))
+    if ((nCsrHide == 0) && (! bBuffer))
         {
         int xp;
         int yp;
         if (csrpos (&xp, &yp))
             {
             critical_section_enter_blocking (&cs_csr);
-            flipcsr (xp, yp);
+            if ( pmode->ncbt == 3 ) mode7flash ();
+            else                    flipcsr (xp, yp);
             critical_section_exit (&cs_csr);
             }
         }
