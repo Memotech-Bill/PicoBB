@@ -4,7 +4,7 @@
 #define PICOCLI_H
 
 #include <stdbool.h>
-typedef bool (*CLIFUNC)(char *);
+typedef bool (*CLIFUNC)(const char *);
 CLIFUNC add_cli (CLIFUNC new);
 
 #endif

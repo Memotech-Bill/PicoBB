@@ -69,6 +69,10 @@ extern int gvr;	                        // Right edge of graphics viewport
 typedef enum { rfmNone, rfmBuffer, rfmQueue } RFM;
 extern RFM rfm;
 #endif
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+extern int xccsr;                       // Copy cursor horizontal position (-1 to disable)
+extern int yccsr;                       // Copy cursor vertical position (-1 to disable)
+#endif
 
 // VDU variables declared in bbcdata_*.s:
 extern void *vpage;                     // Location of PAGE (bottom of program)
@@ -98,16 +102,17 @@ extern int sizey;                       // Total height of client area
 extern int charx;                       // Average character width
 extern int chary;                       // Average character height
 
-bool csrpos (int *px, int *py);
-void home (void);
-void modechg (int mode);
-void getcsr(int *px, int *py);
-int vpoint (int xp, int yp);
-int vtint (int xp, int yp);
-int vgetc (int x, int y);
-int widths (unsigned char *s, int l);
-void xeqvdu (int code, int data1, int data2);
-bool txtmode (int code, int *pdata1, int *pdata2);
+bool csrpos (int *px, int *py);         // Cursor position in pixels units, false if outside viewport
+void home (void);                       // Home cursor
+void modechg (int mode);                // Change display mode
+void getcsr(int *px, int *py);          // Get position of text cursor (in characters) relative to viewport
+void tabxy (int x, int y);              // Set position of text cursor (in characters) relative to viewport
+int vpoint (int xp, int yp);            // Get colour index at position in graphics units
+int vtint (int xp, int yp);             // Get RGB value at position in graphics units
+int vgetc (int x, int y);               // Get character at position (in characters) relative to viewport
+int widths (unsigned char *s, int l);   // Length in graphics units of string of length l
+void xeqvdu (int code, int data1, int data2);       // Execute VDU command with parameters
+bool txtmode (int code, int *pdata1, int *pdata2);  // Get definition of a mode
 #if REF_MODE & 2
 void vduflush (void);
 void vduqueue (int code, int data1, int data2);
@@ -124,6 +129,11 @@ void refresh_off (void);
 void refresh (const char *p);
 #endif
 void prtscrn (void);
+#ifdef PICO_GUI
+void copyedit (bool bEnable);
+void copymove (int key);
+int copyread (void);
+#endif
 
 // Routines that have to be provided by hardware specific drivers
 
@@ -142,7 +152,7 @@ void hline (int clrop, int xp1, int xp2, int yp);
 void clrgraph (void);
 uint8_t getpix (int xp, int yp);
 int get_ttx (int x, int y);
-void get_glyph (int x, int y, int bgclr, uint8_t *prow);
+void get_glyph (int x, int y, uint8_t *prow);
 void gsize (uint32_t *pwth, uint32_t *phgt);
 int clrrgb (int clr);
 void clrreset (void);

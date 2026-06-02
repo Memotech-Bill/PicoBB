@@ -26,5 +26,17 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 #
+make BOARD=pico_w ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y
+#
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+#
+make BOARD=pico2_w ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y
+#
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+#
 cd $ROOT_DIR
 find . -name "bbcbasic_*.uf2" -ls

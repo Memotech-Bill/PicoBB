@@ -213,6 +213,7 @@ void __time_critical_func(render_mode7) (void)
             bool bCont = true;
             bool bHold = false;
             int iScan2 = iScan;
+            ++twopix;
             for (int iCol = 0; iCol < curmode.tcol; ++iCol)
                 {
                 uint8_t ch = *pch & 0x7F;
@@ -349,7 +350,27 @@ void __time_critical_func(render_mode7) (void)
             if (( iRow == ycsr ) && ( bShowCsr ) && ( nFrame & FLASH_BIT )
                 && ( iScan >= cursa ) && ( iScan <= cursb ))
                 {
-                twopix = pxline + 8 * xcsr + 1;
+                int ntwo;
+                switch (curmode.tcol)
+                    {
+                    case 20: ntwo = 16; break;
+                    case 40: ntwo = 8; break;
+                    default: ntwo = 4; break;
+                    }
+                twopix = pxline + ntwo * xcsr + 2;
+                twopix[0] ^= ttcsr;
+                twopix[1] ^= ttcsr;
+                twopix[2] ^= ttcsr;
+                twopix[3] ^= ttcsr;
+                twopix[4] ^= ttcsr;
+                twopix[5] ^= ttcsr;
+                twopix[6] ^= ttcsr;
+                twopix[7] ^= ttcsr;
+                }
+            if (( iRow == yccsr ) && ( bShowCsr ) && ( nFrame & FLASH_BIT )
+                && ( xccsr >= 0 ) && ( iScan == cursb ))
+                {
+                twopix = pxline + 8 * xccsr + 2;
                 twopix[0] ^= ttcsr;
                 twopix[1] ^= ttcsr;
                 twopix[2] ^= ttcsr;
@@ -447,7 +468,7 @@ void __time_critical_func(render_loop) (void)
         if ( displaybuf && ( iScan == 0 ))
             {
             framebuf = (uint8_t *) displaybuf;
-            displaybuf = NULL;;
+            displaybuf = NULL;
             }
 #endif
         iScan -= curmode.vmgn;
@@ -467,9 +488,10 @@ void __time_critical_func(render_loop) (void)
                 *twopix = (curmode.hmgn - 5) | COMPOSABLE_RAW_2P;    // To use an even number of 16-bit words
                 ++twopix;
                 *twopix = 0;                                // 2 black pixels
+                ++twopix;
                 }
             uint32_t *pxline = twopix;
-            ++twopix;
+            twopix += 2;
             uint8_t *pfb = framebuf + iScan * curmode.nbpl;
             if ( curmode.nppb == 8 )
                 {
@@ -548,6 +570,42 @@ void __time_critical_func(render_loop) (void)
             pxline[0] = ( pxline[1] << 16 ) | COMPOSABLE_RAW_RUN;
             pxline[1] = ( pxline[1] & 0xFFFF0000 ) | ( curmode.nbpl * curmode.nppb - 2 );
             buffer->data_used = twopix - buffer->data;
+            int iRow = iScan / curmode.thgt;
+            iScan -= iRow * curmode.thgt;
+            if (( iRow == ycsr ) && ( bShowCsr ) && ( nFrame & FLASH_BIT )
+                && ( iScan >= cursa ) && ( iScan <= cursb ))
+                {
+                int ntwo;
+                switch (curmode.tcol)
+                    {
+                    case 20: ntwo = 16; break;
+                    case 40: ntwo = 8; break;
+                    default: ntwo = 4; break;
+                    }
+                twopix = pxline + ntwo * xcsr + 2;
+                for (int i = 0; i < ntwo; ++i)
+                    {
+                    *twopix ^= ttcsr;
+                    ++twopix;
+                    }
+                }
+            if (( iRow == yccsr ) && ( bShowCsr ) && ( nFrame & FLASH_BIT )
+                && ( xccsr >= 0 ) && ( iScan == cursb ))
+                {
+                int ntwo;
+                switch (curmode.tcol)
+                    {
+                    case 20: ntwo = 16; break;
+                    case 40: ntwo = 8; break;
+                    default: ntwo = 4; break;
+                    }
+                twopix = pxline + ntwo * xcsr + 2;
+                for (int i = 0; i < ntwo; ++i)
+                    {
+                    *twopix ^= ttcsr;
+                    ++twopix;
+                    }
+                }
             }
         scanvideo_end_scanline_generation (buffer);
         }

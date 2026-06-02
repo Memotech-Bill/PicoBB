@@ -1,8 +1,10 @@
 /* pc_kbd.c - Poll for keyboard events from the PicoCalc MCU via I2C */
 
 #include "periodic.h"
+#include "picocli.h"
 #include <hardware/gpio.h>
 #include <hardware/i2c.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -227,6 +229,10 @@ static const KEYMAP test_key[] =
     };
     
 static uint32_t key_state[(KNO_COUNT - 1) / 32 + 1];
+static volatile uint8_t  pc_req = 0;
+static volatile uint8_t  pc_dat = 0;
+static bool     bInReq = false;
+static CLIFUNC  excli = NULL;
 
 bool bPrtScrn = false;
 
@@ -234,7 +240,8 @@ bool bPrtScrn = false;
 #define ESCFLG  0x80;
 extern unsigned char flags ;	// BASIC's Boolean flags byte
 
-void putkey(uint8_t key);
+void putkey (uint8_t key);
+void text (const char *ps);
 
 static void pc_kbd_init (void)
     {
@@ -459,74 +466,96 @@ static void pc_kbd_poll (void)
     if (nrd == 2)
         {
 #endif
-        uint8_t key = msg[1];
-        // printf ("kbd status = (0x%02X, 0x%02X)\n", msg[0], msg[1]);
-        if (msg[0] == 1)
+        if (bInReq)
             {
-            // Key down
-            if (key == KEY_BREAK)
+            // Assume always a 2 byte response, with data in second byte.
+            pc_dat = msg[1];
+            pc_req = 0;
+            bInReq = false;
+            }
+        else
+            {
+            uint8_t key = msg[1];
+            // printf ("kbd status = (0x%02X, 0x%02X)\n", msg[0], msg[1]);
+            if (msg[0] == 1)
                 {
-                flags |= ESCFLG;
-                }
-            else if ((key >= KEY_ALT) && (key <= KEY_CTRL))
-                {
-                key_state[0] |= 1 << (key - KEY_ALT);
-                }
-            else if (key == KEY_CAPS_LOCK)
-                {
-                key_state[0] ^= MOD_CAPLOCK;
-                }
-            else
-                {
-                key = key_no (key);
-                if (key < KNO_COUNT)
+                // Key down
+                if (key == KEY_BREAK)
                     {
-                    key_down (key);
-                    key = asc_key (key);
-                    if (key > 0) putkey (key);
+                    flags |= ESCFLG;
+                    }
+                else if ((key >= KEY_ALT) && (key <= KEY_CTRL))
+                    {
+                    key_state[0] |= 1 << (key - KEY_ALT);
+                    }
+                else if (key == KEY_CAPS_LOCK)
+                    {
+                    key_state[0] ^= MOD_CAPLOCK;
+                    }
+                else
+                    {
+                    key = key_no (key);
+                    if (key < KNO_COUNT)
+                        {
+                        key_down (key);
+                        key = asc_key (key);
+                        if (key > 0) putkey (key);
+                        }
+                    }
+                }
+            else if (msg[0] == 3)
+                {
+                // Key up
+                if (key == KEY_BREAK)
+                    {
+                    }
+                else if ((key >= KEY_ALT) && (key <= KEY_CTRL))
+                    {
+                    key_state[0] &= ~(1 << (key - KEY_ALT));
+                    }
+                else if (key == KEY_CAPS_LOCK)
+                    {
+                    }
+                else
+                    {
+                    key = key_no (key);
+                    if (key < KNO_COUNT) key_up (key);
                     }
                 }
             }
-        else if (msg[0] == 3)
-            {
-            // Key up
-            if (key == KEY_BREAK)
-                {
-                }
-            else if ((key >= KEY_ALT) && (key <= KEY_CTRL))
-                {
-                key_state[0] &= ~(1 << (key - KEY_ALT));
-                }
-            else if (key == KEY_CAPS_LOCK)
-                {
-                }
-            else
-                {
-                key = key_no (key);
-                if (key < KNO_COUNT) key_up (key);
-                }
-            }
         }
-    uint8_t req = 0x09;
 #if FAST
     if (txempty)
         {
-        i2c->hw->data_cmd = req;
+        if (pc_req > 0)
+            {
+            i2c->hw->data_cmd = pc_req;
+            if (pc_req & 0x80) i2c->hw->data_cmd = pc_dat;
+            bInReq = true;
+            }
+        else
+            {
+            // Request keyboard status
+            i2c->hw->data_cmd = 0x09;
+            }
         i2c->hw->data_cmd = I2C_IC_DATA_CMD_CMD_BITS;
         i2c->hw->data_cmd = I2C_IC_DATA_CMD_CMD_BITS | I2C_IC_DATA_CMD_STOP_BITS;
         }
 #else
-    int nwr = i2c_write_timeout_us(I2C_INSTANCE(PICO_KEYBOARD_I2C), PICO_KEYBOARD_ADDR, &req, 1, false, 10000);
+    if (pc_req > 0)
+        {
+        i2c_write_timeout_us(I2C_INSTANCE(PICO_KEYBOARD_I2C), PICO_KEYBOARD_ADDR, &pc_req, 1, false, 10000);
+        if (pc_req & 0x80) i2c_write_timeout_us(I2C_INSTANCE(PICO_KEYBOARD_I2C), PICO_KEYBOARD_ADDR, &pc_dat, 1, false, 10000);
+        bInReq = true;
+        }
+    else
+        {
+        uint8_t req = 0x09;
+        int nwr = i2c_write_timeout_us(I2C_INSTANCE(PICO_KEYBOARD_I2C), PICO_KEYBOARD_ADDR, &req, 1, false, 10000);
+        // printf ("nwr = %d\n", nwr);
+        }
 #endif
-    // printf ("nwr = %d\n", nwr);
     if (pnext) pnext();
-    }
-
-void setup_keyboard (void)
-    {
-    pc_kbd_init();
-    pc_lcd_backlight (128);
-    pnext = add_periodic (pc_kbd_poll);
     }
 
 int testkey (int key)
@@ -535,4 +564,65 @@ int testkey (int key)
     if (key == 0xFF) key = 0;
     else key = key_test (key);
     return key;
+    }
+
+uint8_t pc_request (uint8_t req, uint8_t dat)
+    {
+    pc_dat = dat;
+    pc_req = req;
+    while (pc_req != 0) tight_loop_contents ();
+    return pc_dat;
+    }
+
+bool pc_cli (const char *cmd)
+    {
+    if (! strncasecmp (cmd, "backlight", 9))
+        {
+        bool bKbd = false;
+        cmd += 9;
+        while (*cmd == ' ') ++cmd;
+        bKbd = ((*cmd == 'K') || (*cmd == 'k'));
+        if (*cmd > '9')
+            {
+            while (*cmd > ' ') ++cmd;
+            while (*cmd == ' ') ++cmd;
+            }
+        if ((*cmd >= '0') && (*cmd <= '9'))
+            {
+            int n;
+            sscanf (cmd, "%i", &n);
+            pc_request (bKbd ? 0x8A : 0x85, n);
+            }
+        else
+            {
+            char sMsg[32];
+            int n = pc_request (bKbd ? 0x0A : 0x05, 0);
+            sprintf (sMsg, "%s Backlight = %d\r\n", bKbd ? "Kbd" : "LCD", n);
+            text (sMsg);
+            }
+        }
+    else if (! strncasecmp (cmd, "battery", 7))
+        {
+        char sMsg[32];
+        int n = pc_request (0x0B, 0);
+        sprintf (sMsg, "Battery = %d%%\r\n", n);
+        text (sMsg);
+        }
+    else if (excli != NULL)
+        {
+        return excli (cmd);
+        }
+    else
+        {
+        return false;
+        }
+    return true;
+    }
+
+void setup_keyboard (void)
+    {
+    pc_kbd_init();
+    pc_lcd_backlight (128);
+    pnext = add_periodic (pc_kbd_poll);
+    excli = add_cli (pc_cli);
     }

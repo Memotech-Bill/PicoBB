@@ -174,9 +174,9 @@ void fbmode (uint8_t *fb, MODE *pm)
     }
 
 #if SOFT_CSR
-static void flipcsr (int xp, int yp)
+static void flipcsr (int xp, int yp, int ya, int yb)
     {
-    yp += cursa;
+    yp += ya;
     int xpc = xp;
     int ypc = yp;
     uint32_t *fb = (uint32_t *)(framebuf + yp * pmode->nbpl);
@@ -185,15 +185,14 @@ static void flipcsr (int xp, int yp)
     xp &= 0x1F;
     uint32_t msk1 = cdef->csrmsk << xp;
     uint32_t msk2 = cdef->csrmsk >> ( 32 - xp );
-    for (int i = 0; i < cursb - cursa + 1; ++i)
+    for (int i = 0; i < yb - ya + 1; ++i)
         {
         *fb ^= msk1;
         *(fb + 1) ^= msk2;
         fb += pmode->nbpl / 4;
         ++yp;
         }
-    bCsrVis = ! bCsrVis;
-    VDU_OUT_INT (framebuf, xpc, ypc, xpc + 8, ypc + cursb - cursa + 1);
+    VDU_OUT_INT (framebuf, xpc, ypc, xpc + 8, ypc + yb - ya + 1);
     }
 
 void hidecsr (void)
@@ -209,7 +208,12 @@ void hidecsr (void)
             return;
             }
         critical_section_enter_blocking (&cs_csr);
-        if ( bCsrVis ) flipcsr (xp, yp);
+        if ( bCsrVis )
+            {
+            flipcsr (xp, yp, cursa, cursb);
+            if (xccsr >= 0) flipcsr (8 * xccsr, pmode->thgt * yccsr, cursb, cursb);
+            bCsrVis = ! bCsrVis;
+            }
         critical_section_exit (&cs_csr);
         }
     }
@@ -226,7 +230,12 @@ void showcsr (void)
         if ( pmode->ncbt != 3 )
             {
             critical_section_enter_blocking (&cs_csr);
-            if ( ! bCsrVis ) flipcsr (xp, yp);
+            if ( ! bCsrVis )
+                {
+                flipcsr (xp, yp, cursa, cursb);
+                if (xccsr >= 0) flipcsr (8 * xccsr, pmode->thgt * yccsr, cursb, cursb);
+                bCsrVis = ! bCsrVis;
+                }
             critical_section_exit (&cs_csr);
             }
         }
@@ -245,7 +254,9 @@ void flashcsr (void)
         if (csrpos (&xp, &yp))
             {
             critical_section_enter_blocking (&cs_csr);
-            flipcsr (xp, yp);
+            flipcsr (xp, yp, cursa, cursb);
+            if (xccsr >= 0) flipcsr (8 * xccsr, pmode->thgt * yccsr, cursb, cursb);
+            bCsrVis = ! bCsrVis;
             critical_section_exit (&cs_csr);
             }
         }
@@ -623,8 +634,10 @@ int get_ttx (int x, int y)
     return chr;
     }
 
-void get_glyph (int x, int y, int bgclr, uint8_t *prow)
+void get_glyph (int x, int y, uint8_t *prow)
     {
+    int bgclr;
+    bool bFirst = true;
     int fhgt = pmode->thgt;
     bool bDbl = false;
     if ( fhgt > 10 )
@@ -639,8 +652,14 @@ void get_glyph (int x, int y, int bgclr, uint8_t *prow)
         {
         for (int i = 0; i < 8; ++i)
             {
+            int pclr = getpix (x+i, y);
+            if (bFirst)
+                {
+                bgclr = pclr;
+                bFirst = false;
+                }
             *prow <<= 1;
-            if ( getpix (x+i, y) != bgclr ) *prow |= 0x01;
+            if ( pclr != bgclr ) *prow |= 0x01;
             }
         ++y;
         if ( bDbl ) ++y;

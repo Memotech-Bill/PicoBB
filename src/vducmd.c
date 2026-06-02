@@ -57,6 +57,10 @@ int gvt;                                // Top of graphics viewport
 int gvb;                                // Bottom of graphics viewport
 int gvl;                                // Left edge of graphics viewport
 int gvr;                                // Right edge of graphics viewport
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+int xccsr = -1;                         // Copy cursor horizontal position
+int yccsr = -1;                         // Copy cursor vertical position
+#endif
 
 // Local variables
 
@@ -247,10 +251,11 @@ static void wrap (void)
     hidecsr ();
     xcsr = tvl;
     newline (&xcsr, &ycsr);
+    if (yccsr > 0) --yccsr;
     showcsr ();
     }
 
-static void tabxy (int x, int y)
+void tabxy (int x, int y)
     {
 #if DEBUG & 2
     printf ("tab: ycsr = %d, xcsr = %d\n", y, x);
@@ -850,6 +855,15 @@ int vgetc (int x, int y)
         x = xcsr;
         y = ycsr;
         }
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+    // Enable copy cursor to read from anywhere on screen
+    else if (((x & 0xFF000000) == 0x81000000) && ((y & 0xFF000000) == 0x81000000))
+        {
+        x &= 0xFF;
+        y &= 0xFF;
+        if ((x < 0) || (x >= pmode->tcol) || (y < 0) || (y >= pmode->trow)) return -1;
+        }
+#endif
     else
         {
         x += tvl;
@@ -863,12 +877,16 @@ int vgetc (int x, int y)
         }
     else
         {
-        uint8_t chrow[10];
-        int bg = ( vflags & HRGFLG ) ? bakgnd : txtbak;
-        get_glyph (x, y, bg, chrow);
+        uint8_t chrow[8];
+        get_glyph (x, y, chrow);
         int fhgt = 8;
-        for (int i = 0; i < 256; ++i)
+        // Start at 1 because NUL has the same glyph as Space
+        for (int i = 1; i < 256; ++i)
             {
+            if ((chrow[0] & 0x80) != (fontmap[i >> 5][8 * (i & 0x1F)] & 0x80))
+                {
+                for (int j = 0; j < fhgt; ++j) chrow[j] = ~chrow[j];
+                }
             bool bMatch = true;
             for (int j = 0; j < fhgt; ++j)
                 {
@@ -878,7 +896,10 @@ int vgetc (int x, int y)
                     break;
                     }
                 }
-            if ( bMatch ) return i;
+            if ( bMatch )
+                {
+                return i;
+                }
             }
         }
     return -1;
@@ -2653,3 +2674,65 @@ void refresh (const char *p)
         }
 #endif
     }
+
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+void copyedit (bool bEnable)
+    {
+    if (bEnable)
+        {
+        if (xccsr == -1)
+            {
+            hidecsr ();
+            xccsr = xcsr;
+            yccsr = ycsr;
+            cursa = 0;
+            cursb = pmode->thgt - 1;
+            showcsr ();
+            }
+        }
+    else if (xccsr != -1)
+        {
+        hidecsr ();
+        xccsr = -1;
+        yccsr = -1;
+        cursa = pmode->thgt - 1;
+        cursb = cursa;
+        showcsr ();
+        }
+    }
+
+void copymove (int key)
+    {
+    hidecsr ();
+    switch (key)
+        {
+        case 136:
+            // Left
+            --xccsr;
+            if (xccsr >= 0) break;
+            xccsr = pmode->tcol - 1;
+        case 139:
+            // Up
+            if (yccsr > 0) --yccsr;
+            break;
+        case 137:
+            // Right
+            ++xccsr;
+            if (xccsr < pmode->tcol) break;
+            xccsr = 0;
+        case 138:
+            // Down
+            if (yccsr < pmode->trow - 1) ++yccsr;
+            break;
+        }
+    showcsr ();
+    }
+
+int copyread (void)
+    {
+    int key = vgetc (0x81000000 + xccsr, 0x81000000 + yccsr);
+    copymove (137);
+    return key;
+    }
+
+#endif

@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include "bbccon.h"
 #include "picocli.h"
@@ -27,31 +28,36 @@ int sload (FILE *fBmp);
 
 void error (int, const char *);
 char *setup (char *dst, const char *src, char *ext, char term, unsigned char *pflag);
+extern int vpage;
+
+void os_LINENO (const char *);
 #if defined(PICO_GUI) || defined(PICO_GRAPH)
-void os_DISPLAY (char *);
+void os_DISPLAY (const char *);
 #endif
 #if ( defined(STDIO_USB) || defined(STDIO_UART) )
-void os_OUTPUT (char *);
+void os_OUTPUT (const char *);
 #endif
 #if defined(PICO_GUI) || defined(PICO_GRAPH)
-void os_REFRESH (char *);
-void os_SCREENSAVE (char *);
+void os_REFRESH (const char *);
+void os_SCREENSAVE (const char *);
 #endif
 #if HAVE_MODEM
-void os_XDOWNLOAD (char *);
-void os_XUPLOAD (char *);
-void os_YDOWNLOAD (char *);
-void os_YUPLOAD (char *);
-void os_ZDOWNLOAD (char *);
-void os_ZUPLOAD (char *);
+void os_XDOWNLOAD (const char *);
+void os_XUPLOAD (const char *);
+void os_YDOWNLOAD (const char *);
+void os_YUPLOAD (const char *);
+void os_ZDOWNLOAD (const char *);
+void os_ZUPLOAD (const char *);
 #endif
 
 static CLIFUNC excli = NULL;
 
+// Bisection search is used, list must be in alphabetical order
 static char *cmds[] = {
 #if defined(PICO_GUI) || defined(PICO_GRAPH)
     "display",
 #endif
+    "lineno",
 #if ( defined(STDIO_USB) || defined(STDIO_UART) )
     "output",
 #endif
@@ -63,11 +69,13 @@ static char *cmds[] = {
 #endif
     };
 
-static void (*os_funcs[])(char *) =
+// Order must match that of cmds[]
+static void (*os_funcs[])(const char *) =
     {
 #if defined(PICO_GUI) || defined(PICO_GRAPH)
     os_DISPLAY,     // DISPLAY
 #endif
+    os_LINENO,
 #if ( defined(STDIO_USB) || defined(STDIO_UART) )
     os_OUTPUT,      // OUTPUT
 #endif
@@ -85,45 +93,86 @@ static void (*os_funcs[])(char *) =
 #endif
     };
 
+void os_LINENO (const char *p)
+    {
+    uint16_t n1 = 10;
+    uint16_t ns = 10;
+    if ((*p >= '0') && (*p <= '9'))
+        {
+        n1 = 0;
+        while ((*p >= '0') && (*p <= '9'))
+            {
+            n1 = 10 * n1 + *p - '0';
+            ++p;
+            }
+        }
+    if (n1 == 0)
+        {
+        ns = 0;
+        }
+    else
+        {
+        while (*p == ' ') ++p;
+        if ((*p >= '0') && (*p <= '9'))
+            {
+            ns = 0;
+            while ((*p >= '0') && (*p <= '9'))
+                {
+                ns = 10 * ns + *p - '0';
+                ++p;
+                }
+            if (ns == 0) ns = 10;
+            }
+        }
+    unsigned char *prg = (unsigned char *)vpage;
+    while (*prg != 0)
+        {
+        prg[1] = n1 & 0xFF;
+        prg[2] = n1 >> 8;
+        n1 += ns;
+        prg += *prg;
+        }
+    }
+
 #if HAVE_MODEM
-void os_XDOWNLOAD (char *p)
+void os_XDOWNLOAD (const char *p)
     {
     ysend (1, p);
     }
 
-void os_XUPLOAD (char *p)
+void os_XUPLOAD (const char *p)
     {
     yreceive (1, p);
     }
 
-void os_YDOWNLOAD (char *p)
+void os_YDOWNLOAD (const char *p)
     {
     ysend (2, p);
     }
 
-void os_YUPLOAD (char *p)
+void os_YUPLOAD (const char *p)
     {
     yreceive (2, p);
     }
 
-void os_ZDOWNLOAD (char *p)
+void os_ZDOWNLOAD (const char *p)
     {
     zsend (p);
     }
 
-void os_ZUPLOAD (char *p)
+void os_ZUPLOAD (const char *p)
     {
     zreceive (p, NULL);
     }
 
-void os_zmodem (char *p)
+void os_zmodem (const char *p)
     {
     zreceive ("\r", p);
     }
 #endif  // HAVE_MODEM
 
 #if ( defined(STDIO_USB) || defined(STDIO_UART) )
-void os_OUTPUT (char *p)
+void os_OUTPUT (const char *p)
     {
     int n = 0;
     sscanf (p, "%i", &n);
@@ -133,7 +182,7 @@ void os_OUTPUT (char *p)
 #endif
 
 #if defined(PICO_GUI) || defined(PICO_GRAPH)
-void os_DISPLAY (char *p)
+void os_DISPLAY (const char *p)
     {
     char path[MAX_PATH];
     p = setup (path, p, ".bmp", ' ', NULL);
@@ -144,12 +193,12 @@ void os_DISPLAY (char *p)
     if ( iErr != 0 ) error (iErr, "Invalid Bitmap");
     }
 
-void os_REFRESH (char *p)
+void os_REFRESH (const char *p)
     {
     refresh (p);
     }
 
-void os_SCREENSAVE (char *p)
+void os_SCREENSAVE (const char *p)
     {
     char path[MAX_PATH];
     p = setup (path, p, ".bmp", ' ', NULL);

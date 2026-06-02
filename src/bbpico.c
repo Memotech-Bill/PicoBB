@@ -318,7 +318,7 @@ const int bLowercase = 0;    // Dummy
 #define MVL(x) SFY(x)
 bi_decl (bi_program_description (szVersion));
 #ifdef PICO_GUI
-bi_decl (bi_program_feature ("VGA display"));
+bi_decl (bi_program_feature (MVL(PICO_GRAPH)" display"));
 bi_decl (bi_program_feature ("USB host for keyboard"));
 #endif
 #ifdef PICO_GRAPH
@@ -443,7 +443,7 @@ void crlf (void);		// Output a newline
 // Declared in bbeval.c:
 unsigned int rnd (void);	// Return a pseudo-random number
 
-#ifdef PICO_GUI
+#if defined(PICO_GUI)
 // Declared in picovdu.c
 #include <hardware/dma.h>
 void setup_vdu (void);
@@ -453,8 +453,10 @@ extern bool bPrtScrn;
 // Declared in picokbd.c
 void setup_keyboard (void);
 int testkey (int);
-#endif
-#ifdef PICO_GRAPH
+int copyread (void);
+void copymove (uint8_t key);
+void copyedit (bool bEnable);
+#elif defined(PICO_GRAPH)
 #include <hardware/dma.h>
 void setup_vdu (void);
 void getcsrgr (int *px, int *py);
@@ -462,6 +464,9 @@ int vpointgr (int xp, int yp);
 int vtintgr (int xp, int yp);
 int vgetcgr (int x, int y);
 int widthsgr (unsigned char *s, int l);
+int copyread (void);
+void copymove (uint8_t key);
+void copyedit (bool bEnable);
 #endif
 
 #ifdef PICO_SOUND
@@ -1312,6 +1317,9 @@ void osline (char *buffer)
 #if HAVE_MODEM
     bool bUpload = (exchan == 0) && ((optval >> 4) == 0) && (keyptr == 0);
 #endif
+#ifdef PICO_GUI
+    bool bCopyEdit = false;
+#endif
 	int n;
 
 	while (1)
@@ -1322,10 +1330,18 @@ void osline (char *buffer)
 #if HAVE_MODEM
         if (( key == 0x01 ) && bUpload && ( *buffer == 0x0D )) yreceive (3, "\r");
 #endif
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+        if ((bCopyEdit) && (key == '\t'))
+            {
+            key = copyread ();
+            if (key == 0xFF) continue;
+            }
+#endif
 		switch (key)
 		    {
 			case 0x0A:
 			case 0x0D:
+                // Return or line feed
 				n = (char *) memchr (buffer, 0x0D, 256) - buffer;
 				if (n == 0)
 					return;
@@ -1340,10 +1356,14 @@ void osline (char *buffer)
 					free (history[empty]);
 					history[empty] = NULL;
 				    }
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+                if (bCopyEdit) copyedit (false);
+#endif
 				return;
 
 			case 8:
 			case 127:
+                // Backspace or delete
 				if (p > buffer)
 				    {
 					char *q = p;
@@ -1354,6 +1374,7 @@ void osline (char *buffer)
 				break;
 
 			case 21:
+                // NAK (Ctrl+U) Delete beginning of line
 				while (p > buffer)
 				    {
 					char *q = p;
@@ -1364,6 +1385,7 @@ void osline (char *buffer)
 				break;
 
 			case 130:
+                // Home
 				while (p > buffer)
 				    {
 					oswrch (8);
@@ -1372,6 +1394,7 @@ void osline (char *buffer)
 				break;
 
 			case 131:
+                // End
 				while (*p != 0x0D)
 				    {
 					oswrch (9);
@@ -1380,6 +1403,7 @@ void osline (char *buffer)
 				break;
 
 			case 134:
+                // Insert
 				vflags ^= IOFLAG;
 				if (vflags & IOFLAG)
 					printf ("\033[1 q");
@@ -1388,6 +1412,7 @@ void osline (char *buffer)
 				break;
 
 			case 135:
+                // Delete
 				if (*p != 0x0D)
 				    {
 					char *q = p;
@@ -1397,6 +1422,14 @@ void osline (char *buffer)
 				break;
 
 			case 136:
+                // Left
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+                if (bCopyEdit)
+                    {
+                    copymove (key);
+                    break;
+                    }
+#endif
 				if (p > buffer)
 				    {
 					oswrch (8);
@@ -1405,6 +1438,14 @@ void osline (char *buffer)
 				break;
 
 			case 137:
+                // Right
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+                if (bCopyEdit)
+                    {
+                    copymove (key);
+                    break;
+                    }
+#endif
 				if (*p != 0x0D)
 				    {
 					oswrch (9);
@@ -1414,6 +1455,14 @@ void osline (char *buffer)
 
 			case 138:
 			case 139:
+                // Down (138) or Up (139)
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
+                if (bCopyEdit)
+                    {
+                    copymove (key);
+                    break;
+                    }
+#endif
 				if (key == 138)
 					n = (current + 1) % HISTORY;
 				else
@@ -1447,11 +1496,27 @@ void osline (char *buffer)
 			case 133:
 			case 140:
 			case 141:
+                // Page Up (132), Page Down (133), Mouse Wheel Up (140) or Mouse Wheel Down (141)
 				break;
 
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
 			case 9:
+                // Tab
+                bCopyEdit = true;
+                copyedit (bCopyEdit);
+                break;
+            case 155:
+                // Shift + Tab
+                bCopyEdit = false;
+                copyedit (bCopyEdit);
+                break;
+#else
+			case 9:
+                // Tab
 				key = ' ';
+#endif
 			default:
+                // Add key to buffer
 				if (p < (buffer + 255))
 				    {
 					if (key != 0x0A)
