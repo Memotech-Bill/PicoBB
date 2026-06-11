@@ -29,7 +29,7 @@
     </style>
   </head>
   <body>
-    <h1>BBC BASIC on the Raspberry Pi Pico and Pico W</h1>
+    <h1>BBC BASIC on the Raspberry Pi Pico Family</h1>
     <h2>Contents</h2>
     <ul>
       <li><a href="#intro">Introduction</a></li>
@@ -45,6 +45,7 @@
       <li><a href="#basic">BASIC keywords</a></li>
       <li><a href="#star">Star Commands</a></li>
       <li><a href="#vdu">VDU commands</a></li>
+      <li><a href="#picocalc">PicoCalc Library</a></li>
     </ul>
       <h2 id="intro">Introduction</h2>
     <p><b>PicoBB</b> implements a version of BBC BASIC on the Raspberry Pi Pico family.
@@ -65,22 +66,31 @@
     <dl>
       <dt>Console Version</dt>
       <dd>This version requires connecting to another computer for programming or any user
-        interaction. The connection may be via a USB port, or may use a serial UART. Either
-        way, a terminal emulator is used on the host computer. The terminal emulator should
-        support VT100 escape codes. With a Linux host <b>picocom</b> is the recommended
-        terminal emulator. One possible application of this version is to have a program
-        that auto-runs without any user interface or host computer, and controls hardware
-        or collects data using the Pico GPIO pins.</dd>
-      <dt>GUI Version</dt>
-      <dd>Ths version is stand-alone and uses a VGA monitor and a USB keyboard to provide a
-        complete programming environment. It is designed for a Pico attached to a Pimoroni
-        <a href="https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base">VGA Demonstration Board</a>
-        or similar board wired according to the outline given in Chapter 3 of
-        <a href="https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf">Hardware design with RP2040</a>.
-        Its primary purpose is to provide a learning experience similar to that of the 8-bit
-        computers of the 19980's. With a custom board design it is possible to free a few
-        GPIO pins for interfacing by either not using the lsb of the video output or omitting
-        either sound or SD card connections.</dd>
+        interaction. Output is limitted to text. The connection may be via a USB port, or
+        may use a serial UART. Either way, a terminal emulator is used on the host computer.
+        The terminal emulator should support VT100 escape codes. With a Linux host
+        <b>picocom</b> is the recommended terminal emulator. One possible application of
+        this version is to have a program that auto-runs without any user interface or host
+        computer, and controls hardware or collects data using the Pico GPIO pins.</dd>
+      <dt>Graphical Versions</dt>
+      <dd>These versions support a graphical display driven by some of the GPIO pins on the
+        Pico. They provide a programming or learning experience similar to that of the 8-bit
+        computers of the 1980's. Three hardware configurations are currently supported:
+        <ul>
+          <li>The Pimoroni <a href="https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base">VGA Demonstration Board</a>
+            or similar board wired according to the outline given in Chapter 3 of
+            <a href="https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf">Hardware design with RP2040</a>.
+            This version requires a VGA monitor and a USB keyboard. It includes an SD card
+            for storage and sound output.</li>
+          <li>The <a href="https://www.clockworkpi.com/picocalc">PicoCalc</a>. This is a
+            hand-held device with a 4 inc LCD screen and calculator style mini keyboard.
+            It includes an SD card for storage and sound output.</li>
+          <li>The <a href="https://www.waveshare.com/wiki/Pico-ResTouch-LCD-3.5">Pico-ResTouch-LCD-3.5</a>.
+            This provides a touch-snsitive 3.5 inch LCD and SD card for storage. It does not have
+            any immediate way of attaching a keyboard. A number of the Pico GPIO pins are unused
+            but they are not broken out.</li>
+        </ul>
+      </dd>
     </dl>
     <p>Either of these major versions may be on boards with or without a CYW43 wirless chip.
       The CYW43 introduces the possibility of providing wireless networking. The builds which
@@ -93,7 +103,7 @@
       <a href="https://github.com/Memotech-Bill/PicoBB">README.md</a> file in the repository.
       This documentaition mostly assumes using one of the four major builds.</p>
     <h2 id="connect">Connecting to the Pico</h2>
-    <h3>Console Builds</h3>
+    <h3>Console Build</h3>
     <p>Programming the PicoBB console builds requires a connection from a host computer. This
       may be over USB, in which case the Pico appears on the host as a USB serial port. Alternately
       a 3.3v serial UART connection may be used, in which case the Pico transmits on pin 1 (GPIO 0)
@@ -114,8 +124,8 @@
       etc.). To resolve this a
       <a href="https://github.com/Memotech-Bill/PicoBB/tree/master/tools">UDEV rule</a> may be
       used to give a fixed device name (<code>/dev/pico</code>) to the Pico.</p>
-    <h3>GUI Builds</h3>
-    <p>The simplest way to use the GUI builds is with a Pico or Pico W mounted on a
+    <h3>VGA Build</h3>
+    <p>The simplest way to use this build is with a Pico or Pico W mounted on a
       <a href="https://shop.pimoroni.com/products/pimoroni-pico-vga-demo-base">VGA Demonstration Board</a>.</p>
     <ul>
       <li>Power should be applied to the micro-USB socket on the demo board.</li>
@@ -128,6 +138,8 @@
         on the VGA demo board. If using PWM sound (the default) then use the PWM socket. If using I2S
         sound then use the socket labelled DAC.</li>
     </ul>
+    <p>Otherwise a custom board can be constructed based upon the details given in
+      <a href="https://datasheets.raspberrypi.com/rp2040/hardware-design-with-rp2040.pdf">Hardware design with RP2040</a>.</p>
     <h2 id="entry">Program Entry and Editing</h2>
     <p>Normally when you start BBCSDL on Microsoft Windows, Apple IOS or Linux,
       you are not interacting directly with the BASIC interpreter, but instead you are using
@@ -136,17 +148,23 @@
     <p>The IDE program is far too large to run on a Pico, and it also relies upon GUI features
       provided by the host operating system. Thus none of section 2 of the BBCSDL documentation
       which describes the IDE is applicable.</p>
-    <p>If entering a program directly on the Pico it is necessary to use line numbers to order
-      the lines making up a program. Lines are deleted by entering just the line number with
+    <p>The easiest approach is to create or edit a program in a text editor on a PC and then
+      transfer it to the Pico:</p>
+    <ul>
+      <li>For the console version of PicoBB the upload ability can be used to transfer the file
+        to the Pico. A BBC BASIC program <a href="https://github.com/Memotech-Bill/PicoBB/tree/master/tools">yupload.bas</a>
+        to run on a host computer has been provided which will automatically upload a program from
+        the host to a Pico and run it.</li>
+      <li>For the GUI versions, the program file can be copied to the Pico SD card.</li>
+    </ul>
+    <p>In this case the program does not require line numbers, the order is determined by the position
+      of the line in the file.</p>
+    <p>If entering or editing a program directly on the Pico it is necessary to use line numbers
+      to order the lines making up a program. Lines are deleted by entering just the line number with
       nothing following. To correct a line, enter the new (corrected) line with the same line
-      number as the line to be replaced.</p>
-    <p>Alternately the program can be created in a text editior off the Pico then either use
-      the upload capability of the Console version to upload the file, or copy it onto a FAT
-      formatted SD card for the GUI version of PicoBB. In this case the program does not
-      require line numbers, the order is determined by the position of the line in the file.
-      A BBC BASIC program <a href="https://github.com/Memotech-Bill/PicoBB/tree/master/tools">yupload.bas</a>
-      to run on a host computer has been provided which will automatically upload a program from
-      the host to a Pico and run it.</p>
+      number as the line to be replaced. To assist making corrections, the GUI versions implement
+      <a href="https://www.bbcbasic.co.uk/bbcwin/manual/bbcwin2.html#copyediting">Copy Key Editing</a>
+      as for BBCSDL.</p>
     <h2 id="storage">Program and Data Storage</h2>
     <p>The default builds of PicoBB use the upper half of the Pico's flash memory (1MB) to
       provide storage for programs and data which is retained when power is removed. The
@@ -161,7 +179,7 @@
       the folder <b>/sdcard/</b>.</p>
     <p>If both flash and SD card storage are implemented, then a program stored on the SD card
       will not auto-run by default. However a one line <b>/autorun.bbc</b> on the flash storage
-      could <b>CHAIN</b> to <b>/sdcard/autorun.bbc</b> (or another file name).</p>
+      could be <b>CHAIN "/sdcard/autorun.bbc"</b> (or another file name).</p>
     <h2 id="sysvar">System Variables & System Identification</h2>
     <p>The low byte (bits 0-7) of the system variable <code>@platform%</code> identifies the
       system on which a program is running. For any of the Pico builds this will have the
@@ -218,55 +236,8 @@
     <p>All the other system variables from BBCSDL should exist although some of them are meaningless
       on the Pico.</p>
     <h2 id="graphics">Graphics</h2>
-    <h3>GUI Builds</h3>
     <img src="saucer.bmp">
-    <p>The GUI builds support almost all of the graphics capability of BBC BASIC. The graphics
-      modes supported are restricted by the amount of memory available on the Pico. The following
-      16 modes are supported:</p>
-    <table>
-      <thead>
-        <tr><th>Mode</th><th>Colours</th><th>Text</th><th>Graphics</th><th>Letterbox</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>0</td><td>2</td><td>80 x 32</td><td>640 x 256</td><td>Y</td></tr>
-        <tr><td>1</td><td>4</td><td>40 x 32</td><td>320 x 256</td><td>Y</td></tr>
-        <tr><td>2</td><td>16</td><td>20 x 32</td><td>160 x 256</td><td>Y</td></tr>
-        <tr><td>3</td><td>2</td><td>80 x 25</td><td>640 x 225</td><td></td></tr>
-        <tr><td>4</td><td>2</td><td>40 x 32</td><td>320 x 256</td><td>Y</td></tr>
-        <tr><td>5</td><td>4</td><td>20 x 32</td><td>160 x 256</td><td>Y</td></tr>
-        <tr><td>6</td><td>2</td><td>40 x 25</td><td>320 x 225</td><td></td></tr>
-        <tr><td>7</td><td>8</td><td>40 x 25</td><td>Teletext</td><td></td></tr>
-        <tr><td>8</td><td>2</td><td>80 x 30</td><td>640 x 480</td><td></td></tr>
-        <tr><td>9</td><td>4</td><td>40 x 30</td><td>320 x 480</td><td></td></tr>
-        <tr><td>10</td><td>16</td><td>20 x 30</td><td>160 x 480</td><td></td></tr>
-        <tr><td>11</td><td>2</td><td>80 x 25</td><td>640 x 450</td><td></td></tr>
-        <tr><td>12</td><td>2</td><td>40 x 30</td><td>320 x 480</td><td></td></tr>
-        <tr><td>13</td><td>4</td><td>20 x 30</td><td>160 x 480</td><td></td></tr>
-        <tr><td>14</td><td>2</td><td>40 x 25</td><td>320 x 450</td><td></td></tr>
-        <tr><td>15</td><td>16</td><td>40 x 30</td><td>320 x 240</td><td></td></tr>
-      </tbody>
-    </table>
-    <p>Modes 0-7 reproduce those from the BBC Micro:</p>
-    <ul>
-      <li>Modes 0-2, 4 &amp; 5 only have 256 rows of pixels which are displayed in the centre of
-        the monitor so may appear squashed.</li>
-      <li>Modes 3 &amp; 6 can also display graphics.</li>
-      <li>Except for Mode 7, colours 8-15 are high intensity rather than flashing.</li>
-      <li>They differ from the corresponding modes in BBCSDL in having fewer pixel rows.</li>
-    </ul>
-    <p>The generally most useful modes are mode 8, which is a monochrome display with the highest resolution,
-      and mode 15, which is a 16 colour mode with square pixels. The default mode on startup is mode 8.</p>
-    <p>The Pico display is paletted, with the number of colours displayed at any one time limitted by
-      the graphics mode. The VGA output generated by PicoBB uses five bits for each of red, green and blue,
-      giving 32k possible physical colours. These are all available if using the Pimoroni VGA demonstration
-      board. Custom boards may choose not to connect some of the colour lsb in order to provide some
-      available GPIO pins. This will reduce the number of physical colours available.</p>
-    <p>A screen capture facility is provided. Pressing the <PrintScreen> key will save a file <code>prtscrxx.bmp</code>
-        where xx goes from 01 to 99. The number is reset to 01 if the Pico is restarted or more than 99
-        captures are made. Existing captures are overwritten without warning. For reasons of file size
-        the captures are stored in the <code>sdcard/</code> folder if that exists, otherwise they are
-        stored in the top folder.</p>
-    <h3>Console Builds</h3>
+    <h3>Console Build</h3>
     <p>To be consistent with other BBCSDL console builds, PicoBB console builds define the following
       ten modes:</p>
     <table>
@@ -304,20 +275,120 @@
         the USB connecction is used for the console, and graphical output can be directed to the
         LCD display.</li>
     </ul>
-    <h3>LCD Builds</h3>
-    <p>There is a compilation option to support the Waveshare
-      <a href="https://www.waveshare.com/wiki/Pico-ResTouch-LCD-3.5">Pico-ResTouch-LCD-3.5</a>
-      display board. This board is designed to take a Raspberry Pi Pico or Pico 2, and provides:</p>
+    
+    <h3>VGA Build</h3>
+    <p>The VGA build supports almost all of the graphics capability of BBC BASIC. The graphics
+      modes supported are restricted by the amount of memory available on the Pico. The following
+      16 modes are supported:</p>
+    <table>
+      <thead>
+        <tr><th>Mode</th><th>Colours</th><th>Text</th><th>Graphics</th><th>Letterbox</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>2</td><td>80 x 32</td><td>640 x 256</td><td>Y</td></tr>
+        <tr><td>1</td><td>4</td><td>40 x 32</td><td>320 x 256</td><td>Y</td></tr>
+        <tr><td>2</td><td>16</td><td>20 x 32</td><td>160 x 256</td><td>Y</td></tr>
+        <tr><td>3</td><td>2</td><td>80 x 25</td><td>640 x 225</td><td></td></tr>
+        <tr><td>4</td><td>2</td><td>40 x 32</td><td>320 x 256</td><td>Y</td></tr>
+        <tr><td>5</td><td>4</td><td>20 x 32</td><td>160 x 256</td><td>Y</td></tr>
+        <tr><td>6</td><td>2</td><td>40 x 25</td><td>320 x 225</td><td></td></tr>
+        <tr><td>7</td><td>8</td><td>40 x 25</td><td>Teletext</td><td></td></tr>
+        <tr><td>8</td><td>2</td><td>80 x 30</td><td>640 x 480</td><td></td></tr>
+        <tr><td>9</td><td>4</td><td>40 x 30</td><td>320 x 480</td><td></td></tr>
+        <tr><td>10</td><td>16</td><td>20 x 30</td><td>160 x 480</td><td></td></tr>
+        <tr><td>11</td><td>2</td><td>80 x 25</td><td>640 x 450</td><td></td></tr>
+        <tr><td>12</td><td>2</td><td>40 x 30</td><td>320 x 480</td><td></td></tr>
+        <tr><td>13</td><td>4</td><td>20 x 30</td><td>160 x 480</td><td></td></tr>
+        <tr><td>14</td><td>2</td><td>40 x 25</td><td>320 x 450</td><td></td></tr>
+        <tr><td>15</td><td>16</td><td>40 x 30</td><td>320 x 240</td><td></td></tr>
+      </tbody>
+    </table>
+    <p>Modes 0-7 reproduce those from the BBC Micro:</p>
+    <ul>
+      <li>Modes 0-2, 4 &amp; 5 only have 256 rows of pixels which are displayed in the centre of
+        the monitor so may appear squashed.</li>
+      <li>Modes 3 &amp; 6 can also display graphics.</li>
+      <li>Except for Mode 7, colours 8-15 are high intensity rather than flashing.</li>
+      <li>They differ from the corresponding modes in BBCSDL in having fewer pixel rows.</li>
+    </ul>
+    <p>The generally most useful modes are mode 8, which is a monochrome display with the highest resolution,
+      and mode 15, which is a 16 colour mode with square pixels. The default mode on startup is mode 8.</p>
+    <p>The Pico display is paletted, with the number of colours displayed at any one time limited by
+      the graphics mode. The displayed colour for each palette entry can be changed by use of the <b>COLOUR</b>
+      command. For this build, changing a palette entry immediately changes the colour of all the pixels set
+      to this palette value. The VGA output generated by PicoBB uses five bits for each of red, green and blue,
+      giving 32k possible physical colours. These are all available if using the Pimoroni VGA demonstration
+      board. Custom boards may choose not to connect some of the colour lsb in order to provide some
+      available GPIO pins. This will reduce the number of physical colours available.</p>
+    <p>A screen capture facility is provided. Pressing the <PrintScreen> key will save a file <code>prtscrxx.bmp</code>
+        where xx goes from 01 to 99. The number is reset to 01 if the Pico is restarted or more than 99
+        captures are made. Existing captures are overwritten without warning. For reasons of file size
+        the captures are stored in the <code>sdcard/</code> folder if that exists, otherwise they are
+        stored in the top folder.</p>
+    <h3>PicoCalc Build</h3>
+    <p>This supports almost all of the graphics capability of BBC BASIC. The PicoCalc has a 320 x 320 LCD
+      display supporting 64K colours (RGB565 format). The LCD controller has memory for each display pixel
+      and this memory is both writeable and readable from the Pico. Therefore the Pico does not need to use
+      any memory to keep a copy of the display, enabling the full capability of the display to be used.
+      The following 14 display modes are supported:</p>
+    <table>
+      <thead>
+        <tr><th>Mode</th><th>Colours</th><th>Text</th><th>Graphics</th><th>Letterbox</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>2</td><td>40 x 32</td><td>320 x 256</td><td>Y</td></tr>
+        <tr><td>1</td><td>4</td><td>40 x 32</td><td>320 x 256</td><td>Y</td></tr>
+        <tr><td>2</td><td>16</td><td>20 x 32</td><td>160 x 256</td><td>Y</td></tr>
+        <tr><td>3</td><td>2</td><td>40 x 25</td><td>320 x 250</td><td>Y</td></tr>
+        <tr><td>4</td><td>2</td><td>40 x 32</td><td>320 x 256</td><td>Y</td></tr>
+        <tr><td>5</td><td>4</td><td>20 x 32</td><td>160 x 256</td><td>Y</td></tr>
+        <tr><td>6</td><td>2</td><td>40 x 25</td><td>320 x 250</td><td>Y</td></tr>
+        <tr><td>7</td><td>8</td><td>40 x 25</td><td>Teletext</td><td>Y</td></tr>
+        <tr><td>8</td><td>16</td><td>40 x 20</td><td>320 x 320</td><td></td></tr>
+        <tr><td>9</td><td>16</td><td>40 x 32</td><td>320 x 320</td><td></td></tr>
+        <tr><td>10</td><td>16</td><td>40 x 40</td><td>320 x 320</td><td></td></tr>
+        <tr><td>11</td><td>128</td><td>40 x 20</td><td>320 x 320</td><td></td></tr>
+        <tr><td>12</td><td>128</td><td>40 x 32</td><td>320 x 320</td><td></td></tr>
+        <tr><td>13</td><td>128</td><td>40 x 40</td><td>320 x 320</td><td></td></tr>
+      </tbody>
+    </table>
+    <p>Modes 0-7 approximate those from the BBC Micro:</p>
+    <ul>
+      <li>These modes all have less than 320 rows of pixels and are therefore restricted
+        to a central region of the display.</li>
+      <li>Modes 0 &amp; 3 only have 320 pixels across instead of 640.</li>
+      <li>Modes 3 &amp; 6 can also display graphics.</li>
+      <li>Except for Mode 7, colours 8-15 are high intensity rather than flashing.</li>
+      <li>They differ from the corresponding modes in BBCSDL in having fewer pixel rows and columns.</li>
+    </ul>
+    <p>Modes 8 to 13 all have the full 320 x 320 graphics resolution and differ in text size and number
+    of colours.</p>
+    <p>The PicoCalc display is paletted, with the number of colours displayed at any one time limited by
+      the graphics mode. The displayed colour for each palette entry can be changed by use of the <b>COLOUR</b>
+      command. Pixels are written to the display as 16-bit colour values, so changing the palette after
+      writing a pixel does not change the displayed colour of the pixel. Thus, by repeatedly changing the palette,
+      it is possible to display all 64K possible colours.</p>
+    <p>Modes 8 to 10 have 16 palette entries, which default to the 16 standard colours.</p>
+    <p>Modes 11 to 13 have the maximum 128 palette entries supported by BBC BASIC. The default
+      colour for each palette entry is based upon the bit pattern with bits 0-1 giving Red, bits 2-4
+      giving Green and bits 5-6 giving Blue.</p>
+    
+    <h3>Waveshare Pico-ResTouch-LCD-3.5 Build</h3>
+    <p>The Waveshare <a href="https://www.waveshare.com/wiki/Pico-ResTouch-LCD-3.5">Pico-ResTouch-LCD-3.5</a>
+      board provides:</p>
     <ul>
       <li>A 320 x 480 LCD display.</li>
       <li>Touch panel.</li>
       <li>Micro SD card.</li>
     </ul>
     <p>The board does not have an independent power input, so unless the hardware is modified,
-      power has to be supplied via the Pico USB connector. Thus a typical build will be with
+      power has to be supplied via the Pico USB connector. Therefore this build provides
       a USB console, with the LCD screen forming a second dispay, rather than having a keyboard
       attached to form a stand-alone computer.</p>
-    <p>The LCD display supports the following modes:</p>
+    <p>Because of the way the LCD controller is wired it is not possible to read back pixel values
+      from the display. Therefore the Pico needs to maintain an in memory copy of the display data.
+      This limits the display resolution and palette size.</p>
+    <p>This build supports the following display modes:</p>
     <table>
       <thead>
         <tr><th>Mode</th><th>Colours</th><th>Text</th><th>Graphics</th><th>Letterbox</th><th>Landscape</th></tr>
@@ -368,16 +439,27 @@
       the file <b>/mouse.cfg</b>. This calibration will automatically be used whenever the <b>/mouse.cfg</b>
       file is present. If it is absent, then a very approximate default configuration will be used.</p>
     <h2 id="sound">Sound</h2>
-    <p>The console builds usually use the second ARM core on the Pico to produce high quality sound,
-      equivalent to that produced by BBCSDL on other platforrms. The GUI builds, however, use the second
-      ARM core for video generation. As a consequence a simpler sound generation is used which emulates
-      the sound chip in the original BBC micro.</p>
-    <p>All sound implementations use the BBC BASIC SOUND and ENVELOPE commands. *STEREO and *VOICE
-      are also implemented for high quality (SDL) sound.</p>
+    <p>Most builds use the second ARM core on the Pico to produce high quality sound,
+      equivalent to that produced by BBCSDL on other platforrms. All sound implementations use the
+      BBC BASIC SOUND and ENVELOPE commands. *STEREO and *VOICE are also implemented for high quality
+      (SDL) sound.</p>
+    <h3>Console Build</h3>
     <p>For the console builds it will be necessary to attach low-pass filters to the sound output
       pins (pins 32 &amp; 34, GPIOs 27 &amp; 28) and then connect the output from these to an amplifier.</p>
-    <p>For the GUI builds, the VGA demo board includes the necessary post-processing, and an amplifier
-      (or high impedance headphones) can be connected directly to the output sockets.</p>
+    <h3>VGA Build</h3>
+    <p>The VGA build uses the second ARM core for video generation. As a consequence a simpler sound generation
+      is used which emulates the sound chip in the original BBC micro. This does not support the *STEREO or
+      *VOICE commands.</p>
+    <p>The VGA demo board includes the necessary output filtering, and an amplifier (or high impedance headphones)
+      can be connected directly to the output sockets. The defaulr build uses the PWM socket, but the DAC
+      socket may be sellected as a compilation option.</p>
+    <h3>PicoCalc Build</h3>
+    <p>High quality (BBCSDL) sound via the PicoCalc headphone socket or speakers is enabled by default
+      for the PicoCalc build.</p>
+    <h3>Waveshare Pico-ResTouch-LCD-3.5 Build</h3>
+    <p>This board has no provision for sound output so sound is not enabled by default for this build.
+      If some of the unused Pico GPIO pins are broken out in some fashion, then sound support can be enabled
+      as a compilation option.</p>
     <h2 id="serial">Serial Input and Output</h2>
     <p>Depending upon the build used, serial devices may appear as as single <code>/dev/uart</code>
       or the pair <code>/dev/uart0</code> and <code>/dev/uart1</code>. A serial port may be opened
@@ -393,9 +475,22 @@
       the keyword and equals sign may be omitted in which case the parameters must be in the order
       shown above.</p>
     <p>Note: Contrary to the BBC Basic documentation commas must not be used between the parameters.</p>
-    <p>If the BBC Basic user interface is connected via USB, then either serial interface may be used.
-      If the user interface is connected via a serial connection, then do not open that interface
-      (<code>/dev/uart0</code> for a bare Pico, <code>/dev/uart1</code> for a Pico on VGA Demo board).</p>
+    <h3>Console build</h3>
+    <p>The default console builds have the BBC BASIC user interface on both USB and UART0. UART1 is available
+      for use as a serial port. Compilation options may be used to limit the BBC BASIC user interface to
+`    USB, in which case use of both UARTs for serial I/O may be enabled.</p>
+    <h3>VGA Build</h3>
+    <p>The default VGA build does not provide a serial connection. Supporting both the SD card and serial I/O
+      on the Pimoroni board requires cutting the tracks between GP20 and SDO1 and between GP21 and SDO2 and
+      soldering in a pin header. If that is done, then compilation options may be used to enable the use of
+      the serial connection.</p>
+    <h3>PicoCalc build</h3>
+    <p>This build enables both UART connections available by default. The PicoCalc makes Pico UART0 RX and TX
+      available via pins 2 &amp; 3 of external socket J702, also from the USB-C connector via a USB to serial
+      chip (if both the DIP switches are set to off). UART1 is connected to a UART on the PicoCalc MCU, but it
+      is not apparent that the MCU supports anything on that connection. </p>
+    <h3>Waveshare Pico-ResTouch-LCD-3.5 Build</h3>
+    <p>This build does not provide any serial I/O by default.</p>
     <h2 id="network">Network</h2>
     <p>The WiFi network is accessed using a Pico specific version of the BBC BASIC "socklib"
       library. See the BBC BASIC <a href="https://www.bbcbasic.co.uk/bbcwin/manual/bbcwing.html#socklib" rel="nofollow">manual</a>
@@ -426,8 +521,9 @@
       down. Providing that nothing else changes <b>HIMEM</b>, this space is reclaimed when <b>PROC_exitsockets</b>
       is called.</p>
     <h2 id="assembler">Thumb Assembler</h2>
+    <h3>Pico builds</h3>
     <p>There is a built-in assembler for the ARM v6M instruction set as supported by the Pico.
-      By default the assembler uses "Unified" syntax. However including the following pseudo-op</p>
+      By default the assembler uses "Unified" syntax. However including the following pseudo-op:</p>
     <p>syntax d</p>
     <p>enables the following extensions to the allowed syntax:</p>
     <ul>
@@ -437,6 +533,9 @@
     </ul>
     <p>The extensions may be disabled again by specifying:</p>
     <p>syntax u</p>
+    <h3>Pico2 builds</h3>
+    <p>The Pico2 builds include an assembler for most of the ARM v8M instructions supported by the RP2350.
+      This assembler only supports "Unified" syntax.</p>
     <h2 id="basic">BASIC keywords</h2>
     <p>Almost all of the BASIC keywords documented in section 5 of
       <a href="https://www.bbcbasic.co.uk/bbcsdl/manual/index.html">BBC BASIC for SDL 2.0</a>
@@ -470,25 +569,25 @@
     <p>Other uses are as documented.</p>
     <h3>GET(x,y) and GET$(x,y)</h3>
     <p>Using GET or GET$ to attempt to return the character at a screen location will fail
-      on console builds with the message "Sorry, GETXY not implemented".</p>
+      on console builds with the message "Sorry, GETXY not implemented". These commands work
+      as documented for all GUI builds.</p>
     <h3>INKEY and INKEY$</h3>
     <p>For all versions of PicoBB, INKEY (or INKEY$) with a zero or positive argument works as documented.
       INKEY(-256) returns 115 (ASCII code for lower case "s").</p>
-    <p>Console versions of PicoBB will return zero for other negative arguments. For the GUI
-      versions, INKEY works as documented for negative values corresponding to keyboard keys.
-      Mouse support is not implemented, so testing for mouse button status will always return
-      zero.</p>
+    <p>For the VGA and PicoCalc builds, INKEY works as documented for negative values corresponding
+      to keyboard keys. Mouse support is not implemented, so testing for mouse button status will
+      always return zero. Other builds of PicoBB will return zero for other negative arguments. </p>
     <h3>MOUSE</h3>
-    <p>For a build with LCD plus Touchpad the command <code>MOUSE x,y,b</code> will give the
+    <p>For the Waveshare Pico-ResTouch-LCD-3.5 build the command <code>MOUSE x,y,b</code> will give the
       current touch position, if any. If the panel is being touched, then <b>b</b> will be
       <b>1</b> and <b>x</b> and <b>y</b> will give the touch position in graphics units. If
       not being touched then <b>b</b> will be <b>0</b> and <b>x</b> and <b>y</b> will be <b>-1</b>.
       Before using the touchpad, it should be calibrated by running the program <b>tp_setup</b>.</p>
-    <p>For builds without a touchpad a command of the form <code>MOUSE x,y,b</code> will create
+    <p>For all other builds a command of the form <code>MOUSE x,y,b</code> will create
       the specified variables, all with value zero.</p>
     <h3>ON MOUSE</h3>
-    <p>For builds with a touchpad this event will be triggered each time the pad is first touched.
-      For other builds this event will never be triggered.</p>
+    <p>For the Waveshare Pico-ResTouch-LCD-3.5 build this event will be triggered each time the pad
+      is first touched. For other builds this event will never be triggered.</p>
     <h3>ON MOVE and ON SYS</h3>
     <p>The events trapped by these statements will never occur in PicoBB.</p>
     <h3>PLOT</h3>
@@ -518,7 +617,7 @@
     </ul>
     <p>Other uses are as documented.</p>
     <h3>VDU</h3>
-    <p>The command behaves as documented. See ??? for how the VDU sequences are interpreted.</p>
+    <p>The command behaves as documented. See <a href="#vdu">below</a> for how the VDU sequences are interpreted.</p>
     <h3>WIDTH</h3>
     <p>On console builds attempting to obtain the width of a string will fail with an error message.
       On GUI builds it will work as documented, but since there is only a single, fixed pitch font,
@@ -531,29 +630,29 @@
         <td>*margins<br/>*mdisplay<br/>*noega<br/>*osk<br/>*play</td>
         <td>*printer<br/>*printerfont<br/>*screensave<br/>*sys</td></tr></table>
     <p>The following star commands differ from BBCSDL or are unique to PicoBB:</p>
-    <h3>*brightness</h3>
-    <p>Only for builds with an LCD panel, controls the brightness of the backlight. Values
-      between 0 and 100 may be selected.</p>
-    <h3>*display</h3>
-    <p>Only a limited implementation of this command is provided. A bitmap file can be loaded to
-      fill the entire screen. The size and bit depth of the file must match the currently selected
-      graphics mode. The easiest way to assure that is to use <code>*screensave</code> to create
-      the file.</p>
-    <h3>*float</h3>
+    <h3>All builds</h3>
+    <h4>*float</h4>
     <p>Only <code>FLOAT 40</code> or <code>FLOAT 64</code> are supported.</p>
-    <h3>*input</h3>
+    <h4>*input</h4>
     <p>This command only accepts valid channel numbers 1 to 12, or zero to revert to normal input.
       The &quot;special&quot; values 13 to 15 used by BBCSDL for &quot;non-overlapped I/O&quot; will
       cause an error.</p>
-    <h3>*lock and *unlock</h3>
+    <h4>*lock and *unlock</h4>
     <p>These commands don't do anything. The Little File System used for storage in Pico flash memory
       does not have any file attributes for recording Read-Only or Read-Write status. It would be possible
       to implement the functions for the FAT filesystem on an external SD card, but that would be
       inconsistent.</p>
-    <h3>*output</h3>
+    <h4>*output</h4>
     <p>This command works as documented for valid channel numbers 1 to 12, or zero to restore normal output.</p>
     <p>The &quot;special&quot; values 13 to 15 used by BBCSDL for &quot;non-overlapped I/O&quot; will
-      usually cause an error. However for console builds which also have VGA output (not a standard build):</p>
+      cause an error.</p>
+    <h4>*run</h4>
+    <p>Although this command is implemented, there is no operation system, and so it always results
+      in "Bad command".</p>
+    <h3>Console build</h3>
+    <h4>*output</h4>
+    <p>This command works as documented for valid channel numbers 1 to 12, or zero to restore normal output.</p>
+    <p>For console builds which also have VGA output (not a standard build):</p>
     <ul>
       <li><code>*output 0</code> - directs output to the console host computer.</li>
       <li><code>*output 14</code> - directs output to the VGA display.</li>
@@ -566,38 +665,56 @@
       <li><code>*output 32</code> - send VT100 escape sequences to the host computer (this is the default).</li>
       <li><code>*output 48</code> - Send BBC BASIC VDU sequences to the host computer.</li>
     </ul>
-    <h3>*run</h3>
-    <p>Although this command is implemented, there is no operation system, and so it always results
-      in "Bad command".</p>
-    <h3>*screensave</h3>
-    <p>Only a limited implementation of this command is provided. Saves the entire screen to the specified
-      file name. An extension of ".bmp" is assumed if not specified.</p>
-    <p>Note that four-colour modes will create a BMP file with a 2-bit colour depth. While this is a legal
-      BMP format, many graphics utilities do not support it.</p>
-    <h3>*xupload &lt;filename&gt;</h3>
+    <h4>*xupload &lt;filename&gt;</h4>
     <p>Receive an uploaded file using XModem protocol. The name of the file must
       be specified, as it is not sent by the upload program. Note that the length of the file will be
       padded out to the next multiple of 128 bytes.</p>
-    <h3>*yupload [&lt;filename&gt;|&lt;dirname/&gt;]</h3>
+    <h4>*yupload [&lt;filename&gt;|&lt;dirname/&gt;]</h4>
     <p>Receive an uploaded file using YModem protocol. The filename
       is optional, but if given will override the name sent by the upload program. If a directory name
       (ending in '/') is given, the uploaded file will be placed in that directory. The exact file
       length will be preserved.</p>
-    <h3>*zupload  [&lt;filename&gt;|&lt;dirname/&gt;]</h3>
+    <h4>*zupload  [&lt;filename&gt;|&lt;dirname/&gt;]</h4>
     <p>As for <code>*yupload</code> but using ZModem protocol.</p>
-    <h3>*xdownload &lt;filename&gt;</h3>
+    <h4>*xdownload &lt;filename&gt;</h4>
     <p>Download a file using XModem protocol. It will be necessary to specify
       a filename at the receiving end. Note that the length of the file will be padded out to the next
       multiple of 128 bytes.</p>
-    <h3>*ydownload &lt;filename&gt;</h3>
+    <h4>*ydownload &lt;filename&gt;</h4>
     <p>Download a file using YModem protocol. The exact file length is transferred
       and the name of the file is supplied to the download program.</p>
-    <h3>*zdownload &lt;filename&gt;</h3>
+    <h4>*zdownload &lt;filename&gt;</h4>
     <p>As for <code>*ydownload</code> but using ZModem protocol.</p>
+    <h3>GUI builds</h3>
+    <h4>*display</h4>
+    <p>Only a limited implementation of this command is provided. A bitmap file can be loaded to
+      fill the entire screen. The size and bit depth of the file must match the currently selected
+      graphics mode. The easiest way to assure that is to use <code>*screensave</code> to create
+      the file.</p>
+    <h4>*screensave</h4>
+    <p>Only a limited implementation of this command is provided. Saves the entire screen to the specified
+      file name. An extension of ".bmp" is assumed if not specified.</p>
+    <p>Note that four-colour modes will create a BMP file with a 2-bit colour depth. While this is a legal
+      BMP format, many graphics utilities do not support it.</p>
+    <h3>PicoCalc build</h3>
+    <h4>*backlight [lcd] [&lt;brightness&gt;]</h4>
+    <p>The <b>lcd</b> keyword is optional and assumed if omitted. If a brightness value (0-255) is given
+      then sets the LCD backlight to that level. If a brightness value is omitted, then the current setting
+      is printed.</p>
+    <h4>*backlight kbd [&lt;brightness&gt;]</h4>
+    <p>The <b>kbd</b> keyword is required to select the keyboard backlight as opposed to that for the LCD.
+      . If a brightness value (0-255) is given then sets the keyboard backlight to that level. If a brightness
+      value is omitted, then the current setting is printed.</p>
+    <h4>*battery</h4>
+    <p>Print the current battery charge.</p>
+    <h3>Pico-ResTouch-LCD-3.5 build</h3>
+    <h4>*brightness</h4>
+    <p>Only for builds with an LCD panel, controls the brightness of the backlight. Values
+      between 0 and 100 may be selected.</p>
     <h2 id="vdu">VDU commands</h2>
     <p>The following table sumerises differences from BBCSDL in handling VDU command sequences:</p>
     <table>
-      <thead><tr><th>VDU command</th><th>Console Build</th><th>GUI Build</th></tr></thead>
+      <thead><tr><th>VDU command</th><th>Console Build</th><th>GUI Builds</th></tr></thead>
       <tbody>
         <tr><td>1</td><td>Ignored.</td><td>Implemented if printer enabled.</td></tr>
         <tr><td>2</td><td>Sends an enable printer escape sequence.</td><td>Implemented if printer enabled.</td></tr>
@@ -633,5 +750,100 @@
       <li>PAGE has to be raised (by 256 bytes per block) if more than one block of user defined characters
         is required.</li>
     </ul>
+    <h2 id="picocalc">PicoCalc Library</h2>
+    <p>The following code provides support for PicoCalc features that are not directly implemented in BBC BASIC.</p>
+    <h3>Battery Status</h3>
+    <pre>
+REM Get Battery charge status
+DEF FN_GetBattery
+    LOCAL cmd&, dat&
+    cmd& = &0B
+    SYS "pc_request", cmd&, dat& TO dat&
+    =dat&
+      </pre>
+    <h3>Backlight control</h3>
+    <pre>
+REM Get LCD backlight setting (0-255)
+DEF FN_GetLCDBacklight
+    LOCAL cmd&, dat&
+    cmd& = &05
+    SYS "pc_request", cmd&, dat& TO dat&
+    =dat&
+
+REM Get keyboard backlight setting (0-255)
+DEF FN_GetKbdBacklight
+    LOCAL cmd&, dat&
+    cmd& = &0A
+    SYS "pc_request", cmd&, dat& TO dat&
+    =dat&
+
+REM Set LCD backlight brightness (0-255)
+DEF PROC_SetLCDBacklight(dat&)
+    LOCAL cmd&
+    cmd& = &85
+    SYS "pc_request", cmd&, dat&
+ENDPROC
+
+REM Set keyboard backlight brightness (0-255)
+DEF PROC_SetKbdBacklight(dat&)
+    LOCAL cmd&
+    cmd& = &8A
+    SYS "pc_request", cmd&, dat&
+ENDPROC
+    </pre>
+    <h3>PSRAM</h3>
+    <p>The PicoCalc includes 8Mb of pseudo-static RAM. Unfortunately this is not connected
+      in a way that is directly addressable by the Pico ARM cores, so cannot be used to
+      store and execute a BASIC program. It may, however, be used for temporary data
+      storage. A lower portion of this memory is used to store the screen during
+      <b>*refresh off</b>. The remainder is available for use at any time. Note that any
+      data stored in PSRAM is lost when the power is turned off.</p>
+    <pre>
+REM Read data from the 8Mbit PSRAM
+REM addr% = Address in PSRAM
+REM len%  = Length of data to read (in bytes)
+REM bptr% = Address of BASIC memory to receive data (use ^ operator)
+REM Note that the first 153,602 bytes are used by *refresh (894,974 bytes still available)
+DEF PROC_PSRAM_Read(addr%, len%, bptr%)
+    LOCAL qread%, qwait%, alim%, n%
+    qread% = SYS("qspi_qread")
+    qwait% = SYS("qspi_wait")
+    SYS "qspi_cfg_qread"
+    WHILE len%>0
+          alim% = (addr% + &400) AND &FFFFFC00
+          n% = alim% - addr%
+          IF n% > len% THEN n% = len%
+          SYS qread%, addr%, n%, bptr%
+          SYS qwait%
+          addr% = addr% + n%
+          bptr% = bptr% + n%
+          len% = len% - n%
+    ENDWHILE
+    SYS "qspi_free"
+ENDPROC
+
+REM Write data to the 8Mbit PSRAM
+REM addr% = Address in PSRAM
+REM len%  = Length of data to write (in bytes)
+REM bptr% = Address of BASIC memory containing the data (use ^ operator)
+REM Note that the first 153,602 bytes are used by *refresh (894,974 bytes still available)
+DEF PROC_PSRAM_Write(addr%, len%, bptr%)
+    LOCAL qwrite%, qwait%, alim%, n%
+    qwrite% = SYS("qspi_qwrite")
+    qwait% = SYS("qspi_wait")
+    SYS "qspi_cfg_qwrite"
+    WHILE len%>0
+          alim% = (addr% + &400) AND &FFFFFC00
+          n% = alim% - addr%
+          IF n% > len% THEN n% = len%
+          SYS qwrite%, addr%, n%, bptr%
+          SYS qwait%
+          addr% = addr% + n%
+          bptr% = bptr% + n%
+          len% = len% - n%
+    ENDWHILE
+    SYS "qspi_free"
+ENDPROC
+      </pre>
   </body>
 </html>
