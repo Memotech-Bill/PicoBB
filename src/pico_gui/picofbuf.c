@@ -42,6 +42,7 @@ static uint16_t renderbuf[256 * 8] __attribute((__aligned__(4)));
 static MODE curmode;
 static uint8_t  *framebuf = NULL;
 static volatile uint8_t  *displaybuf = NULL;
+static uint32_t nFrame = 0;
 
 static uint16_t curpal[16];             // Current palette
 
@@ -138,7 +139,6 @@ extern const scanvideo_timing_t vga_timing_800x600_60_default;
 
 void __time_critical_func(render_mode7) (void)
     {
-    uint32_t nFrame = 0;
     uint32_t iRow;
     uint32_t iScanCnt;
     uint32_t iScanLst;
@@ -464,6 +464,7 @@ void __time_critical_func(render_loop) (void)
         struct scanvideo_scanline_buffer *buffer = scanvideo_begin_scanline_generation (true);
         uint32_t *twopix = buffer->data;
         int iScan = scanvideo_scanline_number (buffer->scanline_id);
+        if (iScan == 0) ++nFrame;
 #if DBUF_MODE > 0
         if ( displaybuf && ( iScan == 0 ))
             {

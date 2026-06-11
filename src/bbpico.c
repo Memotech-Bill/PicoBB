@@ -1317,7 +1317,7 @@ void osline (char *buffer)
 #if HAVE_MODEM
     bool bUpload = (exchan == 0) && ((optval >> 4) == 0) && (keyptr == 0);
 #endif
-#ifdef PICO_GUI
+#if defined(PICO_GUI) || defined(PICO_GRAPH)
     bool bCopyEdit = false;
 #endif
 	int n;

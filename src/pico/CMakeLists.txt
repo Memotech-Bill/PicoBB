@@ -456,7 +456,6 @@ if (TARGET tinyusb_device)
       )
     target_compile_definitions(bbcbasic PRIVATE
       -DPICO_GUI
-      -DGUI_SERIAL=${GUI_SERIAL}
       )
     target_include_directories(bbcbasic PRIVATE
       ../../include/pico
@@ -481,26 +480,12 @@ if (TARGET tinyusb_device)
         PICO_RP2040_USB_DEVICE_ENUMERATION_FIX=1
         PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=0
         )
-      message(STATUS "BBC Basic console I/O will be on UART")
-      target_link_libraries(bbcbasic
-        pico_stdio_uart
-        )
-      pico_enable_stdio_uart(bbcbasic 1)
-      target_compile_definitions(bbcbasic PRIVATE -DSTDIO_UART)
-    # if (${PRINTER})
-    #   pico_enable_stdio_uart(bbcbasic 1)
-    #   target_compile_definitions(bbcbasic PRIVATE -DHAVE_PRINTER)
-    # elseif (${SERIAL_DEV} EQUAL -1)
-    #   pico_enable_stdio_uart(bbcbasic 1)
-    # else()
-    #   pico_enable_stdio_uart(bbcbasic 0)
-    # endif()
+    pico_enable_stdio_uart(bbcbasic 0)
     target_sources(bbcbasic PRIVATE
       ../../src/PicoCalc/pc_kbd.c
       )
     target_compile_definitions(bbcbasic PRIVATE
       -DPICO_GUI
-      -DGUI_SERIAL=${GUI_SERIAL}
       )
   else()
     target_sources(bbcbasic PRIVATE

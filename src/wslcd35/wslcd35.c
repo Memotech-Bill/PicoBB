@@ -783,7 +783,7 @@ void mouse_init (void)
     pnext = add_periodic (mouse_periodic);
     }
 
-bool brightness (char *cmd)
+bool brightness (const char *cmd)
     {
     if (! strncasecmp (cmd, "brightness", 10))
         {

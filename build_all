@@ -2,55 +2,88 @@
 # Build the four standard configurations for pico and pico2
 #
 ROOT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $ROOT_DIR/console/pico
-make clean
 #
-make BOARD=pico_w
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-#
-make BOARD=pico2_w
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-#
-cd $ROOT_DIR/bin/pico
-make clean
-#
-make BOARD=pico_w ADDON=vgaboard_sd
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-#
-make BOARD=pico2_w ADDON=vgaboard_sd
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-#
-make BOARD=pico_w ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y SERIAL_DEV=2
-#
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-#
-make BOARD=pico2_w ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y SERIAL_DEV=2
-#
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-#
-make BOARD=pico_w ADDON=wslcd35 GRAPH=wslcd35 STDIO=USB SOUND=N FAT=Y
-#
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-#
-make BOARD=pico2_w ADDON=wslcd35 GRAPH=wslcd35 STDIO=USB SOUND=N FAT=Y
-#
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-#
-cd $ROOT_DIR
-find . -name "bbcbasic_*.uf2" -ls
+case ${1:-1} in
+       1)
+           cd $ROOT_DIR/console/pico
+           make clean
+           #
+           make BOARD=pico_w
+           if [ $? -ne 0 ]; then
+               echo "Failed building 1: Pico1, Console"
+               exit 1
+           fi
+           #
+           ;&
+       2)
+           cd $ROOT_DIR/console/pico
+           make BOARD=pico2_w
+           if [ $? -ne 0 ]; then
+               echo "Failed building 2: Pico2, Console"
+               exit 1
+           fi
+           #
+           ;&
+       3)
+           cd $ROOT_DIR/bin/pico
+           make clean
+           #
+           make BOARD=pico_w ADDON=vgaboard_sd
+           if [ $? -ne 0 ]; then
+               echo "Failed building 3: Pico1, VGA"
+               exit 1
+           fi
+           #
+           ;&
+       4)
+           cd $ROOT_DIR/bin/pico
+           make BOARD=pico2_w ADDON=vgaboard_sd
+           if [ $? -ne 0 ]; then
+               echo "Failed building 4: Pico2, VGA"
+               exit 1
+           fi
+           #
+           ;&
+       5)
+           cd $ROOT_DIR/bin/pico
+           make BOARD=pico_w ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y SERIAL_DEV=2
+           #
+           if [ $? -ne 0 ]; then
+               echo "Failed building 5: Pico1, PicoCalc"
+               exit 1
+           fi
+           #
+           ;&
+       6)
+           cd $ROOT_DIR/bin/pico
+           make BOARD=pico2_w ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y SERIAL_DEV=2
+           #
+           if [ $? -ne 0 ]; then
+               echo "Failed building 6: Pico2, PicoCalc"
+               exit 1
+           fi
+           #
+           ;&
+       7)
+           cd $ROOT_DIR/bin/pico
+           make BOARD=pico_w ADDON=wslcd35 GRAPH=wslcd35 STDIO=USB SOUND=N FAT=Y
+           #
+           if [ $? -ne 0 ]; then
+               echo "Failed building 7: Pico1, WSLCD35"
+               exit 1
+           fi
+           #
+           ;&
+       8)
+           cd $ROOT_DIR/bin/pico
+           make BOARD=pico2_w ADDON=wslcd35 GRAPH=wslcd35 STDIO=USB SOUND=N FAT=Y
+           #
+           if [ $? -ne 0 ]; then
+               echo "Failed building 8: Pico2, WSLCD35"
+               exit 1
+           fi
+           #
+           ;;
+       esac
+       cd $ROOT_DIR
+       find . -name "bbcbasic_*.uf2" -ls

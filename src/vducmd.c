@@ -2620,7 +2620,6 @@ void refresh_off (void)
         reflag = 1;
         }
     }
-#endif
 
 void refresh_rst (void)
     {
@@ -2630,6 +2629,7 @@ void refresh_rst (void)
     if (reflag == 1) vduqterm ();
     reflag = 2;
     }
+#endif
 
 void refresh (const char *p)
     {
