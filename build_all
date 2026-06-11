@@ -1,9 +1,10 @@
 #!/usr/bin/bash
-#Build the four standard configurations
-
+# Build the four standard configurations for pico and pico2
+#
 ROOT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $ROOT_DIR/console/pico
 make clean
+#
 make BOARD=pico_w
 if [ $? -ne 0 ]; then
   exit 1
@@ -16,6 +17,7 @@ fi
 #
 cd $ROOT_DIR/bin/pico
 make clean
+#
 make BOARD=pico_w ADDON=vgaboard_sd
 if [ $? -ne 0 ]; then
   exit 1
@@ -26,13 +28,25 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 #
-make BOARD=pico_w ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y
+make BOARD=pico_w ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y SERIAL_DEV=2
 #
 if [ $? -ne 0 ]; then
   exit 1
 fi
 #
-make BOARD=pico2_w ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y
+make BOARD=pico2_w ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y SERIAL_DEV=2
+#
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+#
+make BOARD=pico_w ADDON=wslcd35 GRAPH=wslcd35 STDIO=USB SOUND=N FAT=Y
+#
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+#
+make BOARD=pico2_w ADDON=wslcd35 GRAPH=wslcd35 STDIO=USB SOUND=N FAT=Y
 #
 if [ $? -ne 0 ]; then
   exit 1
