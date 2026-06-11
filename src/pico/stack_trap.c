@@ -60,7 +60,9 @@ void crash_report (int *pReport)
     {
     // uintptr_t save_guard = stk_guard;
     // install_stack_guard ((void *) 0);
+#ifdef PICO_GRAPH
     refresh_rst ();
+#endif
     bool bHaveFrame = ( pReport[5] == pReport[9] ) && ( pReport[6] == pReport[10] )
         && ( pReport[7] == pReport[11] ) && ( pReport[8] == pReport[12] );
     text ("\r\nR0 = ");

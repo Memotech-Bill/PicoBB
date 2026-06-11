@@ -2579,7 +2579,6 @@ void vduqinit (void)
 
 void vduqterm (void)
     {
-    vduflush ();
     if ( libtop == vduqtop )
         {
         libtop = vduqbot;
@@ -2594,7 +2593,7 @@ void refresh_now (void)
 #if DEBUG & 4
     printf ("refresh now\n");
 #endif
-    vduflush ();
+    if (reflag == 1) vduflush ();
     }
 
 void refresh_on (void)
@@ -2602,7 +2601,11 @@ void refresh_on (void)
 #if DEBUG & 2
     printf ("refresh on\n");
 #endif
-    vduqinit ();
+    if (reflag == 1)
+        {
+        vduflush ();
+        vduqterm ();
+        }
     reflag = 2;
     }
 
@@ -2611,10 +2614,22 @@ void refresh_off (void)
 #if DEBUG & 2
     printf ("refresh off\n");
 #endif
-    vduqterm ();
-    reflag = 1;
+    if (reflag != 1)
+        {
+        vduqinit ();
+        reflag = 1;
+        }
     }
 #endif
+
+void refresh_rst (void)
+    {
+#if DEBUG & 2
+    printf ("refresh rst\n");
+#endif
+    if (reflag == 1) vduqterm ();
+    reflag = 2;
+    }
 
 void refresh (const char *p)
     {

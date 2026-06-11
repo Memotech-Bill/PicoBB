@@ -1799,61 +1799,78 @@ void refresh_rst (void)
 void refresh_off (void)
     {
     reflag = 1;
-    bBuffer = true;
     if (! bBuffer) save_lcd ();
+    bBuffer = true;
     }
 
 #elif REF_MODE == 3
 
 void refresh_now (void)
     {
-    if ( rfm == rfmBuffer )
+    if (reflag == 1)
         {
-        if (bBuffer) load_lcd ();
-        }
-    else if ( rfm == rfmQueue )
-        {
-        vduflush ();
+        if ( rfm == rfmBuffer )
+            {
+            if (bBuffer) load_lcd ();
+            }
+        else if ( rfm == rfmQueue )
+            {
+            vduflush ();
+            }
         }
     }
 
 void refresh_on (void)
     {
-    if ( rfm == rfmBuffer )
+    if (reflag == 1)
         {
-        if (bBuffer) load_lcd ();
-        bBuffer = false;
-        }
-    else if ( rfm == rfmQueue )
-        {
-        vduqterm ();
+        if ( rfm == rfmBuffer )
+            {
+            if (bBuffer) load_lcd ();
+            bBuffer = false;
+            }
+        else if ( rfm == rfmQueue )
+            {
+            vduflush ();
+            vduqterm ();
+            }
         }
     reflag = 2;
     }
 
 void refresh_rst (void)
     {
-    if ( rfm == rfmBuffer )
+    if (reflag == 1)
         {
-        bBuffer = false;
+        if ( rfm == rfmBuffer )
+            {
+            bBuffer = false;
+            }
+        else if ( rfm == rfmQueue )
+            {
+            vduqterm ();
+            }
         }
     reflag = 2;
     }
 
 void refresh_off (void)
     {
-    reflag = 1;
-    if ( rfm == rfmBuffer )
+    if (reflag != 1)
         {
-        if (! bBuffer)
+        reflag = 1;
+        if ( rfm == rfmBuffer )
             {
-            bBuffer = true;
-            save_lcd ();
+            if (! bBuffer)
+                {
+                bBuffer = true;
+                save_lcd ();
+                }
             }
-        }
-    else if ( rfm == rfmQueue )
-        {
-        vduqinit ();
+        else if ( rfm == rfmQueue )
+            {
+            vduqinit ();
+            }
         }
     }
 

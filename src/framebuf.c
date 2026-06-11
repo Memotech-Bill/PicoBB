@@ -673,7 +673,7 @@ void refresh_now (void)
 #if DEBUG & 4
     printf ("refresh now\n");
 #endif
-    framebuf = swapbuf ();
+    if (reflag == 1) framebuf = swapbuf ();
     }
 
 void refresh_on (void)
@@ -681,7 +681,7 @@ void refresh_on (void)
 #if DEBUG & 2
     printf ("refresh on\n");
 #endif
-    framebuf = singlebuf ();
+    if (reflag == 1) framebuf = singlebuf ();
     reflag = 2;
     }
 
@@ -690,8 +690,13 @@ void refresh_off (void)
 #if DEBUG & 2
     printf ("refresh off\n");
 #endif
-    framebuf = doublebuf ();
+    if (reflag != 1) framebuf = doublebuf ();
     reflag = 1;
+    }
+
+void refresh_rst (void)
+    {
+    refresh_on ();
     }
 
 #elif REF_MODE == 3
@@ -700,13 +705,16 @@ void refresh_now (void)
 #if DEBUG & 4
     printf ("refresh now\n");
 #endif
-    if ( rfm == rfmBuffer )
+    if (reflag == 1)
         {
-        framebuf = swapbuf ();
-        }
-    else if ( rfm == rfmQueue )
-        {
-        vduflush ();
+        if ( rfm == rfmBuffer )
+            {
+            framebuf = swapbuf ();
+            }
+        else if ( rfm == rfmQueue )
+            {
+            vduflush ();
+            }
         }
     }
 
@@ -715,13 +723,17 @@ void refresh_on (void)
 #if DEBUG & 2
     printf ("refresh on\n");
 #endif
-    if ( rfm == rfmBuffer )
+    if (reflag == 1)
         {
-        framebuf = singlebuf ();
-        }
-    else if ( rfm == rfmQueue )
-        {
-        vduqterm ();
+        if ( rfm == rfmBuffer )
+            {
+            framebuf = singlebuf ();
+            }
+        else if ( rfm == rfmQueue )
+            {
+            vduflush ();
+            vduqterm ();
+            }
         }
     reflag = 2;
     }
@@ -731,18 +743,25 @@ void refresh_off (void)
 #if DEBUG & 2
     printf ("refresh off\n");
 #endif
-    if ( rfm == rfmBuffer )
+    if (reflag != 1)
         {
-        framebuf = doublebuf ();
+        if ( rfm == rfmBuffer )
+            {
+            framebuf = doublebuf ();
+            }
+        else if ( rfm == rfmQueue )
+            {
+            vduqinit ();
+            }
+        reflag = 1;
         }
-    else if ( rfm == rfmQueue )
-        {
-        vduqinit ();
-        }
-    reflag = 1;
+    }
+
+void refresh_rst (void)
+    {
+    refresh_on ();
     }
 #endif
-
 
 static const uint8_t swap04[256] = {
     0x00, 0x40, 0x80, 0xC0, 0x10, 0x50, 0x90, 0xD0, 0x20, 0x60, 0xA0, 0xE0, 0x30, 0x70, 0xB0, 0xF0,
