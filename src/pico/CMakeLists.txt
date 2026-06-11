@@ -311,20 +311,21 @@ if (TARGET tinyusb_device)
       )
     if(${PICO_CHIP} STREQUAL "rp2350")
       target_compile_definitions(bbcbasic PUBLIC
-        -DROOT_OFFSET=0x300000
+        -DROOT_OFFSET=0x0FC000
         )
     else()
       target_compile_definitions(bbcbasic PUBLIC
-        -DROOT_OFFSET=0x100000
+        -DROOT_OFFSET=0x0FC000
         )
     endif()
     # Set location of storage used by Bluetooth
-    string(CONCAT flash_expr "1024*(" ${LFS_ORIG} "-8)")
-    math(EXPR flash_orig "${flash_expr}" OUTPUT_FORMAT HEXADECIMAL)
-    target_compile_definitions(bbcbasic PUBLIC
-      -DPICO_FLASH_BANK_TOTAL_SIZE=0x2000               # = 2 * FLASH_SECTOR_SIZE
-      -DPICO_FLASH_BANK_STORAGE_OFFSET=${flash_orig}    # = ROOT_OFFSET - PICO_FLASH_BANK_TOTAL_SIZE
-      )
+    # Moved location of LFS down by 16K instead - Leaves space for BT and PicoCalc UF2 loader
+    # string(CONCAT flash_expr "1024*(" ${LFS_ORIG} "-8)")
+    # math(EXPR flash_orig "${flash_expr}" OUTPUT_FORMAT HEXADECIMAL)
+    # target_compile_definitions(bbcbasic PUBLIC
+    #   -DPICO_FLASH_BANK_TOTAL_SIZE=0x2000               # = 2 * FLASH_SECTOR_SIZE
+    #   -DPICO_FLASH_BANK_STORAGE_OFFSET=${flash_orig}    # = ROOT_OFFSET - PICO_FLASH_BANK_TOTAL_SIZE
+    #   )
     target_sources(bbcbasic PRIVATE
       ../../src/lfsmcu.c
       ../../littlefs/lfs.c
