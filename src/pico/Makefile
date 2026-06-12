@@ -239,17 +239,21 @@ endif
 OS_RAM =
 
 .PHONY: all
-ifeq ($(LFS), Y)
-all: bbcbasic filesystem
-else
+#ifeq ($(LFS), Y)
+#all: bbcbasic filesystem
+#else
+#all: bbcbasic
+#endif
 all: bbcbasic
-endif
 
 .PHONY: bbcbasic
 bbcbasic: $(BUILD_DIR)/Makefile bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf
 
 .PHONY: filesystem
-filesystem:	bbcbasic+filesystem$(SUFFIX).uf2 filesystem$(SUFFIX).uf2
+filesystem:	filesystem_$(BOARD).uf2 filesystem.zip
+
+.PHONY: bbcbasic+filesystem
+bbcbasic+filesystem:	bbcbasic+filesystem$(SUFFIX).uf2
 
 $(BUILD_DIR)/Makefile: Makefile ../../src/pico/Makefile ../../src/pico/CMakeLists.txt
 	rm -rf $(BUILD_DIR)
@@ -280,6 +284,44 @@ bbcbasic$(SUFFIX).uf2 bbcbasic$(SUFFIX).elf : $(SOURCES) $(BUILD_DIR)/bbcbasic.m
 	cp $(BUILD_DIR)/bbcbasic.uf2 bbcbasic$(SUFFIX).uf2
 	cp $(BUILD_DIR)/bbcbasic.elf bbcbasic$(SUFFIX).elf
 
+filesystem_$(BOARD).uf2: filesystem.lfs ../../src/lfsutil/uf2conv
+	../../src/lfsutil/uf2conv -d $(BOARD) filesystem.lfs filesystem_$(BOARD).uf2 $(LFS_ORIG)K
+
+../../src/lfsutil/uf2conv: ../../src/lfsutil/uf2conv.c
+	cd ../../src/lfsutil && make uf2conv
+
+#filesystem.elf: filesystem.lfs
+#	arm-none-eabi-objcopy --change-addresses 0x10100000 --input-target=binary --output-target=elf32-little filesystem.lfs filesystem.elf
+
+build_filesystem: $(BASIC_EXAMPLES) $(EXAMPLE_FILES) ../../src/lfsutil/pico_examples.py
+	rm -rf build_filesystem
+	../../src/lfsutil/pico_examples.py -t build_filesystem $(BASIC_EXAMPLES)
+
+ifdef FILESYS
+filesystem$(SUFFIX).lfs: $(FILESYS) ../../src/lfsutil/mklfsimage
+	rm -f filesystem$(SUFFIX).lfs
+	../../src/lfsutil/mklfsimage -o filesystem$(SUFFIX).lfs $(FILESYS)
+
+filesystem.lfs: $(FILESYS) ../../src/lfsutil/mklfsimage
+	rm -f filesystem.lfs
+	../../src/lfsutil/mklfsimage -o filesystem.lfs $(FILESYS)
+else
+filesystem$(SUFFIX).lfs: $(BASIC_EXAMPLES) $(EXAMPLE_FILES) ../../src/lfsutil/pico_examples.py ../../src/lfsutil/mklfsimage
+	rm -rf $(BUILD_DIR)/filesystem
+	../../src/lfsutil/pico_examples.py -o filesystem$(SUFFIX).lfs -s $(LFS_SIZE)K -t $(BUILD_DIR)/filesystem $(BASIC_EXAMPLES)
+
+filesystem.lfs: build_filesystem ../../src/lfsutil/mklfsimage
+	rm -f filesystem.lfs
+	../../src/lfsutil/mklfsimage -o filesystem.lfs build_filesystem
+endif
+
+filesystem.zip: build_filesystem
+	rm -f filesystem.zip
+	cd build_filesystem && zip -r ../filesystem.zip *
+
+../../src/lfsutil/mklfsimage: ../../src/lfsutil/mklfsimage.c ../../src/lfsmcu.c ../../littlefs/lfs.c ../../littlefs/lfs_util.c
+	cd ../../src/lfsutil && make mklfsimage
+
 ifeq ($(LFS), Y)
 bbcbasic+filesystem$(SUFFIX).uf2: bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2 ../../src/lfsutil/uf2merge
 	../../src/lfsutil/uf2merge -f -o bbcbasic+filesystem$(SUFFIX).uf2 bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2
@@ -289,28 +331,9 @@ bbcbasic+filesystem$(SUFFIX).uf2: bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).uf2 
 
 filesystem$(SUFFIX).uf2: filesystem$(SUFFIX).lfs bbcbasic$(SUFFIX).uf2 ../../src/lfsutil/uf2conv
 	../../src/lfsutil/uf2conv -m bbcbasic$(SUFFIX).uf2 filesystem$(SUFFIX).lfs filesystem$(SUFFIX).uf2 $(LFS_ORIG)K
-
-../../src/lfsutil/uf2conv: ../../src/lfsutil/uf2conv.c
-	cd ../../src/lfsutil && make uf2conv
-
-#filesystem.elf: filesystem.lfs
-#	arm-none-eabi-objcopy --change-addresses 0x10100000 --input-target=binary --output-target=elf32-little filesystem.lfs filesystem.elf
-
-ifdef FILESYS
-filesystem$(SUFFIX).lfs: $(FILESYS) ../../src/lfsutil/mklfsimage
-	rm -f filesystem.lfs
-	../../src/lfsutil/mklfsimage -o filesystem$(SUFFIX).lfs $(FILESYS)
-else
-filesystem$(SUFFIX).lfs: $(BASIC_EXAMPLES) $(EXAMPLE_FILES) ../../src/lfsutil/pico_examples.py ../../src/lfsutil/mklfsimage
-	rm -rf $(BUILD_DIR)/tree
-	../../src/lfsutil/pico_examples.py -o filesystem$(SUFFIX).lfs -s $(LFS_SIZE)K -t $(BUILD_DIR)/tree $(DEVICE) $(BUILD) $(BASIC_EXAMPLES)
-endif
-
-../../src/lfsutil/mklfsimage: ../../src/lfsutil/mklfsimage.c ../../src/lfsmcu.c ../../littlefs/lfs.c ../../littlefs/lfs_util.c
-	cd ../../src/lfsutil && make mklfsimage
 endif
 
 clean:
 	rm -rf build*
-	rm -f bbcbasic*.* filesystem*.* *.uf2
+	rm -f bbcbasic*.* filesystem*.* *.uf2 filesystem.zip
 	cd ../../src/lfsutil && make clean

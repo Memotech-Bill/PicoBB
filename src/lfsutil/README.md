@@ -42,6 +42,10 @@ ID recognised by the RP2040 chip).
 * **`RP2350`** - Abbreviation for **RP2350_ARM_S**
 * **`RP2350_RISCV`** - Bootable RISCV code for the RP2350.
 * **`RP2350_ARM_NS`** - ARM non-secure mode code for the RP2350
+* **`PICO`** - Alias for **`RP2040`**
+* **`PICO_W`** - Alias for **`RP2040`**
+* **`PICO2`** - Alias for **`RP2350_ARM_S`**
+* **`PICO2_W`** - Alias for **`RP2350_ARM_S`**
 
 **`-f <family-id>`** - Specifies the family ID in numeric form in decimal
 (beginning `1`-`9`), hex (beginning `0x`) or octal (beginning `0`).

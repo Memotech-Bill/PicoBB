@@ -83,7 +83,29 @@ case ${1:-1} in
                exit 1
            fi
            #
+           ;&
+       9)
+           cd $ROOT_DIR/console/pico
+           make BOARD=pico filesystem
+           #
+           if [ $? -ne 0 ]; then
+               echo "Failed building 9: Pico filesystem"
+               exit 1
+           fi
+           #
+           ;&
+       10)
+           cd $ROOT_DIR/console/pico
+           make BOARD=pico2 filesystem
+           #
+           if [ $? -ne 0 ]; then
+               echo "Failed building 10: Pico2 filesystem"
+               exit 1
+           fi
+           #
            ;;
+
        esac
        cd $ROOT_DIR
        find . -name "bbcbasic_*.uf2" -ls
+       find . -name "filesystem_*.uf2" -ls

@@ -287,17 +287,41 @@ where:
 * `<snd_type>` = One of PWM or I2S.
 * `<suffix>` = A string to append to the name of the build folder and file names to
   identify the build.
+
+### Filesystem
+
+A small collection of example BBC BASIC programs are also provided. Some of these will work
+for any build, while others require features specific to a particular build. The files may be
+loaded into an LFS filesystem on the Pico, or copied onto an SD card where supported.
+
+To obtain all the example files, in either `console/pico` or `bin/pico` folders run one of
+the following commands:
+
+* `make build_filesystem` to create the `build_filesystem` folder containing all the example files.
+* `make filesystem.zip` to create `filesystem.zip` containing all the example files.
+* `make BOARD=pico filesystem` to create `filesystem_pico.uf2` to load the example files in
+  an LFS filesystem onto a Pico or Pico_W.
+* `make BOARD=pico2 filesystem` to create `filesystem_pico2.uf2` to load the example files in
+  an LFS filesystem onto a Pico2 or Pico2_W.
+
+Alternately, a combined UF2 containing both the BBC BASIC interpreter and LFS filesystem can be
+created. To do this, append the build target `bbcbasic+filesystem` to any of the `make` commands
+given in the previous sections. In this case only examples appropriate to the particular build
+are selected.
         
 ## Installation
 
 To install, plug a Pico device into the USB port while holding the boot button and then copy the
 required file onto the device using a command such as:
 
-     cp -v bbcbasic_console_pico_w.uf2 /media/pi/RPI-RP2
+     `cp -v bbcbasic_console_pico_w.uf2 /media/pi/RPI-RP2`
 
 or:
 
-     picotool install -f bbcbasic_console_pico2_w.uf2
+     `picotool install -f bbcbasic_console_pico2_w.uf2`
+
+If also installing an LFS filesystem use a similar procedure to copy the appropriate
+`filesystem_*.uf2` file.
 
 ## Usage Notes
 
