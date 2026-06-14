@@ -44,7 +44,7 @@ static const uint16_t defpal[16] =
 #define LS  0x10000
 
 static const MODE modes[] = {
-// ncbt gcol grow tcol trw  vmg hmg pb nbpl ys thg
+// ncbt gcol grow tcol trw  vmg hmg ppb nbpl ys thg
     { 1, 320, 256,  40, 32, 111,  0,  8,  40, 0,  8},   // Mode  0 - 10KB
     { 2, 320, 256,  40, 32, 111,  0,  4,  80, 0,  8},   // Mode  1 - 20KB
     { 4, 160, 256,  20, 32, 111,  0,  4,  80, 0,  8},   // Mode  2 - 20KB
@@ -52,7 +52,7 @@ static const MODE modes[] = {
     { 1, 320, 256,  40, 32, 111,  0,  8,  40, 0,  8},   // Mode  4 - 10KB
     { 2, 160, 256,  20, 32, 111,  0,  8,  40, 0,  8},   // Mode  5 - 10KB
     { 1, 320, 225,  40, 25,  15,  0,  8,  40, 1,  9},   // Mode  6 - 10KB
-    { 3, 320, 225,  40, 25,  15,  0,  8, 160, 1,TTH},   // Mode  7 - ~1KB - Teletext
+    { 3, 320, 225,  40, 25,  15,  0,  8,  40, 1,TTH},   // Mode  7 - ~1KB - Teletext
     { 1, 320, 480,  40, 30,   0,  0,  8,  40, 0, 16},   // Mode  8 - 19KB
     { 2, 320, 480,  40, 30,   0,  0,  4,  80, 0, 16},   // Mode  9 - 37.5KB
     { 4, 160, 480,  20, 30,   0,  0,  4,  80, 0, 16},   // Mode 10 - 37.5KB
@@ -363,7 +363,7 @@ const MODE *modeinfo (int mode)
 int bufsize (void)
     {
     int nbyt = curmode.grow * curmode.nbpl;
-    if ( curmode.ncbt == 3 ) nbyt += sizeof (font_tt);
+    if ( curmode.ncbt == 3 ) nbyt = curmode.trow * curmode.tcol + sizeof (font_tt);
     return nbyt;
     }
 

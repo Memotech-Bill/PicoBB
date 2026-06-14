@@ -71,6 +71,7 @@ GUI_SOURCES = \
     ../../include/pico_gui/tusb_config.h \
     ../../include/font_tt.h \
     ../../src/vducmd.c \
+    ../../src/framebuf.c \
     ../../src/fbufctl.c \
     ../../src/pico_gui/picokbd.c \
     ../../src/pico_gui/picofbuf.c \
@@ -84,6 +85,7 @@ GUI_SOURCES = \
     ../../include/pico_gui/tusb_config.h \
     ../../include/font_tt.h \
     ../../src/vducmd.c \
+    ../../src/framebuf.c \
     ../../src/fbufctl.c \
 	../../src/pico/periodic.c \
     ../../src/pico_gui/picofbuf.c \
@@ -100,6 +102,7 @@ GUI_SOURCES = \
     ../../include/pico_gui/tusb_config.h \
     ../../include/font_tt.h \
     ../../src/vducmd.c \
+    ../../src/framebuf.c \
     ../../src/fbufctl.c \
 	../../src/pico/periodic.c \
 	../../src/wslcd35/DEV_Config.c \

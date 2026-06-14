@@ -629,7 +629,7 @@ uint8_t getpix (int xp, int yp)
 
 int get_ttx (int x, int y)
     {
-    int chr = framebuf[y * pmode->trow + x];
+    int chr = framebuf[y * pmode->tcol + x];
     if ( chr < 0x20 ) chr += 0x80;
     return chr;
     }
