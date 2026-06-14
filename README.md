@@ -128,11 +128,9 @@ as per the following table:
 |   pico2   |  RP2350   |       N        |
 |  pico2_w  |  RP2350   |       Y        |
 
-Having completed the make, the following files should be in the folder:
+Having completed the make, the following file should be in the folder:
 
 * bbcbasic_console_xxx.uf2 - The BBC BASIC interpreter.
-* filesystem_console_xxx.uf2 - An image for the flash file system.
-* bbcbasic+filesystem_console_xxx.uf2 - A combination of the above two.
 
 where "_xxx" is replaced by the name of the selected board.
 
@@ -211,11 +209,9 @@ and WiFi using TYPE as for the console builds above, so that the commands to bui
         cd bin/pico
         make BOARD=<board_name> TYPE=<pico_type> ADDON=<base_name>
 
-Having completed the make, the following files should be in the folder:
+Having completed the make, the following file should be in the folder:
 
 * bbcbasic_gui_ppp_aaa.uf2 - The BBC BASIC interpreter.
-* filesystem_gui_ppp_aaa.uf2 - An image for the flash file system.
-* bbcbasic+filesystem_gui_ppp_aaa.uf2 - A combination of the above two.
 
 where "ppp" is replaced by the name of the processor board and "aaa" by the name of the addon board.
 
