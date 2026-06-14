@@ -230,7 +230,7 @@ The PicoCalc provides:
 * SD card for storage.
 * Sound via built-in speakers or headphone socket.
 
-To build the version of PicoBB for the Waveshare Pico-ResTouch-LCD-3.5:
+To build the version of PicoBB for the PicoCalc:
 
         cd bin/pico
         make BOARD=<pico_type>  ADDON=PicoCalc GRAPH=PicoCalc STDIO=PicoCalc SOUND=SDL FAT=Y SERIAL_DEV=2
