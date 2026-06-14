@@ -642,6 +642,11 @@
       does not have any file attributes for recording Read-Only or Read-Write status. It would be possible
       to implement the functions for the FAT filesystem on an external SD card, but that would be
       inconsistent.</p>
+    <h4>*lineno [&lt;start&gt; [&lt;step&gt;]]</h4>
+    <p>This command adds or removes line numbers on the current BASIC program. Note, it is not a full
+      BASIC renumber, it does <b>not</b> renumber any GOTO or GOSUB statements. But then any well structured
+      BBC BASIC program should not use these statements. The starting number and step both default to 10
+      if not otherwise specified. Setting either the start or step to 0 removes any line numbers.</p>
     <h4>*output</h4>
     <p>This command works as documented for valid channel numbers 1 to 12, or zero to restore normal output.</p>
     <p>The &quot;special&quot; values 13 to 15 used by BBCSDL for &quot;non-overlapped I/O&quot; will
