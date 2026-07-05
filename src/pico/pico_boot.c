@@ -7,6 +7,18 @@
 #include "hardware/watchdog.h"
 #include "pico/bootrom.h"
 
+// Definitions missing from pico-sdk v 2.3.0:
+#ifndef PICO_STDIO_USB_RESET_MAGIC_BAUD_RATE
+#define PICO_STDIO_USB_RESET_MAGIC_BAUD_RATE 1200
+#endif
+#ifndef PICO_STDIO_USB_RESET_BOOTSEL_INTERFACE_DISABLE_MASK
+#define PICO_STDIO_USB_RESET_BOOTSEL_INTERFACE_DISABLE_MASK 0u
+#endif
+#ifndef PICO_STDIO_USB_RESET_RESET_TO_FLASH_DELAY_MS
+#define PICO_STDIO_USB_RESET_RESET_TO_FLASH_DELAY_MS 100
+#endif
+
+
 // Support for default BOOTSEL reset by changing baud rate
 void tud_cdc_line_coding_cb(__unused uint8_t itf, cdc_line_coding_t const* p_line_coding)
     {

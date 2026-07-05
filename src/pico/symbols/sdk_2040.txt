@@ -1,3 +1,6 @@
+%global PICO_RP2040 1
+%global NUM_BANK0_GPIOS 30
+%global HAS_RP2040_RTC 1
 ${PICO_SDK_PATH}/src/rp2_common/hardware_rtc/include/hardware/rtc.h
 ${PICO_SDK_PATH}/src/rp2_common/pico_double/include/pico/double.h
 %exclude double2uint64
