@@ -63,10 +63,10 @@ static const MODE modes[] = {
     { 4, 320, 240,  40, 30,   0,  0,  2, 160, 1,  8},   // Mode 15 - 37.5KB
     { 1, 480, 320,  60, 20,   0, LS,  8,  60, 0, 16},   // Mode 16 - 18.75KB
     { 2, 480, 320,  60, 20,   0, LS,  4, 120, 0, 16},   // Mode 17 - 37.5KB
-    { 4, 240, 320,  30, 20,   0, LS,  8,  60, 1, 16},   // Mode 18 - 37.5KB
+    { 4, 240, 320,  30, 20,   0, LS,  4, 120, 0, 16},   // Mode 18 - 37.5KB
     { 1, 480, 320,  60, 40,   0, LS,  8,  60, 0,  8},   // Mode 19 - 18.75KB
     { 2, 480, 320,  60, 40,   0, LS,  4, 120, 0,  8},   // Mode 20 - 37.5KB
-    { 4, 240, 320,  30, 40,   0, LS,  8,  60, 1,  8},   // Mode 21 - 37.5KB
+    { 4, 240, 320,  30, 40,   0, LS,  4, 120, 0,  8},   // Mode 21 - 37.5KB
     };
 
 static CLIFUNC excli = NULL;
@@ -76,9 +76,9 @@ static bool bInverse = false;
 static bool bLScape = false;
 static int nrow = 480;
 static int scrltop = 0;
+static int xshf = 3;
 static int xscl = 1;
 static int yscl = 1;
-static CLRDEF *cdef = NULL;
 
 #include "pico/binary_info.h"
 bi_decl (bi_1pin_with_name (LCD_DC_PIN,   "LCD command / data"));
@@ -154,57 +154,59 @@ void wslcd35_out (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
         scrltop -= nrow;
         yp1 = (-scrltop) >> curmode.yshf;
         }
-    // bool bShow = nSPIInt <= 0;
 	gpio_set_function (LCD_CLK_PIN, GPIO_FUNC_SPI);
 	gpio_set_function (LCD_MOSI_PIN, GPIO_FUNC_SPI);
 	gpio_set_function (LCD_MISO_PIN, GPIO_FUNC_SPI);
-    // if (bShow) printf ("wslcd35_out (%p, %d, %d, %d, %d)\n", fbuf, xp1, yp1, xp2, yp2);
     if (fbuf != framebuf) return;
-    xp1 = xp1 >> (3 - cdef->bitsh);
-    xp2 = ((xp2 - 1) >> (3 - cdef->bitsh)) + 1;
-    // if (bShow)
-    //     {
-    //     printf ("ncbt = %d, bitsh = %d\n", curmode.ncbt, cdef->bitsh);
-    //     printf ("xp1 = %d, xp2 = %d, xscl = %d, yscl = %d\n", xp1, xp2, xscl, yscl);
-    //     printf ("LCD_SetWindow (%d, %d, %d, %d)\n",
-    //         xp1 * curmode.nppb, curmode.vmgn + scrltop + (yp1 << curmode.yshf),
-    //         xp2 * curmode.nppb, curmode.vmgn + scrltop + ((yp2 + 1) << curmode.yshf) - 1);
-    //     }
-    LCD_SetWindow (xp1 * curmode.nppb, curmode.vmgn + scrltop + (yp1 << curmode.yshf),
-        xp2 * curmode.nppb, curmode.vmgn + scrltop + ((yp2 + 1) << curmode.yshf) - 1);
-    fbuf += curmode.nbpl * yp1 + xp1;
+    int xb1;
+    int xb2;
+    xb1 = xp1 >> xshf;
+    xb2 = ((xp2 - 1) >> xshf) + 1;
+    xp1 = xb1 << xshf;
+    xp2 = xb2 << xshf;
+    LCD_SetWindow (xp1 * xscl, curmode.vmgn + scrltop + (yp1 << curmode.yshf),
+        xp2 * xscl, curmode.vmgn + scrltop + (yp2 << curmode.yshf));
+    fbuf += curmode.nbpl * yp1 + xb1;
     LCD_Write_Init ();
     for (int y = yp1; y < yp2; ++y)
         {
         for (int yr = 0; yr < yscl; ++yr)
             {
             uint8_t *fp = fbuf;
-            // if (yp2 == yp1 + 1) printf ("y = %d, yr = %d, fp = %p\n", y, yr, fp);
-            for (int x = xp1; x < xp2; ++x)
+            switch (curmode.ncbt)
                 {
-                uint8_t pix = *fp;
-                // if (yp2 == yp1 + 1) printf ("x = %d, pix = 0x%02X\n", x, pix);
-                switch (curmode.ncbt)
-                    {
-                    case 4:
-                        LCD_Write_Words (curpal[pix & 0x0F], xscl);
-                        LCD_Write_Words (curpal[pix >> 4], xscl);
-                        break;
-                    case 2:
-                        LCD_Write_Words (curpal[pix & 0x03], xscl);
-                        LCD_Write_Words (curpal[(pix >> 2) & 0x03], xscl);
-                        LCD_Write_Words (curpal[(pix >> 4) & 0x03], xscl);
-                        LCD_Write_Words (curpal[pix >> 6], xscl);
-                        break;
-                    case 1:
+                case 1:
+                    for (int x = xb1; x < xb2; ++x)
+                        {
+                        uint8_t pix = *fp;
                         for (int i = 0; i < 8; ++i)
                             {
                             LCD_Write_Words (curpal[pix & 0x01], xscl);
                             pix >>= 1;
                             }
-                        break;
-                    }
-                ++fp;
+                        ++fp;
+                        }
+                    break;
+                case 2:
+                    for (int x = xb1; x < xb2; ++x)
+                        {
+                        uint8_t pix = *fp;
+                        LCD_Write_Words (curpal[pix & 0x03], xscl);
+                        LCD_Write_Words (curpal[(pix >> 2) & 0x03], xscl);
+                        LCD_Write_Words (curpal[(pix >> 4) & 0x03], xscl);
+                        LCD_Write_Words (curpal[pix >> 6], xscl);
+                        ++fp;
+                        }
+                    break;
+                case 4:
+                    for (int x = xb1; x < xb2; ++x)
+                        {
+                        uint8_t pix = *fp;
+                        LCD_Write_Words (curpal[pix & 0x0F], xscl);
+                        LCD_Write_Words (curpal[pix >> 4], xscl);
+                        ++fp;
+                        }
+                    break;
                 }
             }
         fbuf += curmode.nbpl;
@@ -225,7 +227,7 @@ void wslcd35_out_int (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2)
 
 void wslcd35_scroll (uint8_t *fbuf, int lt, int lb, bool bUp)
     {
-    if ((lt != 0) || (lb != curmode.trow - 1))
+    if (bLScape || (lt != 0) || (lb != curmode.trow - 1))
         {
         wslcd35_out (fbuf, 0, lt * curmode.thgt, curmode.gcol, (lb + 1) * curmode.thgt);
         }
@@ -269,17 +271,11 @@ void clrreset (void)
     {
     if ( curmode.ncbt == 1 )
         {
-#if DEBUG & 2
-        printf ("clrreset: nclr = 2\n");
-#endif
         curpal[0] = defpal[0];
         curpal[1] = defpal[15];
         }
     else if ( curmode.ncbt == 2 )
         {
-#if DEBUG & 2
-        printf ("clrreset: nclr = 4\n");
-#endif
         curpal[0] = defpal[0];
         curpal[1] = defpal[9];
         curpal[2] = defpal[11];
@@ -287,9 +283,6 @@ void clrreset (void)
         }
     else if ( curmode.ncbt == 3 )
         {
-#if DEBUG & 2
-        printf ("clrreset: nclr = 4\n");
-#endif
         curpal[0] = defpal[0];
         for (int i = 1; i < 8; ++i)
             {
@@ -298,9 +291,6 @@ void clrreset (void)
         }
     else
         {
-#if DEBUG & 2
-        printf ("clrreset: nclr = 16\n");
-#endif
         for (int i = 0; i < 16; ++i)
             {
             curpal[i] = defpal[i];
@@ -313,16 +303,10 @@ void clrset (int pal, int phy, int r, int g, int b)
     if ( phy < 16 ) curpal[pal] = defpal[phy];
     else if ( phy == 16 ) curpal[pal] = rgbclr (r, g, b);
     else if ( phy == 255 ) curpal[pal] = rgbclr (8*r, 8*g, 8*b);
-#if DEBUG & 2
-    printf ("curpal[%d] = 0x%04X\n", pal, curpal[pal]);
-#endif
     }
 
 const MODE *setmode (int mode)
     {
-#if DEBUG & 1
-    printf ("setmode (%d)\n", mode);
-#endif
     if (( mode >= 0 ) && ( mode < sizeof (modes) / sizeof (modes[0]) ))
         {
         memcpy (&curmode, &modes[mode], sizeof (MODE));
@@ -333,8 +317,11 @@ const MODE *setmode (int mode)
             LCD_SetGramScanWay (bNewLS ? D2U_L2R : L2R_U2D);
             bLScape = bNewLS;
             }
-        if (curmode.ncbt == 3) xscl = 1;
-        else                   xscl = (curmode.ncbt * curmode.nppb) >> 3;
+        if (curmode.ncbt == 1)      xshf = 3;
+        else if (curmode.ncbt == 2) xshf = 2;
+        else if (curmode.ncbt == 4) xshf = 1;
+        if (bLScape) xscl = 480 / curmode.gcol;
+        else         xscl = 320 / curmode.gcol;
         yscl = 1 << curmode.yshf;
         nrow = curmode.grow << curmode.yshf;
         scrltop = 0;
@@ -373,7 +360,6 @@ void dispenable (void)
 
 static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool bShow)
     {
-    // printf ("wslcd35_out7 (%p, %d, %d, %d, %d)\n", fbuf, xp1, yp1, xp2, yp2);
     if (fbuf != framebuf) return;
     SPI_Claim ();
 	gpio_set_function (LCD_CLK_PIN, GPIO_FUNC_SPI);
@@ -399,7 +385,6 @@ static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool
         if (bDHeight) bLower = ! bLower;
         else bLower = false;
         }
-    // printf ("LCD_SetWindow (%d, %d, %d, %d)\n", 8 * xscl * xp1, curmode.thgt * yscl * yp1, 8 * xscl * (xp2 + 1), curmode.thgt * yscl * (yp2 + 1));
     for (int yr = yp1; yr <= yp2; ++yr)
         {
         uint8_t *font = ttfont;
@@ -416,7 +401,6 @@ static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool
         for (int xc = 0; xc < curmode.tcol; ++xc)
             {
             uint8_t ch = *pch & 0x7F;
-            // printf ("yr = %d, xc = %d, ch = 0x%02X\n", yr, xc, ch);
             if ( ch >= 0x20 )
                 {
                 uint16_t *pblk = &blk[0][0];
@@ -429,7 +413,6 @@ static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool
                         else            iScan = ys >> 1;
                         }
                     uint8_t px = font[TTH * ch + iScan];
-                    // printf ("ys = %d, y = %d, px = 0x%02X\n", ys, y, px);
                     if ( px & 0x01 ) *pblk = fgnd;
                     else             *pblk = bgnd;
                     ++pblk;
@@ -533,7 +516,6 @@ static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool
                 if (ysr >= nrow) ysr -= nrow;
                 LCD_SetWindow (8 * xscl * xc, curmode.vmgn + ysr, 8 * xscl * (xc + 1), curmode.vmgn + ysr + curmode.thgt * yscl);
                 LCD_Write_Init ();
-                // printf ("LCD_Write_Words:");
                 for (int ys = 0; ys < TTH; ++ys)
                     {
                     if (bInverse && (bFlash ||
@@ -541,7 +523,6 @@ static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool
                                     && (ys >= cursa) && (ys <= cursb))))
                         {
                         LCD_Write_Words (bgnd, 8 * xscl * yscl);
-                        // printf (" %0x%02X * %d", bgnd, 8 * xscl);
                         }
                     else if (bShow || bFlash)
                         {
@@ -550,10 +531,8 @@ static void wslcd35_ttx (uint8_t *fbuf, int xp1, int yp1, int xp2, int yp2, bool
                             for (int i = 0; i < 8; ++i)
                                 {
                                 LCD_Write_Words (blk[ys][i], xscl);
-                                // printf (" 0x%02X", blk[i]);
                                 }
                             }
-                        // printf ("\n");
                         }
                     }
                 LCD_Write_Term ();
@@ -723,18 +702,14 @@ static void mouse_periodic (void)
     {
     if (moutrp)
         {
-        // printf ("mouse_periodic\n");
         if (SPI_Int_Claim ())
             {
-            // printf ("SPI claimed: moutrp = %p\n", moutrp);
             int mx, my, mb;
             mouse (&mx, &my, &mb);
-            // printf ("mouse_periodic: moutrp = %p, mx = %d, my = %d, mb = %d\n", moutrp, mx, my, mb);
             if (mb)
                 {
                 if (! bMouseDown)
                     {
-                    // printf ("putevt: mx = %d, my = %d\n", mx, my);
                     putevt (moutrp, WM_LBUTTONDOWN, 1, my << 16 | (mx & 0xFFFF));
                     bMouseDown = true;
                     }
@@ -806,10 +781,6 @@ bool brightness (const char *cmd)
 
 void setup_vdu (void)
     {
-#if DEBUG & 1
-    printf ("setup_vdu: Waveshare 3.5 inch LCD: 320x480 " __DATE__ " " __TIME__ "\n");
-    sleep_ms(500);
-#endif
     SPI_Claim ();
 	gpio_set_function (LCD_CLK_PIN, GPIO_FUNC_SPI);
 	gpio_set_function (LCD_MOSI_PIN, GPIO_FUNC_SPI);
