@@ -97,7 +97,7 @@ SDK_HEADERS = ../../src/pico/symbols/sdk_headers.txt \
 	../../src/pico/symbols/sdk_stdio_usb.txt
 EXAMPLE_FILES += ../../bin/pico/examples/* \
 		../../bin/pico/examples/graphics/*
-else ifeq ($(GRAPH), WSLCD35)
+else ifeq ($(GRAPH), wslcd35)
 GUI_SOURCES = \
     ../../include/pico_gui/tusb_config.h \
     ../../include/font_tt.h \
