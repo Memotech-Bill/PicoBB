@@ -63,15 +63,23 @@ ENDIF
 SYS "net_init", HeapPos.bot%, HeapPos.top%
 ENDPROC
 
-REM Initialise the BBCSDL Sockets interface
-DEF PROC_initsockets(N%)
-DEF PROC_initsockets : LOCAL N% : N% = 2
-LOCAL chan%, err%
-PROC__socklib_initheap(N%)
-chan% = OPENIN("wifi.cfg")
-IF chan% = 0 THEN
+DEF PROC__socklib_wifi_cfg(RETURN ssid$, RETURN pwd$, RETURN auth%, RETURN ccode%)
+LOCAL chan%, authlist%()
+DIM authlist%(5)
+authlist%() = 0, &00200002, &00400004, &00400006, &01000004, &01400004
+INPUT "SSID", ssid$
+INPUT "Password", pwd$
+PRINT "Authentication methods:"
+PRINT "0: None"
+PRINT "1: WPA_TKIP_PSK"
+PRINT "2: WPA2_AES_PSK"
+PRINT "3: WPA2_MIXED_PSK"
+PRINT "4: WPA3_SAE_AES_PSK"
+PRINT "5: WPA3_WPA2_AES_PSK"
+INPUT "Select method", auth%
+IF auth% <= UBOUND(authlist%()) THEN auth% = authlist%(auth%)
 LOCAL ccode$, cc1%, cc2%
-INPUT "SSID", ssid$, "Password", pwd$, "Country Code (2 letters)", ccode$
+INPUT "Country Code (2 letters)", ccode$
 cc1% = ASC(LEFT$(ccode$, 1))
 cc2% = ASC(MID$(ccode$, 2, 1))
 IF (cc1% >= 97) AND (cc1% <= 122) THEN cc1% -= 32
@@ -79,9 +87,23 @@ IF (cc2% >= 97) AND (cc2% <= 122) THEN cc2% -= 32
 ccode% = cc1% + 256 * cc2%
 IF ccode% = 19285 THEN ccode% = 16967 : REM UK -> GB
 chan% = OPENOUT("wifi.cfg")
-PRINT#chan%, ssid$, pwd$, ccode%
+PRINT#chan%, ssid$, pwd$, ccode%, auth%
+CLOSE#chan%
+ENDPROC
+
+REM Initialise the BBCSDL Sockets interface
+DEF PROC_initsockets(N%)
+DEF PROC_initsockets : LOCAL N% : N% = 2
+LOCAL chan%, err%, auth%, ssid$, pwd$
+PROC__socklib_initheap(N%)
+chan% = OPENIN("wifi.cfg")
+IF chan% = 0 THEN
+PROC__socklib_wifi_cfg(ssid$, pwd$, ccode%, auth%)
 ELSE
-INPUT#chan%, ssid$, pwd$, ccode%
+ccode% = 0
+ON ERROR LOCAL IF ccode% = 0 THEN PROC__socklib_wifi_cfg(ssid$, pwd$, ccode%, auth%) ELSE auth% = &00400004
+INPUT#chan%, ssid$, pwd$, ccode%, auth%
+RESTORE ERROR
 ENDIF
 CLOSE#chan%
 SYS "cyw43_arch_init_with_country_safe", ccode% TO err%
@@ -90,7 +112,7 @@ ERROR 195, "Error "+STR$(err%)+" initialising WiFi"
 END
 ENDIF
 SYS "cyw43_arch_enable_sta_mode"
-SYS "cyw43_arch_wifi_connect_timeout_ms", ssid$, pwd$, &400004, 30000 TO err%
+SYS "cyw43_arch_wifi_connect_timeout_ms", ssid$, pwd$, auth%, 30000 TO err%
 IF err% <> 0 THEN
 ERROR 196, "Error "+STR$(err%)+" connecting to access point"
 END
