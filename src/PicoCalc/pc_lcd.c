@@ -758,7 +758,7 @@ const MODE *setmode (int mode)
     if (( mode >= 0 ) && ( mode < sizeof (modes) / sizeof (modes[0]) ))
         {
         pmode = &modes[mode];
-        xscl = 1;
+        xscl = SWIDTH / pmode->gcol;
         yscl = 1 << pmode->yshf;
         // ILI9488 has 480 rows of graphics memory
         scrltop = 0;
@@ -773,8 +773,8 @@ const MODE *setmode (int mode)
             nrow = pmode->grow;
             nwrap = nrow + pmode->vmgn;
             LCD_ScrollArea (pmode->vmgn, nrow, SDEPTH - nrow - pmode->vmgn);
-            Dsp_SetAreaColour (0, 0, pmode->gcol, pmode->vmgn, curpal[txtbak]);
-            Dsp_SetAreaColour (0, nwrap, pmode->gcol, SHEIGHT, curpal[txtbak]);
+            Dsp_SetAreaColour (0, 0, SWIDTH, pmode->vmgn, curpal[txtbak]);
+            Dsp_SetAreaColour (0, nwrap, SWIDTH, SHEIGHT, curpal[txtbak]);
             }
         LCD_Scroll (pmode->vmgn + scrltop);
         return pmode;
@@ -893,7 +893,7 @@ void cls (void)
     int nR1 = pmode->vmgn + scrltop + tvt * thgt;
     int nR2 = pmode->vmgn + scrltop + (tvb + 1) * thgt;
     if (nR1 >= nwrap) nR1 -= nrow;
-    if (nR2 >= nwrap) nR2 -= nrow;
+    if (nR2 > nwrap) nR2 -= nrow;
     if (nR2 < nR1)
         {
         Dsp_SetAreaColour (nC1, nR1, nC2, nwrap, curpal[txtbak]);
@@ -1388,18 +1388,21 @@ void get_glyph (int x, int y, uint8_t *prow)
 
 static void flipcsr (int xp, int yp, int ya, int yb)
     {
+    yp <<= pmode->yshf;
+    ya <<= pmode->yshf;
+    yb <<= pmode->yshf;
     yp += pmode->vmgn + scrltop + ya;
-    colour_t pix[8];
+    colour_t pix[8 * xscl];
     for (int i = 0; i < yb - ya + 1; ++i)
         {
         if (yp >= nwrap) yp -= nrow;
-        LCD_SetWindow (xp, yp, xp + 8, yp + 1);
+        LCD_SetWindow (xscl * xp, yp, xscl * (xp + 8), yp + 1);
         LCD_DataInput ();
-        LCD_ReadPixels (pix, 8);
+        LCD_ReadPixels (pix, 8 * xscl);
         LCD_DataTerm ();
-        for (int j = 0; j < 8; ++j) pix[j] = ~ pix[j];
+        for (int j = 0; j < 8 * xscl; ++j) pix[j] = ~ pix[j];
         LCD_DataOutput ();
-        LCD_WritePixels (pix, 8);
+        LCD_WritePixels (pix, 8 * xscl);
         LCD_DataTerm ();
         ++yp;
         }
@@ -1433,7 +1436,7 @@ void hidecsr (void)
         if ( bCsrVis )
             {
             flipcsr (xp, yp, cursa, cursb);
-            flipcsr (8 * xccsr, pmode->thgt * yccsr, cursb, cursb);
+            if (yccsr >= 0) flipcsr (8 * xccsr, pmode->thgt * yccsr, cursb, cursb);
             bCsrVis = false;
             }
         }
@@ -1455,7 +1458,7 @@ void showcsr (void)
             if ( ! bCsrVis )
                 {
                 flipcsr (xp, yp, cursa, cursb);
-                flipcsr (8 * xccsr, pmode->thgt * yccsr, cursb, cursb);
+                if (yccsr >= 0) flipcsr (8 * xccsr, pmode->thgt * yccsr, cursb, cursb);
                 bCsrVis = true;
                 }
             critical_section_exit (&cs_csr);
@@ -1479,7 +1482,7 @@ void flashcsr (void)
             else
                 {
                 flipcsr (xp, yp, cursa, cursb);
-                flipcsr (8 * xccsr, pmode->thgt * yccsr, cursb, cursb);
+                if (yccsr >= 0) flipcsr (8 * xccsr, pmode->thgt * yccsr, cursb, cursb);
                 bCsrVis = ! bCsrVis;
                 }
             critical_section_exit (&cs_csr);
